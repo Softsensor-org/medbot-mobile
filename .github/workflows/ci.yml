@@ -1,0 +1,57 @@
+name: Mobile CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test -- --ci --passWithNoTests
+
+  type-drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout web frontend types
+        uses: actions/checkout@v4
+        with:
+          repository: Softsensor-org/medical-chatbot-frontend
+          path: web-frontend
+          sparse-checkout: |
+            packages/shared/src/types/ai.ts
+            packages/shared/src/types/medical.ts
+
+      - name: Check type drift
+        run: |
+          echo "Checking ai.ts drift..."
+          diff -u web-frontend/packages/shared/src/types/ai.ts src/types/ai.ts || {
+            echo "::error::ai.ts has drifted from web frontend! Sync required."
+            exit 1
+          }
+          echo "Checking medical.ts drift..."
+          diff -u web-frontend/packages/shared/src/types/medical.ts src/types/medical.ts || {
+            echo "::error::medical.ts has drifted from web frontend! Sync required."
+            exit 1
+          }
+          echo "Types are in sync."
