@@ -1,6 +1,14 @@
 import { BaseApiService } from "./BaseApiService";
 import type { ChatResponse } from "../types/ai";
-import type { Symptom, SymptomType, Routine } from "../types/medical";
+import type {
+  Symptom,
+  SymptomType,
+  Routine,
+  RoutineAssignment,
+  RoutineAssignmentStatus,
+  RoutineAssignmentActionRequest,
+  RoutineAssignmentActionEvent,
+} from "../types/medical";
 
 export interface MedicalChatRequest {
   message: string;
@@ -35,6 +43,34 @@ class MedicalApiService extends BaseApiService {
 
   async createRoutine(routine: Omit<Routine, "id">): Promise<Routine> {
     return this.post<Routine>("/routines", routine);
+  }
+
+  async getRoutineAssignments(params?: {
+    patient_id?: string;
+    status?: RoutineAssignmentStatus;
+  }): Promise<RoutineAssignment[]> {
+    const search = new URLSearchParams();
+    if (params?.patient_id) {
+      search.set("patient_id", params.patient_id);
+    }
+    if (params?.status) {
+      search.set("status", params.status);
+    }
+    const query = search.toString();
+    const path = query ? `/routines/assignments?${query}` : "/routines/assignments";
+    return this.get<RoutineAssignment[]>(path);
+  }
+
+  async postRoutineAssignmentAction(
+    assignmentId: number,
+    payload: RoutineAssignmentActionRequest,
+  ): Promise<RoutineAssignmentActionEvent> {
+    const idempotencyKey = payload.idempotency_key;
+    return this.post<RoutineAssignmentActionEvent>(
+      `/routines/assignments/${assignmentId}/actions`,
+      payload,
+      idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined,
+    );
   }
 }
 
