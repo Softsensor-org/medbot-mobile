@@ -28,6 +28,22 @@ jobs:
       - name: Test
         run: npm test -- --ci --passWithNoTests
 
+  development-build-trigger:
+    needs: lint-typecheck-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Trigger Development Build
+        run: |
+          echo "[SIMULATION] Triggering EAS build for development profile"
+          # npx eas build --platform all --profile development --non-interactive --no-wait
+
   type-drift-check:
     runs-on: ubuntu-latest
     steps:

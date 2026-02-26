@@ -1,0 +1,63 @@
+name: Mobile Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS build profile'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Release Audit
+        run: ./scripts/release-audit.sh
+
+  build:
+    needs: audit
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [ios, android]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      
+      - run: npm ci --legacy-peer-deps
+      
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-cache: true
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: EAS Build
+        run: |
+          # In a real environment, this triggers the cloud build
+          # npx eas build --platform ${{ matrix.platform }} --profile ${{ github.event.inputs.profile || 'production' }} --non-interactive --no-wait
+          echo "[SIMULATION] Triggering EAS build for ${{ matrix.platform }} with profile ${{ github.event.inputs.profile || 'production' }}"
+
+  crash-gate:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event.inputs.profile == 'production' || startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Observability Health
+        run: |
+          VERSION=$(grep -o '"version": "[0-9.]*"' package.json | cut -d'"' -f4)
+          APP_VERSION=$VERSION node scripts/crash-gate-check.js
