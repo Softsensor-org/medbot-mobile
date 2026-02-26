@@ -41,3 +41,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# FIX-023: Gate runner output
+gate-results.json
