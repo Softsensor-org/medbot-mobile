@@ -16,11 +16,19 @@ const AUTH0_DOMAIN: string = extra.auth0Domain ?? process.env.EXPO_PUBLIC_AUTH0_
 const AUTH0_CLIENT_ID: string = extra.auth0ClientId ?? process.env.EXPO_PUBLIC_AUTH0_CLIENT_ID ?? "";
 const AUTH0_AUDIENCE: string = extra.auth0Audience ?? process.env.EXPO_PUBLIC_AUTH0_AUDIENCE ?? "";
 
-const discovery: AuthSession.DiscoveryDocument = {
-  authorizationEndpoint: `https://${AUTH0_DOMAIN}/authorize`,
-  tokenEndpoint: `https://${AUTH0_DOMAIN}/oauth/token`,
-  revocationEndpoint: `https://${AUTH0_DOMAIN}/oauth/revoke`,
-};
+// Dev bypass: skip Auth0 when domain is a placeholder or missing
+const DEV_AUTH_BYPASS =
+  !AUTH0_DOMAIN ||
+  AUTH0_DOMAIN.includes("your-tenant") ||
+  AUTH0_DOMAIN === "localhost";
+
+const discovery: AuthSession.DiscoveryDocument = DEV_AUTH_BYPASS
+  ? { authorizationEndpoint: "", tokenEndpoint: "", revocationEndpoint: "" }
+  : {
+      authorizationEndpoint: `https://${AUTH0_DOMAIN}/authorize`,
+      tokenEndpoint: `https://${AUTH0_DOMAIN}/oauth/token`,
+      revocationEndpoint: `https://${AUTH0_DOMAIN}/oauth/revoke`,
+    };
 
 export interface AuthUser {
   sub: string;
@@ -64,9 +72,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     discovery
   );
 
-  // Restore persisted token on mount
+  // Restore persisted token on mount (or auto-login in dev mode)
   useEffect(() => {
     (async () => {
+      if (DEV_AUTH_BYPASS) {
+        setUser({ sub: "dev-user", email: "dev@medbot.local", name: "Dev User" });
+        setToken("dev-bypass-token");
+        setIsLoading(false);
+        return;
+      }
       const stored = await getAccessToken();
       if (stored) {
         setToken(stored);
