@@ -8,6 +8,7 @@ import {
   getAccessToken,
   clearTokens,
 } from "./tokenStorage";
+import { queryClient } from "../providers/QueryProvider";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -16,11 +17,13 @@ const AUTH0_DOMAIN: string = extra.auth0Domain ?? process.env.EXPO_PUBLIC_AUTH0_
 const AUTH0_CLIENT_ID: string = extra.auth0ClientId ?? process.env.EXPO_PUBLIC_AUTH0_CLIENT_ID ?? "";
 const AUTH0_AUDIENCE: string = extra.auth0Audience ?? process.env.EXPO_PUBLIC_AUTH0_AUDIENCE ?? "";
 
-// Dev bypass: skip Auth0 when domain is a placeholder or missing
+// Dev bypass: skip Auth0 when domain is a placeholder or missing.
+// CRITICAL: only allow in __DEV__ builds to prevent production bypass.
 const DEV_AUTH_BYPASS =
-  !AUTH0_DOMAIN ||
-  AUTH0_DOMAIN.includes("your-tenant") ||
-  AUTH0_DOMAIN === "localhost";
+  __DEV__ &&
+  (!AUTH0_DOMAIN ||
+    AUTH0_DOMAIN.includes("your-tenant") ||
+    AUTH0_DOMAIN === "localhost");
 
 const discovery: AuthSession.DiscoveryDocument = DEV_AUTH_BYPASS
   ? { authorizationEndpoint: "", tokenEndpoint: "", revocationEndpoint: "" }
@@ -74,62 +77,114 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Restore persisted token on mount (or auto-login in dev mode)
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       if (DEV_AUTH_BYPASS) {
-        setUser({ sub: "dev-user", email: "dev@medbot.local", name: "Dev User" });
-        setToken("dev-bypass-token");
-        setIsLoading(false);
+        // H-2: persist to storage so the API client interceptor can read it
+        await setAccessToken("dev-bypass-token");
+        if (!cancelled) {
+          setUser({ sub: "dev-user", email: "dev@medbot.local", name: "Dev User" });
+          setToken("dev-bypass-token");
+          setIsLoading(false);
+        }
         return;
       }
       const stored = await getAccessToken();
+      if (cancelled) return;
       if (stored) {
         setToken(stored);
         // Decode JWT payload for user info (no verification, display only)
         try {
-          const payload = JSON.parse(atob(stored.split(".")[1]));
-          setUser({ sub: payload.sub, email: payload.email, name: payload.name });
+          const parts = stored.split(".");
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
+            setUser({ sub: payload.sub, email: payload.email, name: payload.name });
+          }
         } catch {
           // Token may be opaque; user info unavailable until next login
         }
       }
       setIsLoading(false);
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Handle auth result
+  // Handle auth result — covers success, error, and cancel/dismiss
   useEffect(() => {
-    if (result?.type === "success" && result.params.code) {
-      (async () => {
-        try {
-          const tokenRes = await AuthSession.exchangeCodeAsync(
-            {
-              clientId: AUTH0_CLIENT_ID,
-              code: result.params.code,
-              redirectUri,
-              extraParams: { code_verifier: request?.codeVerifier ?? "" },
-            },
-            discovery
-          );
-          const accessToken = tokenRes.accessToken;
-          await setAccessToken(accessToken);
-          if (tokenRes.refreshToken) {
-            await setRefreshToken(tokenRes.refreshToken);
-          }
-          setToken(accessToken);
+    if (!result) return;
 
-          // Parse user from id_token or access_token
-          const idToken = tokenRes.idToken ?? accessToken;
-          try {
-            const payload = JSON.parse(atob(idToken.split(".")[1]));
+    // Handle non-success outcomes so the app never stays stuck loading
+    if (result.type === "error") {
+      if (__DEV__) console.error("Auth error:", result.error);
+      setIsLoading(false);
+      return;
+    }
+    if (result.type === "cancel" || result.type === "dismiss") {
+      setIsLoading(false);
+      return;
+    }
+    if (result.type !== "success" || !result.params.code) return;
+
+    // C-5: Validate PKCE code verifier before exchange
+    const codeVerifier = request?.codeVerifier;
+    if (!codeVerifier) {
+      if (__DEV__) console.error("PKCE code verifier missing — cannot exchange code");
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const tokenRes = await AuthSession.exchangeCodeAsync(
+          {
+            clientId: AUTH0_CLIENT_ID,
+            code: result.params.code,
+            redirectUri,
+            extraParams: { code_verifier: codeVerifier },
+          },
+          discovery
+        );
+        if (cancelled) return;
+
+        const accessToken = tokenRes.accessToken;
+        await setAccessToken(accessToken);
+        if (tokenRes.refreshToken) {
+          await setRefreshToken(tokenRes.refreshToken);
+        }
+        if (cancelled) return;
+        setToken(accessToken);
+
+        // Parse user from id_token or access_token
+        const idToken = tokenRes.idToken ?? accessToken;
+        try {
+          const parts = idToken.split(".");
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
             setUser({ sub: payload.sub, email: payload.email, name: payload.name });
-          } catch {
+          } else {
             setUser({ sub: "unknown" });
           }
-        } catch (err) {
-          console.error("Token exchange failed:", err);
+        } catch {
+          setUser({ sub: "unknown" });
         }
-      })();
-    }
+      } catch (err) {
+        if (__DEV__) console.error("Token exchange failed:", err);
+        // C-4: surface failure so the user is not stuck on a spinner
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [result, request?.codeVerifier]);
 
   const login = useCallback(async () => {
@@ -138,14 +193,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await clearTokens();
+    // H-10: clear cached queries to prevent medical data leaking between users
+    queryClient.clear();
     setUser(null);
     setToken(null);
-    // Optionally open Auth0 logout URL
-    if (AUTH0_DOMAIN) {
-      await WebBrowser.openAuthSessionAsync(
-        `https://${AUTH0_DOMAIN}/v2/logout?client_id=${AUTH0_CLIENT_ID}&returnTo=${redirectUri}`,
-        redirectUri
-      );
+    // Open Auth0 logout URL to clear server-side session
+    if (AUTH0_DOMAIN && !DEV_AUTH_BYPASS) {
+      try {
+        await WebBrowser.openAuthSessionAsync(
+          `https://${AUTH0_DOMAIN}/v2/logout?client_id=${AUTH0_CLIENT_ID}&returnTo=${redirectUri}`,
+          redirectUri
+        );
+      } catch {
+        // Tokens already cleared locally — user is logged out on client
+      }
     }
   }, []);
 

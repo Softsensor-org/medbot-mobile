@@ -39,26 +39,42 @@ export async function streamChat(options: StreamChatOptions): Promise<() => void
     body,
   });
 
+  let closed = false;
+  const close = () => {
+    if (!closed) {
+      closed = true;
+      es.close();
+    }
+  };
+
   es.addEventListener("message", (event) => {
-    if (!event.data) return;
+    if (!event.data || closed) return;
     try {
       const parsed: ModelStreamEvent = JSON.parse(event.data);
       onEvent(parsed);
-      if (parsed.type === "complete" || parsed.type === "error") {
-        es.close();
+      if (parsed.type === "complete") {
+        close();
         onComplete?.();
+      } else if (parsed.type === "error") {
+        // C-6: route server errors through onError, not onComplete
+        close();
+        onError?.(new Error(parsed.content ?? "Stream error from server"));
       }
     } catch {
-      onError?.(new Error(`Failed to parse SSE event: ${event.data}`));
+      // H-6: close stream on parse failure to prevent repeated errors
+      close();
+      onError?.(new Error("Failed to parse SSE event"));
     }
   });
 
   es.addEventListener("error", (event) => {
-    onError?.(new Error(`SSE connection error: ${String(event)}`));
-    es.close();
+    if (closed) return;
+    close();
+    const msg = typeof event === "object" && event !== null && "message" in event
+      ? String((event as { message: unknown }).message)
+      : "SSE connection error";
+    onError?.(new Error(msg));
   });
 
-  return () => {
-    es.close();
-  };
+  return close;
 }
