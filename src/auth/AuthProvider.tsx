@@ -8,7 +8,9 @@ import {
   getAccessToken,
   clearTokens,
 } from "./tokenStorage";
+import { onForceLogout } from "./authEvents";
 import { queryClient } from "../providers/QueryProvider";
+import { decodeBase64 } from "../utils/base64";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -98,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const parts = stored.split(".");
           if (parts.length === 3) {
-            const payload = JSON.parse(atob(parts[1]));
+            const payload = JSON.parse(decodeBase64(parts[1]));
             setUser({ sub: payload.sub, email: payload.email, name: payload.name });
           }
         } catch {
@@ -165,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const parts = idToken.split(".");
           if (parts.length === 3) {
-            const payload = JSON.parse(atob(parts[1]));
+            const payload = JSON.parse(decodeBase64(parts[1]));
             setUser({ sub: payload.sub, email: payload.email, name: payload.name });
           } else {
             setUser({ sub: "unknown" });
@@ -186,6 +188,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [result, request?.codeVerifier]);
+
+  // H-4: Subscribe to forced logout events from the 401 interceptor
+  useEffect(() => {
+    return onForceLogout(() => {
+      queryClient.clear();
+      setUser(null);
+      setToken(null);
+    });
+  }, []);
 
   const login = useCallback(async () => {
     await promptAsync();
