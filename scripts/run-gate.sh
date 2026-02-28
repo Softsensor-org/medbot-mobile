@@ -130,14 +130,18 @@ case "$GATE_TARGET" in
     test)
         run_with_timeout "Test" npm test -- --ci --passWithNoTests
         ;;
+    types)
+        run_with_timeout "TypeSync" bash "$SCRIPT_DIR/sync-types.sh" --check
+        ;;
     all)
+        run_with_timeout "TypeSync" bash "$SCRIPT_DIR/sync-types.sh" --check
         run_with_timeout "Lint" npm run lint
         run_with_timeout "TypeCheck" npm run typecheck
         run_with_timeout "Test" npm test -- --ci --passWithNoTests
         ;;
     *)
         echo "Unknown gate target: $GATE_TARGET"
-        echo "Usage: $0 [all|lint|typecheck|test]"
+        echo "Usage: $0 [all|lint|typecheck|test|types]"
         exit 1
         ;;
 esac

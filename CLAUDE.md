@@ -71,11 +71,14 @@ src/
 ### Type Sync
 
 Types in `src/types/` are copied from web frontend `packages/shared/src/types/`.
-CI drift check validates sync on every PR. To sync manually:
+CI drift check validates sync on every PR via `scripts/run-gate.sh`. To sync manually:
 
 ```bash
-cp ../frontend/packages/shared/src/types/ai.ts src/types/ai.ts
-cp ../frontend/packages/shared/src/types/medical.ts src/types/medical.ts
+# From project root
+make sync-types
+
+# From medbot-mobile root
+bash scripts/sync-types.sh
 ```
 
 ## Key Differences from Web Frontend

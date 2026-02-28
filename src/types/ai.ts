@@ -31,6 +31,7 @@ export interface ModelOutput {
   photo_quality?: PhotoQualityAnalysis;
   disclaimers?: string[];
   generated_at?: string;
+  symptom_capture_hint?: SymptomCaptureHint;
 }
 
 // --- Discriminated union for non-streaming /medical_chat responses ---
@@ -55,6 +56,7 @@ export interface ModelOutputResponse {
   missing_evidence?: string[];
   is_preliminary?: boolean;
   photo_quality?: PhotoQualityAnalysis;
+  symptom_capture_hint?: SymptomCaptureHint;
 }
 
 /** The `data` field of a successful /medical_chat JSON response. */
@@ -99,6 +101,7 @@ export interface EvidenceSnapshot {
 export interface ProviderPacket extends Omit<EvidenceSnapshot, "has_image" | "is_preliminary"> {
   shared_at: string;
   patient_id: string;
+  summary_for_doctor?: string;
 }
 
 // --- Structured Timeline Events (MB-602) ---
@@ -146,6 +149,16 @@ export interface SafetyEvent {
 }
 
 export type TimelineEvent = SymptomEvent | RoutineEvent | ProductEvent | SafetyEvent;
+
+// --- PTN-001: Symptom Capture Hint ---
+
+export interface SymptomCaptureHint {
+  suggest: boolean;
+  symptom_terms: string[];
+  body_parts: string[];
+  severity?: string | null;
+  duration?: string | null;
+}
 
 // --- SSE streaming events for /medical_chat_stream ---
 
