@@ -28,6 +28,24 @@ export async function streamChat(options: StreamChatOptions): Promise<() => void
     ...(imageBase64 ? { image_base64: imageBase64 } : {}),
   });
 
+  const STREAM_TIMEOUT_MS = 60_000;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const clearStreamTimeout = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+
+  const resetTimeout = () => {
+    clearStreamTimeout();
+    timeoutId = setTimeout(() => {
+      es.close();
+      onError?.(new Error("Stream timed out — no data received for 60s"));
+    }, STREAM_TIMEOUT_MS);
+  };
+
   const es = new EventSource(url, {
     method: "POST",
     headers: {
@@ -39,12 +57,16 @@ export async function streamChat(options: StreamChatOptions): Promise<() => void
     body,
   });
 
+  resetTimeout();
+
   es.addEventListener("message", (event) => {
     if (!event.data) return;
+    resetTimeout();
     try {
       const parsed: ModelStreamEvent = JSON.parse(event.data);
       onEvent(parsed);
       if (parsed.type === "complete" || parsed.type === "error") {
+        clearStreamTimeout();
         es.close();
         onComplete?.();
       }
@@ -54,11 +76,13 @@ export async function streamChat(options: StreamChatOptions): Promise<() => void
   });
 
   es.addEventListener("error", (event) => {
+    clearStreamTimeout();
     onError?.(new Error(`SSE connection error: ${String(event)}`));
     es.close();
   });
 
   return () => {
+    clearStreamTimeout();
     es.close();
   };
 }
