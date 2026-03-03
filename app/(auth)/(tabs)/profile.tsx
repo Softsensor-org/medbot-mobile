@@ -26,7 +26,7 @@ export default function ProfileScreen() {
         <Text style={styles.settingsText}>Settings</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+      <TouchableOpacity style={styles.logoutButton} onPress={logout} testID="sign-out-button">
         <Text style={styles.logoutText}>Sign Out</Text>
       </TouchableOpacity>
     </View>

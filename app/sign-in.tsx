@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Redirect } from "expo-router";
 import { useAuth } from "../src/auth/useAuth";
@@ -7,6 +7,16 @@ import { colors, typography, spacing } from "../src/theme";
 
 export default function SignInScreen() {
   const { isAuthenticated, isLoading, login } = useAuth();
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleSignIn = useCallback(async () => {
+    setIsSigningIn(true);
+    try {
+      await login();
+    } finally {
+      setIsSigningIn(false);
+    }
+  }, [login]);
 
   if (isLoading) return <LoadingSpinner />;
   if (isAuthenticated) return <Redirect href="/(auth)/(tabs)" />;
@@ -18,8 +28,13 @@ export default function SignInScreen() {
         <Text style={styles.subtitle}>Your personal skin health assistant</Text>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={login}>
-        <Text style={styles.buttonText}>Sign In</Text>
+      <TouchableOpacity
+        style={[styles.button, isSigningIn && styles.buttonDisabled]}
+        onPress={handleSignIn}
+        disabled={isSigningIn}
+        testID="sign-in-button"
+      >
+        <Text style={styles.buttonText}>{isSigningIn ? "Signing In..." : "Sign In"}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -54,6 +69,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minWidth: 200,
     alignItems: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   buttonText: {
     ...typography.button,

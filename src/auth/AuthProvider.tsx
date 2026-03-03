@@ -18,9 +18,10 @@ const AUTH0_AUDIENCE: string = extra.auth0Audience ?? process.env.EXPO_PUBLIC_AU
 
 // Dev bypass: skip Auth0 when domain is a placeholder or missing
 const DEV_AUTH_BYPASS =
-  !AUTH0_DOMAIN ||
-  AUTH0_DOMAIN.includes("your-tenant") ||
-  AUTH0_DOMAIN === "localhost";
+  __DEV__ &&
+  (!AUTH0_DOMAIN ||
+    AUTH0_DOMAIN.includes("your-tenant") ||
+    AUTH0_DOMAIN === "localhost");
 
 const discovery: AuthSession.DiscoveryDocument = DEV_AUTH_BYPASS
   ? { authorizationEndpoint: "", tokenEndpoint: "", revocationEndpoint: "" }
@@ -119,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser({ sub: "unknown" });
           }
         } catch (err) {
-          console.error("Token exchange failed:", err);
+          if (__DEV__) console.error("Token exchange failed:", err);
         }
       })();
     }

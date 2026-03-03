@@ -136,6 +136,7 @@ export default function RoutinesScreen() {
               style={[styles.button, styles.completeButton, isSubmitting && styles.buttonDisabled]}
               disabled={isSubmitting}
               onPress={() => handleComplete(assignment.id)}
+              testID="routine-complete-button"
             >
               <Text style={styles.buttonText}>Complete</Text>
             </Pressable>
@@ -143,6 +144,7 @@ export default function RoutinesScreen() {
               style={[styles.button, styles.deferButton, isSubmitting && styles.buttonDisabled]}
               disabled={isSubmitting}
               onPress={() => openCommitBox(assignment)}
+              testID="routine-defer-button"
             >
               <Text style={styles.buttonText}>Defer (Commit Box)</Text>
             </Pressable>
@@ -202,6 +204,7 @@ export default function RoutinesScreen() {
                   placeholderTextColor={colors.textSecondary}
                   style={styles.input}
                   autoCapitalize="none"
+                  testID="routine-target-time-input"
                 />
               </>
             ) : null}
@@ -214,16 +217,18 @@ export default function RoutinesScreen() {
               placeholderTextColor={colors.textSecondary}
               style={[styles.input, styles.textArea]}
               multiline
+              testID="routine-comment-input"
             />
 
             <View style={styles.actionsRow}>
-              <Pressable style={[styles.button, styles.cancelButton]} onPress={closeCommitBox} disabled={isSubmitting}>
+              <Pressable style={[styles.button, styles.cancelButton]} onPress={closeCommitBox} disabled={isSubmitting} testID="routine-cancel-button">
                 <Text style={styles.buttonText}>Cancel</Text>
               </Pressable>
               <Pressable
                 style={[styles.button, styles.deferButton, isSubmitting && styles.buttonDisabled]}
                 onPress={handleSubmitDefer}
                 disabled={isSubmitting}
+                testID="routine-submit-defer-button"
               >
                 <Text style={styles.buttonText}>Submit defer</Text>
               </Pressable>

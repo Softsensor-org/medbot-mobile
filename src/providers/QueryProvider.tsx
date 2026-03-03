@@ -4,12 +4,12 @@ import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@ta
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error) => {
-      console.error("[QueryCache] Error:", error.message);
+      if (__DEV__) console.error("[QueryCache] Error:", error.message);
     },
   }),
   mutationCache: new MutationCache({
     onError: (error) => {
-      console.error("[MutationCache] Error:", error.message);
+      if (__DEV__) console.error("[MutationCache] Error:", error.message);
     },
   }),
   defaultOptions: {
