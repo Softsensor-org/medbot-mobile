@@ -14,6 +14,7 @@ export default function CareScreen() {
       <TouchableOpacity
         style={styles.newChat}
         onPress={() => router.push("/(auth)/intake")}
+        testID="start-new-session-button"
       >
         <Text style={styles.newChatText}>Start New Session</Text>
       </TouchableOpacity>
