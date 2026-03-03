@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   },
   newChatText: {
     ...typography.button,
-    color: "#FFFFFF",
+    color: colors.surface,
   },
   placeholder: {
     ...typography.body,

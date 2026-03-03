@@ -37,3 +37,8 @@ export const healthKeys = {
 export const capabilityKeys = {
   all: ["capabilities"] as const,
 };
+
+export const routineKeys = {
+  all: ["routines"] as const,
+  assignments: (params?: Record<string, unknown>) => [...routineKeys.all, "assignments", params] as const,
+};

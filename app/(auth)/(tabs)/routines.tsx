@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -8,16 +8,18 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { medicalApi } from "../../../src/api/medicalApi";
+import { useRoutineAssignments } from "../../../src/hooks/useRoutineAssignments";
+import { useCompleteAssignment, useDeferAssignment } from "../../../src/hooks/useRoutineActions";
 import type { RescheduleIntentType, RoutineAssignment } from "../../../src/types/medical";
 import { colors, typography, spacing } from "../../../src/theme";
 
 export default function RoutinesScreen() {
-  const [assignments, setAssignments] = useState<RoutineAssignment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: assignments = [], isLoading, error: queryError } = useRoutineAssignments();
+  const completeMutation = useCompleteAssignment();
+  const deferMutation = useDeferAssignment();
+
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<RoutineAssignment | null>(null);
   const [deferReasonCode, setDeferReasonCode] = useState("too_busy");
   const [rescheduleType, setRescheduleType] = useState<RescheduleIntentType>("later_today");
@@ -26,43 +28,31 @@ export default function RoutinesScreen() {
 
   const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
 
-  const loadAssignments = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await medicalApi.getRoutineAssignments();
-      setAssignments(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load routines");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const isSubmitting = completeMutation.isPending || deferMutation.isPending;
 
-  useEffect(() => {
-    loadAssignments().catch(() => undefined);
-  }, [loadAssignments]);
+  const loadError = queryError instanceof Error ? queryError.message : queryError ? "Failed to load routines" : null;
 
   const handleComplete = useCallback(
-    async (assignmentId: number) => {
-      setIsSubmitting(true);
+    (assignmentId: number) => {
       setError(null);
       setInfo(null);
-      try {
-        await medicalApi.postRoutineAssignmentAction(assignmentId, {
-          action: "complete",
-          timezone: timeZone,
-          completed_at: new Date().toISOString(),
-          completion_rate: 1.0,
-        });
-        setInfo("Routine marked complete.");
-        await loadAssignments();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to complete routine");
-      } finally {
-        setIsSubmitting(false);
-      }
+      completeMutation.mutate(
+        {
+          assignmentId,
+          payload: {
+            action: "complete",
+            timezone: timeZone,
+            completed_at: new Date().toISOString(),
+            completion_rate: 1.0,
+          },
+        },
+        {
+          onSuccess: () => setInfo("Routine marked complete."),
+          onError: (err) => setError(err instanceof Error ? err.message : "Unable to complete routine"),
+        },
+      );
     },
-    [loadAssignments, timeZone],
+    [completeMutation, timeZone],
   );
 
   const openCommitBox = useCallback((assignment: RoutineAssignment) => {
@@ -76,9 +66,7 @@ export default function RoutinesScreen() {
   }, []);
 
   const closeCommitBox = useCallback(() => {
-    if (isSubmitting) {
-      return;
-    }
+    if (isSubmitting) return;
     setSelectedAssignment(null);
     setDeferReasonCode("too_busy");
     setRescheduleType("later_today");
@@ -88,37 +76,37 @@ export default function RoutinesScreen() {
     setInfo(null);
   }, [isSubmitting]);
 
-  const handleSubmitDefer = useCallback(async () => {
-    if (!selectedAssignment) {
-      return;
-    }
+  const handleSubmitDefer = useCallback(() => {
+    if (!selectedAssignment) return;
     if (rescheduleType === "specific_time" && !targetAt.trim()) {
       setError("Target time is required for specific_time.");
       return;
     }
 
-    setIsSubmitting(true);
     setError(null);
     setInfo(null);
-    try {
-      await medicalApi.postRoutineAssignmentAction(selectedAssignment.id, {
-        action: "defer",
-        defer_reason_code: deferReasonCode,
-        comment: comment.trim() || undefined,
-        reschedule_intent: {
-          type: rescheduleType,
-          target_at: rescheduleType === "specific_time" ? targetAt.trim() : undefined,
+    deferMutation.mutate(
+      {
+        assignmentId: selectedAssignment.id,
+        payload: {
+          action: "defer",
+          defer_reason_code: deferReasonCode,
+          comment: comment.trim() || undefined,
+          reschedule_intent: {
+            type: rescheduleType,
+            target_at: rescheduleType === "specific_time" ? targetAt.trim() : undefined,
+          },
         },
-      });
-      setInfo("Routine deferred with commit details.");
-      setSelectedAssignment(null);
-      await loadAssignments();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to defer routine");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [comment, deferReasonCode, loadAssignments, rescheduleType, selectedAssignment, targetAt]);
+      },
+      {
+        onSuccess: () => {
+          setInfo("Routine deferred with commit details.");
+          setSelectedAssignment(null);
+        },
+        onError: (err) => setError(err instanceof Error ? err.message : "Unable to defer routine"),
+      },
+    );
+  }, [comment, deferMutation, deferReasonCode, rescheduleType, selectedAssignment, targetAt]);
 
   const activeAssignments = assignments.filter((item) => item.status === "active");
 
@@ -130,7 +118,7 @@ export default function RoutinesScreen() {
       </Text>
 
       {isLoading ? <Text style={styles.metaText}>Loading assignments...</Text> : null}
-      {error ? <Text style={[styles.metaText, styles.error]}>{error}</Text> : null}
+      {(error || loadError) ? <Text style={[styles.metaText, styles.error]}>{error || loadError}</Text> : null}
       {info ? <Text style={[styles.metaText, styles.info]}>{info}</Text> : null}
 
       {!isLoading && activeAssignments.length === 0 ? (
@@ -147,9 +135,7 @@ export default function RoutinesScreen() {
             <Pressable
               style={[styles.button, styles.completeButton, isSubmitting && styles.buttonDisabled]}
               disabled={isSubmitting}
-              onPress={() => {
-                void handleComplete(assignment.id);
-              }}
+              onPress={() => handleComplete(assignment.id)}
             >
               <Text style={styles.buttonText}>Complete</Text>
             </Pressable>
@@ -236,9 +222,7 @@ export default function RoutinesScreen() {
               </Pressable>
               <Pressable
                 style={[styles.button, styles.deferButton, isSubmitting && styles.buttonDisabled]}
-                onPress={() => {
-                  void handleSubmitDefer();
-                }}
+                onPress={handleSubmitDefer}
                 disabled={isSubmitting}
               >
                 <Text style={styles.buttonText}>Submit defer</Text>
@@ -270,17 +254,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   error: {
-    color: "#B91C1C",
+    color: colors.errorDark,
   },
   info: {
-    color: "#0F766E",
+    color: colors.teal,
   },
   card: {
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderLight,
     padding: spacing.md,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     gap: spacing.sm,
   },
   cardTitle: {
@@ -303,28 +287,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   completeButton: {
-    backgroundColor: "#0F766E",
+    backgroundColor: colors.teal,
   },
   deferButton: {
-    backgroundColor: "#B45309",
+    backgroundColor: colors.amber,
   },
   cancelButton: {
-    backgroundColor: "#64748B",
+    backgroundColor: colors.slate,
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   buttonText: {
-    color: "#FFFFFF",
+    color: colors.surface,
     ...typography.button,
   },
   modalBackdrop: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: colors.overlay,
   },
   modalCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: spacing.lg,
@@ -350,15 +334,15 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1,
-    borderColor: "#CBD5E1",
+    borderColor: colors.borderMuted,
     borderRadius: 999,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surfaceLight,
   },
   chipSelected: {
-    borderColor: "#0F766E",
-    backgroundColor: "#CCFBF1",
+    borderColor: colors.teal,
+    backgroundColor: colors.tealLight,
   },
   chipText: {
     ...typography.caption,
@@ -366,7 +350,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#CBD5E1",
+    borderColor: colors.borderMuted,
     borderRadius: 8,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
