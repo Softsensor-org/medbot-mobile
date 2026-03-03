@@ -45,14 +45,7 @@ export interface AuthContextValue {
   logout: () => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  isLoading: true,
-  login: async () => {},
-  logout: async () => {},
-});
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 const redirectUri = AuthSession.makeRedirectUri({ scheme: "medbot" });
 

@@ -4,7 +4,17 @@ import { useLocalSearchParams } from "expo-router";
 import { colors, typography, spacing } from "../../../src/theme";
 
 export default function ChatScreen() {
-  const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
+  const params = useLocalSearchParams<{ sessionId: string }>();
+  const sessionId = Array.isArray(params.sessionId) ? params.sessionId[0] : params.sessionId;
+
+  if (!sessionId) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Chat</Text>
+        <Text style={styles.errorText}>Invalid session.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -36,5 +46,9 @@ const styles = StyleSheet.create({
   placeholder: {
     ...typography.body,
     color: colors.textSecondary,
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.error,
   },
 });
