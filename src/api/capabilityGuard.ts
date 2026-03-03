@@ -1,3 +1,4 @@
+import { AppState } from "react-native";
 import client from "./client";
 import { capabilityKeys } from "../queryKeys";
 
@@ -12,9 +13,17 @@ export interface ServerCapabilities {
 
 let cachedCapabilities: ServerCapabilities | null = null;
 
+// Invalidate cache when app returns to foreground
+AppState.addEventListener("change", (state) => {
+  if (state === "active") {
+    cachedCapabilities = null;
+  }
+});
+
 /**
  * Fetch server capabilities. Cached after first successful call.
  * Falls back to safe defaults if the endpoint is unavailable.
+ * Cache is invalidated when the app returns to foreground.
  */
 export async function getCapabilities(): Promise<ServerCapabilities> {
   if (cachedCapabilities) return cachedCapabilities;

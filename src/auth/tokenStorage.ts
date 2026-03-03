@@ -11,26 +11,39 @@ if (Platform.OS !== "web") {
 }
 
 async function getItem(key: string): Promise<string | null> {
-  if (Platform.OS === "web") {
-    return localStorage.getItem(key);
+  try {
+    if (Platform.OS === "web") {
+      return localStorage.getItem(key);
+    }
+    return await SecureStore!.getItemAsync(key);
+  } catch (e) {
+    console.warn(`tokenStorage.getItem(${key}) failed:`, e);
+    return null;
   }
-  return SecureStore!.getItemAsync(key);
 }
 
 async function setItem(key: string, value: string): Promise<void> {
-  if (Platform.OS === "web") {
-    localStorage.setItem(key, value);
-    return;
+  try {
+    if (Platform.OS === "web") {
+      localStorage.setItem(key, value);
+      return;
+    }
+    await SecureStore!.setItemAsync(key, value);
+  } catch (e) {
+    console.warn(`tokenStorage.setItem(${key}) failed:`, e);
   }
-  await SecureStore!.setItemAsync(key, value);
 }
 
 async function deleteItem(key: string): Promise<void> {
-  if (Platform.OS === "web") {
-    localStorage.removeItem(key);
-    return;
+  try {
+    if (Platform.OS === "web") {
+      localStorage.removeItem(key);
+      return;
+    }
+    await SecureStore!.deleteItemAsync(key);
+  } catch (e) {
+    console.warn(`tokenStorage.deleteItem(${key}) failed:`, e);
   }
-  await SecureStore!.deleteItemAsync(key);
 }
 
 export async function getAccessToken(): Promise<string | null> {

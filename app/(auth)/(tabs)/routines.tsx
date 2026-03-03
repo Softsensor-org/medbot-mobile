@@ -80,6 +80,12 @@ export default function RoutinesScreen() {
       return;
     }
     setSelectedAssignment(null);
+    setDeferReasonCode("too_busy");
+    setRescheduleType("later_today");
+    setTargetAt("");
+    setComment("");
+    setError(null);
+    setInfo(null);
   }, [isSubmitting]);
 
   const handleSubmitDefer = useCallback(async () => {

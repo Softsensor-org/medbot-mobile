@@ -47,6 +47,9 @@ export class BaseApiService {
     if (!body.success) {
       throw new Error(body.error ?? "API request failed");
     }
-    return body.data as T;
+    if (body.data === undefined || body.data === null) {
+      throw new Error("API returned success but no data");
+    }
+    return body.data;
   }
 }
