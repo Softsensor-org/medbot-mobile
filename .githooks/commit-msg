@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+set -eu
+
+MSG_FILE="${1:-}"
+if [ -z "$MSG_FILE" ] || [ ! -f "$MSG_FILE" ]; then
+  echo "commit-msg hook: missing commit message file" >&2
+  exit 1
+fi
+
+SUBJECT="$(sed -n '1p' "$MSG_FILE")"
+
+case "$SUBJECT" in
+  Merge\ *|Revert\ \"*)
+    ;;
+  *)
+    if ! printf '%s\n' "$SUBJECT" | grep -Eq '\b[A-Z]{2,5}-[0-9]{3,4}\b'; then
+      echo "Commit subject must include a ticket ID (e.g., MB-702, FIX-013)." >&2
+      exit 1
+    fi
+    ;;
+esac
+
+if grep -Eiq '^Co-Authored-By:' "$MSG_FILE"; then
+  echo "Co-Authored-By trailers are not allowed by project commit policy." >&2
+  exit 1
+fi
