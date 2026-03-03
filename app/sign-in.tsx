@@ -57,6 +57,6 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     ...typography.button,
-    color: "#FFFFFF",
+    color: colors.surface,
   },
 });

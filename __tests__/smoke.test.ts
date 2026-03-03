@@ -10,7 +10,7 @@ describe("statusHelpers", () => {
   });
 
   it("returns grey for undefined status", () => {
-    expect(colorFor(undefined)).toBe("#9E9E9E");
+    expect(colorFor(undefined)).toBe("#BDBDBD");
   });
 
   it("returns correct icon for clinician_review", () => {

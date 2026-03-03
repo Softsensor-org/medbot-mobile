@@ -1,9 +1,10 @@
 import type { TriageLabel } from "../types/ai";
+import { colors } from "../theme/colors";
 
 const TRIAGE_COLOR_MAP: Record<TriageLabel, string> = {
-  self_care: "#4CAF50",
-  clinician_review: "#1976D2",
-  urgent: "#D32F2F",
+  self_care: colors.triageSelfCare,
+  clinician_review: colors.triageClinician,
+  urgent: colors.triageUrgent,
 };
 
 const TRIAGE_ICON_MAP: Record<TriageLabel, string> = {
@@ -13,8 +14,8 @@ const TRIAGE_ICON_MAP: Record<TriageLabel, string> = {
 };
 
 export function colorFor(status: TriageLabel | undefined): string {
-  if (!status) return "#9E9E9E";
-  return TRIAGE_COLOR_MAP[status] ?? "#9E9E9E";
+  if (!status) return colors.textDisabled;
+  return TRIAGE_COLOR_MAP[status] ?? colors.textDisabled;
 }
 
 export function iconFor(status: TriageLabel | undefined): string {
