@@ -32,6 +32,11 @@ export class BaseApiService {
     return this.unwrap(res);
   }
 
+  protected async put<T>(path: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    const res: AxiosResponse<ApiEnvelope<T>> = await client.put(this.url(path), data, config);
+    return this.unwrap(res);
+  }
+
   protected async patch<T>(path: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const res: AxiosResponse<ApiEnvelope<T>> = await client.patch(this.url(path), data, config);
     return this.unwrap(res);

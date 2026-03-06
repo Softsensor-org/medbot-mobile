@@ -3,6 +3,7 @@ jest.mock("../src/api/client", () => ({
   default: {
     get: jest.fn(),
     post: jest.fn(),
+    put: jest.fn(),
     patch: jest.fn(),
     delete: jest.fn(),
   },
@@ -23,6 +24,9 @@ class TestService extends BaseApiService {
   }
   testPost<T>(path: string, data?: unknown) {
     return this.post<T>(path, data);
+  }
+  testPut<T>(path: string, data?: unknown) {
+    return this.put<T>(path, data);
   }
   testPatch<T>(path: string, data?: unknown) {
     return this.patch<T>(path, data);
@@ -73,6 +77,15 @@ describe("BaseApiService", () => {
       const result = await service.testPost("/items", { name: "new" });
       expect(result).toEqual({ id: 2 });
       expect(mockClient.post).toHaveBeenCalledWith("/api/v1/items", { name: "new" }, undefined);
+    });
+
+    it("PUT sends data in body", async () => {
+      mockClient.put.mockResolvedValue({
+        data: { success: true, data: { id: 3 } },
+      });
+      const result = await service.testPut("/items/3", { name: "updated" });
+      expect(result).toEqual({ id: 3 });
+      expect(mockClient.put).toHaveBeenCalledWith("/api/v1/items/3", { name: "updated" }, undefined);
     });
 
     it("PATCH sends partial data", async () => {

@@ -26,6 +26,14 @@ export function useSessionTranscript(sessionId: string) {
   });
 }
 
+export function useEvidenceSnapshot(sessionId: string) {
+  return useQuery({
+    queryKey: sessionKeys.evidenceSnapshot(sessionId),
+    queryFn: () => sessionsApi.getEvidenceSnapshot(sessionId),
+    enabled: !!sessionId,
+  });
+}
+
 export function useCreateSession() {
   const queryClient = useQueryClient();
 

@@ -88,3 +88,50 @@ export interface DeferRoutineAssignmentActionRequest {
 export type RoutineAssignmentActionRequest =
   | CompleteRoutineAssignmentActionRequest
   | DeferRoutineAssignmentActionRequest;
+
+// --- Pre-visit Check-in (MB-709) ---
+
+export type AppointmentType = "clinic" | "telemed" | "urgent_care";
+
+export interface SessionAppointment {
+  session_id: string;
+  user_id: string;
+  appointment_type: AppointmentType;
+  appointment_datetime: string;
+  clinic_location: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PreVisitQuestion {
+  id: number;
+  question_set_id: number;
+  question_number: number;
+  text: string;
+  evidence_slot_name: string | null;
+  required: boolean;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface PreVisitReadiness {
+  session_id: string;
+  readiness_pct: number;
+  has_appointment: boolean;
+  appointment_type?: AppointmentType;
+  required_total: number;
+  required_answered: number;
+  missing_required: {
+    question_id: number;
+    text: string;
+    evidence_slot: string | null;
+  }[];
+  answers_provided: number[];
+}
+
+export type IntakeModeValue = "symptom_logging" | "triage_submission";
+
+export interface IntakeMode {
+  session_id: string;
+  mode: IntakeModeValue;
+  updated_at: string;
+}

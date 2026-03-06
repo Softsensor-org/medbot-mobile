@@ -45,3 +45,11 @@ export const routineKeys = {
   all: ["routines"] as const,
   assignments: (params?: Record<string, unknown>) => [...routineKeys.all, "assignments", params] as const,
 };
+
+export const wellnessKeys = {
+  all: ["wellness"] as const,
+  previsitQuestions: (appointmentType: string) => [...wellnessKeys.all, "previsit", "questions", appointmentType] as const,
+  previsitReadiness: (sessionId: string) => [...wellnessKeys.all, "previsit", "readiness", sessionId] as const,
+  intakeMode: (sessionId: string) => [...wellnessKeys.all, "intake", "mode", sessionId] as const,
+  appointment: (sessionId: string) => [...wellnessKeys.all, "appointment", sessionId] as const,
+};
