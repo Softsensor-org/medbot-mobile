@@ -62,12 +62,15 @@ function parseCapabilitiesResponse(payload: unknown): AppCapabilities {
   return normalizeCapabilities(payload);
 }
 
-// Invalidate cache when app returns to foreground
-AppState.addEventListener("change", (state) => {
-  if (state === "active") {
-    cachedCapabilities = null;
-  }
-});
+// Invalidate cache when app returns to foreground.
+// Skip listener registration in tests to avoid hanging open handles.
+if (process.env.NODE_ENV !== "test") {
+  AppState.addEventListener("change", (state) => {
+    if (state === "active") {
+      cachedCapabilities = null;
+    }
+  });
+}
 
 /**
  * Fetch server capabilities. Cached after first successful call.

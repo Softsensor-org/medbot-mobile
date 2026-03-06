@@ -26,6 +26,12 @@
     ],
     "testPathIgnorePatterns": [
       "<rootDir>/__tests__/setup.ts"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/.worktrees/"
+    ],
+    "watchPathIgnorePatterns": [
+      "<rootDir>/.worktrees/"
     ]
   },
   "dependencies": {

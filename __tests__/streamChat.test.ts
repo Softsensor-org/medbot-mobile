@@ -27,6 +27,8 @@ jest.mock("react-native-sse", () => {
 import { streamChat } from "../src/stream/streamChat";
 import type { ModelStreamEvent } from "../src/types/ai";
 
+const cleanupFns: Array<() => void> = [];
+
 beforeEach(() => {
   jest.clearAllMocks();
   for (const key of Object.keys(listeners)) {
@@ -34,10 +36,24 @@ beforeEach(() => {
   }
 });
 
+afterEach(() => {
+  while (cleanupFns.length > 0) {
+    cleanupFns.pop()?.();
+  }
+});
+
+async function startStream(
+  options: Parameters<typeof streamChat>[0]
+): Promise<() => void> {
+  const cleanup = await streamChat(options);
+  cleanupFns.push(cleanup);
+  return cleanup;
+}
+
 describe("streamChat", () => {
   it("calls onEvent for each parsed SSE message", async () => {
     const onEvent = jest.fn();
-    await streamChat({
+    await startStream({
       sessionId: "s1",
       message: "hello",
       onEvent,
@@ -54,7 +70,7 @@ describe("streamChat", () => {
   it("closes connection and calls onComplete on 'complete' event", async () => {
     const onEvent = jest.fn();
     const onComplete = jest.fn();
-    await streamChat({
+    await startStream({
       sessionId: "s1",
       message: "hello",
       onEvent,
@@ -72,7 +88,7 @@ describe("streamChat", () => {
   it("closes connection and calls onComplete on 'error' event type", async () => {
     const onEvent = jest.fn();
     const onComplete = jest.fn();
-    await streamChat({
+    await startStream({
       sessionId: "s1",
       message: "hello",
       onEvent,
@@ -90,7 +106,7 @@ describe("streamChat", () => {
   it("calls onError when SSE event data is not valid JSON", async () => {
     const onEvent = jest.fn();
     const onError = jest.fn();
-    await streamChat({
+    await startStream({
       sessionId: "s1",
       message: "hello",
       onEvent,
@@ -107,7 +123,7 @@ describe("streamChat", () => {
 
   it("skips messages with no data", async () => {
     const onEvent = jest.fn();
-    await streamChat({
+    await startStream({
       sessionId: "s1",
       message: "hello",
       onEvent,
@@ -120,7 +136,7 @@ describe("streamChat", () => {
 
   it("calls onError and closes on SSE connection error", async () => {
     const onError = jest.fn();
-    await streamChat({
+    await startStream({
       sessionId: "s1",
       message: "hello",
       onEvent: jest.fn(),
@@ -137,7 +153,7 @@ describe("streamChat", () => {
   });
 
   it("returns a cleanup function that closes the connection", async () => {
-    const cleanup = await streamChat({
+    const cleanup = await startStream({
       sessionId: "s1",
       message: "hello",
       onEvent: jest.fn(),
