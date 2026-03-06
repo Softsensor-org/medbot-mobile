@@ -1,5 +1,6 @@
 import React from "react";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import { capabilityQueryOptions } from "../api/capabilityGuard";
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -25,5 +26,9 @@ const queryClient = new QueryClient({
 });
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
+  React.useEffect(() => {
+    void queryClient.prefetchQuery(capabilityQueryOptions);
+  }, []);
+
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
