@@ -2,54 +2,79 @@ import { AppState } from "react-native";
 import client from "./client";
 import { capabilityKeys } from "../queryKeys";
 
-export interface ServerCapabilities {
-  streaming: boolean;
-  photo_analysis: boolean;
-  nudges: boolean;
-  evidence_snapshot: boolean;
-  provider_packet: boolean;
+export interface CapabilityModules {
+  medical_chat: boolean;
+  routines: boolean;
+  symptoms: boolean;
+  sessions: boolean;
+  wellness_chat: boolean;
+  ehr: boolean;
+  calendar: boolean;
+  usage: boolean;
+  exposure: boolean;
+  knowledge_base: boolean;
   [key: string]: boolean;
 }
 
-let cachedCapabilities: ServerCapabilities | null = null;
+export interface AppCapabilities {
+  modules: CapabilityModules;
+}
+
+const DEFAULT_MODULES: CapabilityModules = {
+  medical_chat: true,
+  routines: true,
+  symptoms: true,
+  sessions: true,
+  wellness_chat: true,
+  ehr: false,
+  calendar: false,
+  usage: false,
+  exposure: false,
+  knowledge_base: false,
+};
+
+let cachedCapabilities: AppCapabilities | null = null;
 
 // Invalidate cache when app returns to foreground
-AppState.addEventListener("change", (state) => {
-  if (state === "active") {
-    cachedCapabilities = null;
-  }
-});
+if (typeof AppState.addEventListener === "function") {
+  AppState.addEventListener("change", (state) => {
+    if (state === "active") {
+      cachedCapabilities = null;
+    }
+  });
+}
 
 /**
  * Fetch server capabilities. Cached after first successful call.
  * Falls back to safe defaults if the endpoint is unavailable.
  * Cache is invalidated when the app returns to foreground.
  */
-export async function getCapabilities(): Promise<ServerCapabilities> {
+export async function getCapabilities(): Promise<AppCapabilities> {
   if (cachedCapabilities) return cachedCapabilities;
 
   try {
-    const res = await client.get<{ success: boolean; data: ServerCapabilities }>(
+    const res = await client.get<AppCapabilities>(
       "/api/v1/capabilities"
     );
-    cachedCapabilities = res.data.data;
+    cachedCapabilities = {
+      modules: {
+        ...DEFAULT_MODULES,
+        ...(res.data?.modules || {}),
+      },
+    };
     return cachedCapabilities;
   } catch {
-    // Safe defaults: assume minimal capabilities
-    return {
-      streaming: false,
-      photo_analysis: false,
-      nudges: false,
-      evidence_snapshot: false,
-      provider_packet: false,
+    cachedCapabilities = {
+      modules: { ...DEFAULT_MODULES },
     };
+    return cachedCapabilities;
   }
 }
 
 /** Check if a specific capability is available. */
-export async function hasCapability(name: keyof ServerCapabilities): Promise<boolean> {
+export async function hasCapability(name: keyof CapabilityModules): Promise<boolean> {
   const caps = await getCapabilities();
-  return caps[name] === true;
+  return caps.modules[name] === true;
 }
 
 /** Reset cached capabilities (useful on app foreground). */

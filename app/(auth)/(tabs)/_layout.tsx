@@ -2,8 +2,13 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../src/theme";
+import { useCapabilities } from "../../../src/hooks/useCapabilities";
 
 export default function TabsLayout() {
+  const { isLoading, isFeatureEnabled } = useCapabilities();
+  const canAccessCare = isLoading || isFeatureEnabled("sessions");
+  const canAccessRoutines = isLoading || isFeatureEnabled("routines");
+
   return (
     <Tabs
       screenOptions={{
@@ -25,6 +30,7 @@ export default function TabsLayout() {
         name="care"
         options={{
           title: "Care",
+          href: canAccessCare ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles-outline" size={size} color={color} />
           ),
@@ -34,6 +40,7 @@ export default function TabsLayout() {
         name="routines"
         options={{
           title: "Routines",
+          href: canAccessRoutines ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" size={size} color={color} />
           ),
