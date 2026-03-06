@@ -2,6 +2,9 @@ export interface SessionListParams {
   status?: string;
   limit?: number;
   offset?: number;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  filter?: string;
 }
 
 export const sessionKeys = {

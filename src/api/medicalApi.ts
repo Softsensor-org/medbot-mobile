@@ -18,7 +18,7 @@ export interface MedicalChatRequest {
 
 class MedicalApiService extends BaseApiService {
   constructor() {
-    super("/api/v1");
+    super("/api/v1/medical");
   }
 
   async chat(req: MedicalChatRequest): Promise<ChatResponse> {
