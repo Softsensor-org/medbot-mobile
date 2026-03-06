@@ -74,9 +74,22 @@ fi
 echo "[PASS] npm: $(npm --version)"
 
 if [[ ! -d "$MOBILE_ROOT/node_modules" ]]; then
-    echo "[FAIL] node_modules missing. Run 'npm install' first."
-    write_gate_results "failed" 1 "node_modules missing"
-    exit 1
+    COMMON_GIT_DIR="$(git -C "$MOBILE_ROOT" rev-parse --git-common-dir 2>/dev/null || true)"
+    PRIMARY_ROOT=""
+    if [[ -n "$COMMON_GIT_DIR" ]]; then
+        if [[ "$COMMON_GIT_DIR" != /* ]]; then
+            COMMON_GIT_DIR="$MOBILE_ROOT/$COMMON_GIT_DIR"
+        fi
+        PRIMARY_ROOT="$(cd "$COMMON_GIT_DIR/.." && pwd)"
+    fi
+    if [[ -n "$PRIMARY_ROOT" && -d "$PRIMARY_ROOT/node_modules" ]]; then
+        ln -s "$PRIMARY_ROOT/node_modules" "$MOBILE_ROOT/node_modules"
+        echo "[INFO] Linked node_modules from primary worktree: $PRIMARY_ROOT/node_modules"
+    else
+        echo "[FAIL] node_modules missing. Run 'npm install' first."
+        write_gate_results "failed" 1 "node_modules missing"
+        exit 1
+    fi
 fi
 echo "[PASS] node_modules present"
 echo ""
