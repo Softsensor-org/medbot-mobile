@@ -6,6 +6,7 @@
 #   ./scripts/run-gate.sh                    # Run all gates (lint, typecheck, test)
 #   ./scripts/run-gate.sh test               # Run only tests
 #   GATE_TIMEOUT=180 ./scripts/run-gate.sh   # Custom timeout (seconds)
+#   COVERAGE_MODE=off ./scripts/run-gate.sh test # Run tests without coverage checks
 #
 # Exit codes:
 #   0   — All gates passed
@@ -24,9 +25,45 @@ START_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # --- Configuration ---
 GATE_TIMEOUT="${GATE_TIMEOUT:-300}"  # 5 minute default
 GATE_TARGET="${1:-all}"
+COVERAGE_MODE="${COVERAGE_MODE:-baseline}" # off|baseline
+MOBILE_MIN_COVERAGE="${MOBILE_MIN_COVERAGE:-65}"
+MOBILE_COVERAGE_FLOOR="${MOBILE_COVERAGE_FLOOR:-65}"
+ALLOW_COVERAGE_DOWNGRADE="${ALLOW_COVERAGE_DOWNGRADE:-0}"
+COVERAGE_DOWNGRADE_REASON="${COVERAGE_DOWNGRADE_REASON:-}"
+MOBILE_COVERAGE_SUMMARY_PATH="${MOBILE_COVERAGE_SUMMARY_PATH:-$MOBILE_ROOT/coverage/coverage-summary.json}"
+OBSERVED_COVERAGE="null"
+TEST_EXECUTED=false
 
 declare -a GATE_NAMES=()
 declare -a GATE_STATUSES=()
+
+is_number() {
+    [[ "$1" =~ ^[0-9]+([.][0-9]+)?$ ]]
+}
+
+float_lt() {
+    awk -v a="$1" -v b="$2" 'BEGIN { exit !(a < b) }'
+}
+
+float_ge() {
+    awk -v a="$1" -v b="$2" 'BEGIN { exit !(a >= b) }'
+}
+
+read_lines_coverage() {
+    node - "$MOBILE_COVERAGE_SUMMARY_PATH" <<'NODE'
+const fs = require("fs");
+const path = process.argv[2];
+if (!fs.existsSync(path)) {
+  process.exit(2);
+}
+const summary = JSON.parse(fs.readFileSync(path, "utf8"));
+const pct = summary?.total?.lines?.pct;
+if (typeof pct !== "number") {
+  process.exit(3);
+}
+process.stdout.write(pct.toFixed(2));
+NODE
+}
 
 write_gate_results() {
     local overall_status="$1"
@@ -49,6 +86,10 @@ write_gate_results() {
   "finished_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "timeout_seconds": $GATE_TIMEOUT,
   "target": "$GATE_TARGET",
+  "coverage_mode": "$COVERAGE_MODE",
+  "coverage_threshold": $([[ "$COVERAGE_MODE" == "baseline" ]] && echo "$MOBILE_MIN_COVERAGE" || echo "null"),
+  "coverage_floor": $([[ "$COVERAGE_MODE" == "baseline" ]] && echo "$MOBILE_COVERAGE_FLOOR" || echo "null"),
+  "coverage_percent": $OBSERVED_COVERAGE,
   "sub_gates": $sub_gates,
   "detail": "$detail"
 }
@@ -93,6 +134,38 @@ if [[ ! -d "$MOBILE_ROOT/node_modules" ]]; then
 fi
 echo "[PASS] node_modules present"
 echo ""
+
+if [[ "$COVERAGE_MODE" != "off" && "$COVERAGE_MODE" != "baseline" ]]; then
+    echo "[FAIL] Invalid COVERAGE_MODE='$COVERAGE_MODE'. Expected 'off' or 'baseline'."
+    write_gate_results "failed" 1 "invalid COVERAGE_MODE"
+    exit 1
+fi
+
+if [[ "$COVERAGE_MODE" == "baseline" ]]; then
+    if ! is_number "$MOBILE_MIN_COVERAGE"; then
+        echo "[FAIL] MOBILE_MIN_COVERAGE must be numeric (got '$MOBILE_MIN_COVERAGE')."
+        write_gate_results "failed" 1 "invalid MOBILE_MIN_COVERAGE"
+        exit 1
+    fi
+    if ! is_number "$MOBILE_COVERAGE_FLOOR"; then
+        echo "[FAIL] MOBILE_COVERAGE_FLOOR must be numeric (got '$MOBILE_COVERAGE_FLOOR')."
+        write_gate_results "failed" 1 "invalid MOBILE_COVERAGE_FLOOR"
+        exit 1
+    fi
+    if float_lt "$MOBILE_MIN_COVERAGE" "$MOBILE_COVERAGE_FLOOR"; then
+        if [[ "$ALLOW_COVERAGE_DOWNGRADE" != "1" || -z "$COVERAGE_DOWNGRADE_REASON" ]]; then
+            echo "[FAIL] Coverage threshold downgrade blocked: MOBILE_MIN_COVERAGE=$MOBILE_MIN_COVERAGE < floor=$MOBILE_COVERAGE_FLOOR."
+            echo "       Set ALLOW_COVERAGE_DOWNGRADE=1 and provide COVERAGE_DOWNGRADE_REASON to proceed."
+            write_gate_results "failed" 1 "coverage threshold downgrade blocked"
+            exit 1
+        fi
+        echo "[WARN] Coverage threshold downgraded with explicit override: $COVERAGE_DOWNGRADE_REASON"
+    fi
+fi
+echo "[INFO] Coverage mode: $COVERAGE_MODE"
+if [[ "$COVERAGE_MODE" == "baseline" ]]; then
+    echo "[INFO] Coverage threshold (lines): ${MOBILE_MIN_COVERAGE}%"
+fi
 
 # --- Phase 2: Run gate(s) with timeout ---
 cd "$MOBILE_ROOT"
@@ -141,12 +214,22 @@ case "$GATE_TARGET" in
         run_with_timeout "TypeCheck" npm run typecheck
         ;;
     test)
-        run_with_timeout "Test" npm test -- --ci --passWithNoTests --runInBand
+        if [[ "$COVERAGE_MODE" == "baseline" ]]; then
+            run_with_timeout "Test" npm run test:coverage -- --ci --passWithNoTests --runInBand --coverageReporters=json-summary --coverageReporters=text-summary
+        else
+            run_with_timeout "Test" npm test -- --ci --passWithNoTests --runInBand
+        fi
+        TEST_EXECUTED=true
         ;;
     all)
         run_with_timeout "Lint" npm run lint
         run_with_timeout "TypeCheck" npm run typecheck
-        run_with_timeout "Test" npm test -- --ci --passWithNoTests --runInBand
+        if [[ "$COVERAGE_MODE" == "baseline" ]]; then
+            run_with_timeout "Test" npm run test:coverage -- --ci --passWithNoTests --runInBand --coverageReporters=json-summary --coverageReporters=text-summary
+        else
+            run_with_timeout "Test" npm test -- --ci --passWithNoTests --runInBand
+        fi
+        TEST_EXECUTED=true
         ;;
     *)
         echo "Unknown gate target: $GATE_TARGET"
@@ -154,6 +237,20 @@ case "$GATE_TARGET" in
         exit 1
         ;;
 esac
+
+if [[ "$TEST_EXECUTED" == "true" && "$COVERAGE_MODE" == "baseline" ]]; then
+    if ! OBSERVED_COVERAGE="$(read_lines_coverage)"; then
+        echo "[FAIL] Coverage summary missing or invalid at $MOBILE_COVERAGE_SUMMARY_PATH"
+        write_gate_results "failed" 1 "coverage summary missing or invalid"
+        exit 1
+    fi
+    echo "[INFO] Observed lines coverage: ${OBSERVED_COVERAGE}%"
+    if ! float_ge "$OBSERVED_COVERAGE" "$MOBILE_MIN_COVERAGE"; then
+        echo "[FAIL] Lines coverage ${OBSERVED_COVERAGE}% is below threshold ${MOBILE_MIN_COVERAGE}%"
+        write_gate_results "failed" 1 "coverage below threshold"
+        exit 1
+    fi
+fi
 
 echo "=== Mobile Gate: ALL PASSED ==="
 write_gate_results "passed" 0
