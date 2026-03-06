@@ -50,7 +50,7 @@ describe("capability bootstrap", () => {
       .spyOn(QueryClient.prototype, "prefetchQuery")
       .mockResolvedValue(undefined);
 
-    render(
+    const { unmount } = render(
       <QueryProvider>
         <React.Fragment />
       </QueryProvider>
@@ -62,16 +62,20 @@ describe("capability bootstrap", () => {
       );
     });
 
+    unmount();
     prefetchSpy.mockRestore();
   });
 
   it("hides routines tab when capabilities are loaded and routines is disabled", () => {
     const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
+      defaultOptions: {
+        queries: { retry: false, gcTime: Infinity },
+        mutations: { gcTime: Infinity },
+      },
     });
     queryClient.setQueryData(capabilityKeys.all, CAPABILITIES_WITH_ROUTINES_DISABLED);
 
-    render(
+    const { unmount } = render(
       <QueryClientProvider client={queryClient}>
         <TabsLayout />
       </QueryClientProvider>
@@ -86,6 +90,9 @@ describe("capability bootstrap", () => {
 
     const careCall = screenCalls.find(([props]) => props.name === "care");
     expect(careCall?.[0].options?.href).toBeUndefined();
+
+    unmount();
+    queryClient.clear();
   });
 
   it("returns safe default capabilities when endpoint fails", async () => {

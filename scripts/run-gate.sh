@@ -141,12 +141,12 @@ case "$GATE_TARGET" in
         run_with_timeout "TypeCheck" npm run typecheck
         ;;
     test)
-        run_with_timeout "Test" npm test -- --ci --passWithNoTests
+        run_with_timeout "Test" npm test -- --ci --passWithNoTests --runInBand
         ;;
     all)
         run_with_timeout "Lint" npm run lint
         run_with_timeout "TypeCheck" npm run typecheck
-        run_with_timeout "Test" npm test -- --ci --passWithNoTests
+        run_with_timeout "Test" npm test -- --ci --passWithNoTests --runInBand
         ;;
     *)
         echo "Unknown gate target: $GATE_TARGET"

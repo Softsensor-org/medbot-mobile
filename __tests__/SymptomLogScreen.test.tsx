@@ -39,13 +39,20 @@ describe('SymptomLogScreen', () => {
     { id: 1, name: 'Rash', description: 'Red itchy skin', category: 'Derm' },
     { id: 2, name: 'Fever', description: 'High temperature', category: 'General' },
   ];
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
     (useLocalSearchParams as jest.Mock).mockReturnValue({ sessionId: 'session-123' });
     (useSymptomTypes as jest.Mock).mockReturnValue({ data: mockSymptomTypes, isLoading: false });
     (useLogSymptom as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+    consoleErrorSpy.mockRestore();
   });
 
   it('renders symptom types after loading', () => {
@@ -105,5 +112,6 @@ describe('SymptomLogScreen', () => {
     fireEvent.press(submitButtons[submitButtons.length - 1]);
 
     expect(showToast).toHaveBeenCalledWith('error', 'Error', 'Failed to log symptom');
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Log symptom error:', expect.any(Error));
   });
 });
