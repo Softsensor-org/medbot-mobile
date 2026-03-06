@@ -89,6 +89,31 @@ export type RoutineAssignmentActionRequest =
   | CompleteRoutineAssignmentActionRequest
   | DeferRoutineAssignmentActionRequest;
 
+export interface RoutineLog {
+  id: number;
+  routine_id: number;
+  patient_id: string;
+  status: "completed" | "deferred" | "skipped";
+  completed_at: string;
+  completion_rate: number;
+  notes?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CarePlanAction {
+  id?: number;
+  action: string;
+  done: boolean;
+}
+
+export interface DailyCarePlan {
+  am_actions: CarePlanAction[];
+  pm_actions: CarePlanAction[];
+  avoid_today: string[];
+  watch_for: string[];
+  confidence_context: string;
+}
+
 // --- Pre-visit Check-in (MB-709) ---
 
 export type AppointmentType = "clinic" | "telemed" | "urgent_care";
@@ -134,4 +159,87 @@ export interface IntakeMode {
   session_id: string;
   mode: IntakeModeValue;
   updated_at: string;
+}
+
+// --- WEL-006: Product inventory + ingredient safety ---
+
+export interface Ingredient {
+  id: number;
+  name: string;
+  inci_name?: string;
+  category?: string;
+  description?: string;
+  risk_level: "low" | "moderate" | "high";
+  contraindications: string[];
+  sensitivity_triggers: string[];
+  pregnancy_safe: boolean;
+  notes?: string;
+  source?: string;
+}
+
+export interface ProductIngredientEntry {
+  ingredient_id: number;
+  order_in_list?: number;
+  concentration_percent?: number;
+}
+
+export interface Product {
+  id: number;
+  brand: string;
+  name: string;
+  category: string;
+  description?: string;
+  usage_instructions?: string;
+  ingredients: Ingredient[];
+  created_by?: string;
+  created_at?: string;
+}
+
+export interface UserProduct {
+  id: number;
+  patient_id: string;
+  product_id: number;
+  product?: Product;
+  usage_frequency: "daily" | "occasional" | "as-needed";
+  started_using_at?: string;
+  notes?: string;
+  created_at?: string;
+}
+
+export interface UserProductCreate {
+  product_id: number;
+  usage_frequency: "daily" | "occasional" | "as-needed";
+  started_using_at?: string;
+  notes?: string;
+}
+
+export interface RoutineStepProduct {
+  id: number;
+  routine_step_id: number;
+  product_id?: number;
+  product_name?: string;
+  product?: Product;
+  notes?: string;
+}
+
+export interface IngredientRiskFeedback {
+  ingredient_id: number;
+  ingredient_name: string;
+  severity: "low" | "moderate" | "high";
+  rationale: string;
+}
+
+export interface SafetyAssessmentRequest {
+  product_id: number;
+  skin_type?: string;
+  allergies: string[];
+  conditions: string[];
+}
+
+export interface SafetyAssessmentResponse {
+  product_id: number;
+  product_name: string;
+  overall_risk: "low" | "moderate" | "high";
+  ingredient_risks: IngredientRiskFeedback[];
+  recommendations: string[];
 }

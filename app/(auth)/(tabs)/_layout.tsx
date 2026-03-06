@@ -22,6 +22,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="progress"
+        options={{
+          title: "Progress",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="trending-up-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="care"
         options={{
           title: "Care",
