@@ -3,6 +3,23 @@ import { sessionsApi } from "../api/sessionsApi";
 import { medicalApi } from "../api/medicalApi";
 import { sessionKeys, SessionListParams } from "../queryKeys";
 
+const DEFAULT_BOOTSTRAP_QUERY = "Start consultation";
+
+export interface CreateSessionInput {
+  sessionId?: string;
+  query?: string;
+}
+
+export interface CreateSessionResult {
+  sessionId: string;
+}
+
+export function generateSessionId(now = Date.now(), random = Math.random()): string {
+  const timestamp = now.toString(36);
+  const entropy = Math.floor(random * 1_000_000_000).toString(36);
+  return `mob_${timestamp}_${entropy}`;
+}
+
 export function useSessions(params: SessionListParams = { sort_by: "updated_at", sort_order: "desc" }) {
   return useQuery({
     queryKey: sessionKeys.list(params),
@@ -38,9 +55,16 @@ export function useCreateSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (message: string) => medicalApi.chat({ message }),
-    onSuccess: () => {
+    mutationFn: async (input?: CreateSessionInput): Promise<CreateSessionResult> => {
+      const sessionId = input?.sessionId?.trim() || generateSessionId();
+      const query = input?.query?.trim() || DEFAULT_BOOTSTRAP_QUERY;
+
+      await medicalApi.chat({ query, session_id: sessionId });
+      return { sessionId };
+    },
+    onSuccess: ({ sessionId }) => {
       queryClient.invalidateQueries({ queryKey: sessionKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
     },
   });
 }

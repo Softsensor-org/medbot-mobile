@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -12,13 +12,42 @@ import { useRouter } from "expo-router";
 import { formatDistanceToNow } from "date-fns";
 import { MaterialIcons } from "@expo/vector-icons";
 import { colors, typography, spacing } from "../../../src/theme";
-import { useSessions } from "../../../src/hooks/useSessions";
+import { useCreateSession, useSessions } from "../../../src/hooks/useSessions";
 import { SessionMeta } from "../../../src/api/sessionsApi";
 import { colorFor } from "../../../src/status/statusHelpers";
 
 export default function CareScreen() {
   const router = useRouter();
   const { data, isLoading, isError, refetch, isRefetching } = useSessions();
+  const { mutateAsync: createSession, isPending: isBootstrapping } = useCreateSession();
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+
+  const navigateToIntake = useCallback((sessionId: string) => {
+    router.push({
+      pathname: "/(auth)/intake",
+      params: { sessionId },
+    } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+  }, [router]);
+
+  const handleStartNewSession = useCallback(async () => {
+    if (isBootstrapping) return;
+    setBootstrapError(null);
+
+    const reusable = data?.sessions?.find((session) =>
+      session.status === "active" || session.status === "new" || session.status === "escalated",
+    );
+    if (reusable?.session_id) {
+      navigateToIntake(reusable.session_id);
+      return;
+    }
+
+    try {
+      const { sessionId } = await createSession({});
+      navigateToIntake(sessionId);
+    } catch {
+      setBootstrapError("Unable to start a session right now. Please retry.");
+    }
+  }, [createSession, data?.sessions, isBootstrapping, navigateToIntake]);
 
   const onRefresh = useCallback(() => {
     refetch();
@@ -71,11 +100,29 @@ export default function CareScreen() {
         Start a new consultation to get medical guidance.
       </Text>
       <TouchableOpacity
-        style={styles.emptyButton}
-        onPress={() => router.push("/(auth)/intake")}
+        testID="start-session-empty-button"
+        style={[styles.emptyButton, isBootstrapping && styles.disabledButton]}
+        onPress={handleStartNewSession}
+        disabled={isBootstrapping}
       >
-        <Text style={styles.emptyButtonText}>Start New Session</Text>
+        <Text style={styles.emptyButtonText}>
+          {isBootstrapping ? "Starting..." : "Start New Session"}
+        </Text>
       </TouchableOpacity>
+
+      {bootstrapError && (
+        <View style={styles.bootstrapErrorBox}>
+          <Text style={styles.bootstrapErrorText}>{bootstrapError}</Text>
+          <TouchableOpacity
+            testID="start-session-retry-button"
+            style={styles.retryButton}
+            onPress={handleStartNewSession}
+            disabled={isBootstrapping}
+          >
+            <Text style={styles.retryButtonText}>Retry start</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
@@ -107,10 +154,16 @@ export default function CareScreen() {
           <Text style={styles.subtitle}>Your care sessions and history</Text>
         </View>
         <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => router.push("/(auth)/intake")}
+          testID="start-session-button"
+          style={[styles.headerButton, isBootstrapping && styles.disabledButton]}
+          onPress={handleStartNewSession}
+          disabled={isBootstrapping}
         >
-          <MaterialIcons name="add" size={24} color={colors.surface} />
+          {isBootstrapping ? (
+            <ActivityIndicator color={colors.surface} size="small" />
+          ) : (
+            <MaterialIcons name="add" size={24} color={colors.surface} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -159,6 +212,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   title: {
     ...typography.h2,
@@ -265,6 +321,17 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     ...typography.button,
     color: colors.surface,
+  },
+  bootstrapErrorBox: {
+    marginTop: spacing.md,
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+  },
+  bootstrapErrorText: {
+    ...typography.bodySmall,
+    color: colors.error,
+    marginBottom: spacing.sm,
+    textAlign: "center",
   },
   errorText: {
     ...typography.body,
