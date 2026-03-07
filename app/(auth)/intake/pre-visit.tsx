@@ -28,12 +28,22 @@ export default function PreVisitScreen() {
   const sessionId = Array.isArray(params.sessionId) ? params.sessionId[0] : params.sessionId;
 
   const { data: apptContext, isLoading: isLoadingAppt } = useAppointmentContext(sessionId || "");
-  const { mutate: setApptContext, isPending: isSettingAppt } = useSetAppointmentContext();
+  const {
+    mutate: setApptContext,
+    isPending: isSettingAppt,
+    syncStatus: apptSyncStatus,
+    syncError: apptSyncError,
+    retrySync: retryApptSync,
+  } = useSetAppointmentContext();
   const { data: readiness, isLoading: isLoadingReadiness } = usePrevisitReadiness(sessionId || "");
   
   const appointmentType = apptContext?.appointment_type;
-  const { data: questions, isLoading: isLoadingQuestions } = usePrevisitQuestions(appointmentType || "");
-  const { mutate: submitAnswer } = useSubmitPrevisitAnswer();
+  const {
+    mutate: submitAnswer,
+    syncStatus: answerSyncStatus,
+    syncError: answerSyncError,
+    retrySync: retryAnswerSync,
+  } = useSubmitPrevisitAnswer();
 
   const [step, setStep] = useState<1 | 2>(appointmentType ? 2 : 1);
   const [selectedApptType, setSelectedApptType] = useState<AppointmentType | null>(appointmentType || null);
@@ -42,6 +52,8 @@ export default function PreVisitScreen() {
 
   // Simple local state for answers
   const [localAnswers, setLocalAnswers] = useState<Record<number, string>>({});
+  const effectiveAppointmentType = appointmentType || selectedApptType || "";
+  const { data: questions, isLoading: isLoadingQuestions } = usePrevisitQuestions(effectiveAppointmentType);
 
   const handleSetAppt = useCallback(() => {
     if (!sessionId || !selectedApptType || !apptDate) {
@@ -59,9 +71,13 @@ export default function PreVisitScreen() {
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
           setStep(2);
-          showToast("success", "Success", "Appointment context updated");
+          if (result?.mode === "queued") {
+            showToast("success", "Queued", "Appointment saved offline and will sync automatically.");
+          } else {
+            showToast("success", "Success", "Appointment context updated");
+          }
         },
       }
     );
@@ -71,15 +87,22 @@ export default function PreVisitScreen() {
     const answer = localAnswers[questionId];
     if (!answer || !sessionId) return;
 
-    submitAnswer({
-      sessionId,
-      questionId,
-      answer,
-    }, {
-      onSuccess: () => {
-        showToast("success", "Saved", "Answer submitted");
-      }
-    });
+    submitAnswer(
+      {
+        sessionId,
+        questionId,
+        answer,
+      },
+      {
+        onSuccess: (result) => {
+          if (result?.mode === "queued") {
+            showToast("success", "Queued", "Answer saved offline and queued for sync.");
+          } else {
+            showToast("success", "Saved", "Answer submitted");
+          }
+        },
+      },
+    );
   }, [sessionId, localAnswers, submitAnswer]);
 
   const renderQuestion = ({ item }: { item: PreVisitQuestion }) => {
@@ -127,6 +150,23 @@ export default function PreVisitScreen() {
 
       {step === 1 ? (
         <ScrollView contentContainerStyle={styles.scrollContent}>
+          {apptSyncStatus && apptSyncStatus !== "idle" && (
+            <View style={styles.syncBanner} testID="previsit-appt-sync-status">
+              <Text style={styles.syncText}>
+                {apptSyncStatus === "queued" && "Appointment saved offline and queued for sync."}
+                {apptSyncStatus === "syncing" && "Syncing appointment details..."}
+                {apptSyncStatus === "synced" && "Appointment sync complete."}
+                {apptSyncStatus === "failed" && "Appointment sync failed. Retry."}
+              </Text>
+              {apptSyncStatus === "failed" && (
+                <TouchableOpacity onPress={() => void retryApptSync()} testID="previsit-appt-sync-retry-button">
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          {apptSyncError ? <Text style={styles.syncError}>{apptSyncError}</Text> : null}
+
           <Text style={styles.sectionTitle}>Appointment Details</Text>
           
           <Text style={styles.label}>Type of Appointment</Text>
@@ -178,6 +218,23 @@ export default function PreVisitScreen() {
         </ScrollView>
       ) : (
         <View style={styles.flex1}>
+          {answerSyncStatus && answerSyncStatus !== "idle" && (
+            <View style={styles.syncBanner} testID="previsit-answer-sync-status">
+              <Text style={styles.syncText}>
+                {answerSyncStatus === "queued" && "Answer queued for sync."}
+                {answerSyncStatus === "syncing" && "Syncing queued answer..."}
+                {answerSyncStatus === "synced" && "Queued answer synced."}
+                {answerSyncStatus === "failed" && "Answer sync failed. Retry."}
+              </Text>
+              {answerSyncStatus === "failed" && (
+                <TouchableOpacity onPress={() => void retryAnswerSync()} testID="previsit-answer-sync-retry-button">
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          {answerSyncError ? <Text style={styles.syncError}>{answerSyncError}</Text> : null}
+
           <View style={styles.readinessBanner}>
             <View style={styles.readinessTextContainer}>
               <Text style={styles.readinessTitle}>Readiness Score</Text>
@@ -250,6 +307,28 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.md,
+  },
+  syncBanner: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  syncText: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+  },
+  retryText: {
+    ...typography.label,
+    color: colors.primary,
+  },
+  syncError: {
+    ...typography.caption,
+    color: colors.error,
+    marginBottom: spacing.sm,
   },
   sectionTitle: {
     ...typography.h2,

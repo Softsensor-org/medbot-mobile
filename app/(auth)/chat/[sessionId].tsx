@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { colors, typography, spacing } from "../../../src/theme";
 import EvidenceProgressBar from "../../../src/components/EvidenceProgressBar";
+import EscalationGateModal from "../../../src/components/EscalationGateModal";
 import { useSessionTranscript, useEvidenceSnapshot } from "../../../src/hooks/useSessions";
 import { streamChat } from "../../../src/stream/streamChat";
 import { TranscriptMessage } from "../../../src/api/sessionsApi";
@@ -29,6 +30,11 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamedContent, setIsStreamedContent] = useState("");
+  const [escalation, setEscalation] = useState<{
+    visible: boolean;
+    category?: string | null;
+    guidance?: string | null;
+  }>({ visible: false });
   const flatListRef = useRef<FlatList>(null);
 
   const {
@@ -69,6 +75,15 @@ export default function ChatScreen() {
           if (event.type === "token") {
             setIsStreamedContent((prev) => prev + event.content);
           } else if (event.type === "complete") {
+            // Check for escalation gate
+            const mo = event.model_output;
+            if (mo?.escalation_required) {
+              setEscalation({
+                visible: true,
+                category: mo.escalation_category,
+                guidance: mo.escalation_guidance,
+              });
+            }
             // Re-fetch everything to ensure sync with backend
             queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
             setIsStreaming(false);
@@ -203,6 +218,13 @@ export default function ChatScreen() {
           <MaterialIcons name="send" size={24} color={colors.surface} />
         </TouchableOpacity>
       </View>
+
+      <EscalationGateModal
+        visible={escalation.visible}
+        category={escalation.category}
+        guidance={escalation.guidance}
+        onAcknowledge={() => setEscalation({ visible: false })}
+      />
     </KeyboardAvoidingView>
   );
 }

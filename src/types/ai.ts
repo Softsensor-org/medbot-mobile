@@ -31,6 +31,9 @@ export interface ModelOutput {
   photo_quality?: PhotoQualityAnalysis;
   disclaimers?: string[];
   generated_at?: string;
+  escalation_required?: boolean;
+  escalation_category?: string | null;
+  escalation_guidance?: string | null;
 }
 
 // --- Discriminated union for non-streaming /medical_chat responses ---
@@ -55,6 +58,9 @@ export interface ModelOutputResponse {
   missing_evidence?: string[];
   is_preliminary?: boolean;
   photo_quality?: PhotoQualityAnalysis;
+  escalation_required?: boolean;
+  escalation_category?: string | null;
+  escalation_guidance?: string | null;
 }
 
 /** The `data` field of a successful /medical_chat JSON response. */

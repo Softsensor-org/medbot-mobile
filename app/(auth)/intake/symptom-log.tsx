@@ -25,7 +25,13 @@ export default function SymptomLogScreen() {
   const sessionId = Array.isArray(params.sessionId) ? params.sessionId[0] : params.sessionId;
 
   const { data: symptomTypes, isLoading: isLoadingTypes } = useSymptomTypes();
-  const { mutate: logSymptom, isPending: isSubmitting } = useLogSymptom();
+  const {
+    mutate: logSymptom,
+    isPending: isSubmitting,
+    syncStatus,
+    syncError,
+    retrySync,
+  } = useLogSymptom();
 
   const [selectedType, setSelectedType] = useState<SymptomType | null>(null);
   const [severity, setSeverity] = useState<number>(3);
@@ -51,8 +57,12 @@ export default function SymptomLogScreen() {
     logSymptom(
       payload as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       {
-        onSuccess: () => {
-          showToast("success", "Success", "Symptom logged successfully");
+        onSuccess: (result) => {
+          if (result?.mode === "queued") {
+            showToast("success", "Queued", "Saved offline. We will sync this symptom automatically.");
+          } else {
+            showToast("success", "Success", "Symptom logged successfully");
+          }
           if (sessionId) {
             router.push({ pathname: "/(auth)/chat/[sessionId]", params: { sessionId } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
           } else {
@@ -99,6 +109,24 @@ export default function SymptomLogScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {syncStatus && syncStatus !== "idle" && (
+          <View style={styles.syncBanner} testID="symptom-sync-status">
+            <Text style={styles.syncText}>
+              {syncStatus === "queued" && "Symptom saved offline and queued for sync."}
+              {syncStatus === "syncing" && "Syncing queued symptom..."}
+              {syncStatus === "synced" && "Symptom sync complete."}
+              {syncStatus === "failed" && "Symptom sync failed. Retry."}
+            </Text>
+            {syncStatus === "failed" && (
+              <TouchableOpacity onPress={() => void retrySync()} testID="symptom-sync-retry-button">
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {syncError ? <Text style={styles.syncError}>{syncError}</Text> : null}
+
         <Text style={styles.label}>What symptom are you experiencing?</Text>
         <TouchableOpacity
           style={styles.selector}
@@ -218,6 +246,28 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.md,
+  },
+  syncBanner: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  syncText: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+  },
+  retryText: {
+    ...typography.label,
+    color: colors.primary,
+  },
+  syncError: {
+    ...typography.caption,
+    color: colors.error,
+    marginBottom: spacing.sm,
   },
   label: {
     ...typography.label,

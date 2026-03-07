@@ -1,7 +1,15 @@
+import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { wellnessApi } from "../api/wellnessApi";
 import { wellnessKeys } from "../queryKeys";
 import type { IntakeModeValue, AppointmentType } from "../types/medical";
+import {
+  executeWithOfflineQueue,
+  retryOfflineQueueItem,
+  subscribeOfflineQueue,
+  type OfflineExecutionResult,
+  type OfflineSyncStatus,
+} from "../offline/offlineActionQueue";
 
 export function useIntakeMode(sessionId: string) {
   return useQuery({
@@ -13,13 +21,81 @@ export function useIntakeMode(sessionId: string) {
 
 export function useSetIntakeMode() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ sessionId, mode }: { sessionId: string; mode: IntakeModeValue }) =>
-      wellnessApi.setIntakeMode(sessionId, mode),
-    onSuccess: (_, { sessionId }) => {
-      queryClient.invalidateQueries({ queryKey: wellnessKeys.intakeMode(sessionId) });
+  const [syncStatus, setSyncStatus] = React.useState<OfflineSyncStatus>("idle");
+  const [syncError, setSyncError] = React.useState<string | null>(null);
+  const [queueItemId, setQueueItemId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!queueItemId) return;
+    return subscribeOfflineQueue((event) => {
+      if (event.itemId !== queueItemId) return;
+      if (event.status === "syncing") {
+        setSyncStatus("syncing");
+        return;
+      }
+      if (event.status === "failed") {
+        setSyncStatus("failed");
+        setSyncError(event.error ?? "Offline sync failed");
+        return;
+      }
+      if (event.status === "queued") {
+        setSyncStatus("queued");
+        return;
+      }
+      if (event.status === "synced") {
+        setSyncStatus("synced");
+        setSyncError(null);
+        setQueueItemId(null);
+      }
+    });
+  }, [queueItemId]);
+
+  const mutation = useMutation({
+    mutationFn: async ({
+      sessionId,
+      mode,
+    }: {
+      sessionId: string;
+      mode: IntakeModeValue;
+    }): Promise<OfflineExecutionResult<unknown>> => {
+      setSyncStatus("syncing");
+      setSyncError(null);
+
+      const result = await executeWithOfflineQueue({
+        type: "wellness.setIntakeMode",
+        payload: { sessionId, mode },
+      });
+
+      if (result.mode === "queued") {
+        setSyncStatus("queued");
+        setQueueItemId(result.queueItemId ?? null);
+      } else {
+        setSyncStatus("synced");
+        setQueueItemId(null);
+      }
+
+      return result;
+    },
+    onSuccess: (result, { sessionId }) => {
+      if (result.mode === "synced") {
+        void queryClient.invalidateQueries({ queryKey: wellnessKeys.intakeMode(sessionId) });
+      }
     },
   });
+
+  const retrySync = React.useCallback(async () => {
+    if (!queueItemId) return false;
+    setSyncStatus("syncing");
+    setSyncError(null);
+    return retryOfflineQueueItem(queueItemId);
+  }, [queueItemId]);
+
+  return {
+    ...mutation,
+    syncStatus,
+    syncError,
+    retrySync,
+  };
 }
 
 export function usePrevisitQuestions(appointmentType: string) {
@@ -40,13 +116,83 @@ export function usePrevisitReadiness(sessionId: string) {
 
 export function useSubmitPrevisitAnswer() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ sessionId, questionId, answer }: { sessionId: string; questionId: number; answer: unknown }) =>
-      wellnessApi.submitPrevisitAnswer(sessionId, questionId, answer),
-    onSuccess: (_, { sessionId }) => {
-      queryClient.invalidateQueries({ queryKey: wellnessKeys.previsitReadiness(sessionId) });
+  const [syncStatus, setSyncStatus] = React.useState<OfflineSyncStatus>("idle");
+  const [syncError, setSyncError] = React.useState<string | null>(null);
+  const [queueItemId, setQueueItemId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!queueItemId) return;
+    return subscribeOfflineQueue((event) => {
+      if (event.itemId !== queueItemId) return;
+      if (event.status === "syncing") {
+        setSyncStatus("syncing");
+        return;
+      }
+      if (event.status === "failed") {
+        setSyncStatus("failed");
+        setSyncError(event.error ?? "Offline sync failed");
+        return;
+      }
+      if (event.status === "queued") {
+        setSyncStatus("queued");
+        return;
+      }
+      if (event.status === "synced") {
+        setSyncStatus("synced");
+        setSyncError(null);
+        setQueueItemId(null);
+      }
+    });
+  }, [queueItemId]);
+
+  const mutation = useMutation({
+    mutationFn: async ({
+      sessionId,
+      questionId,
+      answer,
+    }: {
+      sessionId: string;
+      questionId: number;
+      answer: unknown;
+    }): Promise<OfflineExecutionResult<{ id: number }>> => {
+      setSyncStatus("syncing");
+      setSyncError(null);
+
+      const result = await executeWithOfflineQueue<{ id: number }>({
+        type: "wellness.submitPrevisitAnswer",
+        payload: { sessionId, questionId, answer },
+      });
+
+      if (result.mode === "queued") {
+        setSyncStatus("queued");
+        setQueueItemId(result.queueItemId ?? null);
+      } else {
+        setSyncStatus("synced");
+        setQueueItemId(null);
+      }
+
+      return result;
+    },
+    onSuccess: (result, { sessionId }) => {
+      if (result.mode === "synced") {
+        void queryClient.invalidateQueries({ queryKey: wellnessKeys.previsitReadiness(sessionId) });
+      }
     },
   });
+
+  const retrySync = React.useCallback(async () => {
+    if (!queueItemId) return false;
+    setSyncStatus("syncing");
+    setSyncError(null);
+    return retryOfflineQueueItem(queueItemId);
+  }, [queueItemId]);
+
+  return {
+    ...mutation,
+    syncStatus,
+    syncError,
+    retrySync,
+  };
 }
 
 export function useAppointmentContext(sessionId: string) {
@@ -59,8 +205,37 @@ export function useAppointmentContext(sessionId: string) {
 
 export function useSetAppointmentContext() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
+  const [syncStatus, setSyncStatus] = React.useState<OfflineSyncStatus>("idle");
+  const [syncError, setSyncError] = React.useState<string | null>(null);
+  const [queueItemId, setQueueItemId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!queueItemId) return;
+    return subscribeOfflineQueue((event) => {
+      if (event.itemId !== queueItemId) return;
+      if (event.status === "syncing") {
+        setSyncStatus("syncing");
+        return;
+      }
+      if (event.status === "failed") {
+        setSyncStatus("failed");
+        setSyncError(event.error ?? "Offline sync failed");
+        return;
+      }
+      if (event.status === "queued") {
+        setSyncStatus("queued");
+        return;
+      }
+      if (event.status === "synced") {
+        setSyncStatus("synced");
+        setSyncError(null);
+        setQueueItemId(null);
+      }
+    });
+  }, [queueItemId]);
+
+  const mutation = useMutation({
+    mutationFn: async ({
       sessionId,
       appointment,
     }: {
@@ -70,10 +245,44 @@ export function useSetAppointmentContext() {
         appointment_datetime: string;
         clinic_location: string;
       };
-    }) => wellnessApi.setAppointmentContext(sessionId, appointment),
-    onSuccess: (_, { sessionId }) => {
-      queryClient.invalidateQueries({ queryKey: wellnessKeys.appointment(sessionId) });
-      queryClient.invalidateQueries({ queryKey: wellnessKeys.previsitReadiness(sessionId) });
+    }): Promise<OfflineExecutionResult<unknown>> => {
+      setSyncStatus("syncing");
+      setSyncError(null);
+
+      const result = await executeWithOfflineQueue({
+        type: "wellness.setAppointmentContext",
+        payload: { sessionId, appointment },
+      });
+
+      if (result.mode === "queued") {
+        setSyncStatus("queued");
+        setQueueItemId(result.queueItemId ?? null);
+      } else {
+        setSyncStatus("synced");
+        setQueueItemId(null);
+      }
+
+      return result;
+    },
+    onSuccess: (result, { sessionId }) => {
+      if (result.mode === "synced") {
+        void queryClient.invalidateQueries({ queryKey: wellnessKeys.appointment(sessionId) });
+        void queryClient.invalidateQueries({ queryKey: wellnessKeys.previsitReadiness(sessionId) });
+      }
     },
   });
+
+  const retrySync = React.useCallback(async () => {
+    if (!queueItemId) return false;
+    setSyncStatus("syncing");
+    setSyncError(null);
+    return retryOfflineQueueItem(queueItemId);
+  }, [queueItemId]);
+
+  return {
+    ...mutation,
+    syncStatus,
+    syncError,
+    retrySync,
+  };
 }
