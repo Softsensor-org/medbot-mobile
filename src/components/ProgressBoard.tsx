@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,17 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  Share,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../theme';
 import { usePatientProgress } from '../hooks/useProgress';
 import { format, parseISO } from 'date-fns';
 import { SymptomTrendPoint, AdherenceTrendPoint, ProgressPhoto } from '../api/analyticsApi';
+import { deriveStreakRescueState } from '../engagement/streakRescue';
+import { buildPhiSafeShareMessage, buildPhiSafeShareSummary } from '../engagement/shareScaffold';
+import { triggerEngagementHaptic } from '../engagement/haptics';
+import { useEngagementSettings } from '../hooks/useEngagementSettings';
 
 interface ProgressBoardProps {
   days?: number;
@@ -24,6 +29,11 @@ const CARD_WIDTH = (width - spacing.lg * 2 - spacing.md) / 2;
 
 export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
   const { data, isLoading, isError, refetch } = usePatientProgress(days);
+  const { hapticsEnabled } = useEngagementSettings();
+  const [rescueActivated, setRescueActivated] = useState(false);
+  const [rescueCompleted, setRescueCompleted] = useState(false);
+  const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "failed">("idle");
+  const [milestoneCelebrated, setMilestoneCelebrated] = useState(false);
 
   if (isLoading) {
     return (
@@ -46,6 +56,33 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
   }
 
   const { summary, symptoms, adherence, photos } = data;
+  const rescue = useMemo(() => deriveStreakRescueState(adherence), [adherence]);
+  const phiSafeShare = useMemo(() => buildPhiSafeShareSummary(data), [data]);
+  const milestoneEligible = summary.adherence_rate >= 0.8 && summary.symptom_count <= 5;
+
+  const handleStartRescue = useCallback(() => {
+    setRescueActivated(true);
+    setRescueCompleted(false);
+  }, []);
+
+  const handleCompleteRescueStep = useCallback(() => {
+    setRescueCompleted(true);
+    void triggerEngagementHaptic("routine_complete");
+  }, []);
+
+  const handleCelebrateMilestone = useCallback(() => {
+    setMilestoneCelebrated(true);
+    void triggerEngagementHaptic("milestone_achieved");
+  }, []);
+
+  const handleShare = useCallback(async () => {
+    try {
+      await Share.share({ message: buildPhiSafeShareMessage(phiSafeShare) });
+      setShareStatus("shared");
+    } catch {
+      setShareStatus("failed");
+    }
+  }, [phiSafeShare]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -72,6 +109,51 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
           <Text style={styles.statLabel}>Active Routines</Text>
         </View>
       </View>
+
+      {rescue.rescueEligible && (
+        <View style={styles.rescueCard} testID="streak-rescue-card">
+          <View style={styles.rescueHeader}>
+            <MaterialIcons name="restart-alt" size={20} color={colors.primary} />
+            <Text style={styles.rescueTitle}>Streak Rescue</Text>
+          </View>
+          <Text style={styles.rescueText}>{rescue.supportiveMessage}</Text>
+          <Text style={styles.rescueMeta}>
+            Missed days this week: {rescue.missedDays}. Target: {rescue.rescueTarget}
+          </Text>
+          {!rescueActivated ? (
+            <TouchableOpacity style={styles.rescueButton} onPress={handleStartRescue} testID="streak-rescue-start-button">
+              <Text style={styles.rescueButtonText}>Start Rescue</Text>
+            </TouchableOpacity>
+          ) : !rescueCompleted ? (
+            <TouchableOpacity style={styles.rescueButton} onPress={handleCompleteRescueStep} testID="streak-rescue-complete-button">
+              <Text style={styles.rescueButtonText}>Mark Rescue Step Done</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.rescueSuccess} testID="streak-rescue-success">
+              Rescue completed. Keep momentum with one action tomorrow.
+            </Text>
+          )}
+        </View>
+      )}
+
+      {milestoneEligible && (
+        <View style={styles.milestoneCard}>
+          <View style={styles.rescueHeader}>
+            <MaterialIcons name="emoji-events" size={20} color={colors.success} />
+            <Text style={styles.milestoneTitle}>Milestone Reached</Text>
+          </View>
+          <Text style={styles.rescueText}>You maintained strong adherence this period.</Text>
+          <TouchableOpacity
+            style={styles.milestoneButton}
+            onPress={handleCelebrateMilestone}
+            testID="milestone-celebrate-button"
+          >
+            <Text style={styles.rescueButtonText}>
+              {milestoneCelebrated ? "Milestone Celebrated" : "Celebrate Milestone"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Symptom Severity Trend (Simple Bar Chart) */}
       <View style={styles.section}>
@@ -145,6 +227,38 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
           <Text style={styles.emptyText}>No photos captured yet.</Text>
         )}
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>PHI-Safe Share Card</Text>
+        <View style={styles.shareCard} testID="phi-safe-share-card">
+          <Text style={styles.shareTitle}>{phiSafeShare.title}</Text>
+          <Text style={styles.shareLine}>Period: {phiSafeShare.periodDays} days</Text>
+          <Text style={styles.shareLine}>Adherence: {phiSafeShare.adherencePercent}%</Text>
+          <Text style={styles.shareLine}>Symptom check-ins: {phiSafeShare.symptomCheckins}</Text>
+          <Text style={styles.shareLine}>Photo entries: {phiSafeShare.photoEntries}</Text>
+          <Text style={styles.shareLine}>Active routines: {phiSafeShare.activeRoutines}</Text>
+          <Text style={styles.shareLine}>Trend: {phiSafeShare.trendNote}</Text>
+          <Text style={styles.shareHint}>
+            Excludes identifiers, session IDs, photo URLs, and clinical narrative.
+          </Text>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShare} testID="phi-safe-share-button">
+            <Text style={styles.rescueButtonText}>Share Snapshot</Text>
+          </TouchableOpacity>
+          {shareStatus === "shared" && (
+            <Text style={styles.shareSuccess} testID="phi-safe-share-status">
+              Shared safely.
+            </Text>
+          )}
+          {shareStatus === "failed" && (
+            <Text style={[styles.shareSuccess, { color: colors.error }]} testID="phi-safe-share-status">
+              Share failed.
+            </Text>
+          )}
+          {!hapticsEnabled && (
+            <Text style={styles.hapticsOffNote}>Haptics are disabled in Settings.</Text>
+          )}
+        </View>
+      </View>
     </ScrollView>
   );
 };
@@ -188,6 +302,74 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     fontWeight: '600',
+  },
+  rescueCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.xs,
+  },
+  rescueHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  rescueTitle: {
+    ...typography.label,
+    color: colors.textPrimary,
+    fontWeight: "700",
+  },
+  milestoneTitle: {
+    ...typography.label,
+    color: colors.success,
+    fontWeight: "700",
+  },
+  rescueText: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+  },
+  rescueMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  rescueButton: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  milestoneButton: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.success,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  rescueButtonText: {
+    ...typography.label,
+    color: colors.surface,
+    fontWeight: "700",
+  },
+  rescueSuccess: {
+    ...typography.bodySmall,
+    color: colors.success,
+    fontWeight: "600",
+    marginTop: spacing.xs,
+  },
+  milestoneCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.success,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.xs,
   },
   section: {
     marginBottom: spacing.xl,
@@ -277,5 +459,44 @@ const styles = StyleSheet.create({
   retryText: {
     color: colors.surface,
     fontWeight: '600',
+  },
+  shareCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  shareTitle: {
+    ...typography.label,
+    color: colors.textPrimary,
+    fontWeight: "700",
+  },
+  shareLine: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+  },
+  shareHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  shareButton: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.primaryDark,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  shareSuccess: {
+    ...typography.caption,
+    color: colors.success,
+    fontWeight: "600",
+  },
+  hapticsOffNote: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontStyle: "italic",
   },
 });
