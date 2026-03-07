@@ -29,7 +29,7 @@ export const TodayPlan: React.FC = () => {
   const { data: plan, isLoading, isError } = useQuery<DailyCarePlan>({
     queryKey: ['care-plan', 'today'],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/care-plan/today`);
+      const res = await fetch(`${API_BASE_URL}/api/v1/care-plan/today`);
       if (!res.ok) throw new Error('Failed to fetch care plan');
       const json = await res.json();
       return json.data;
@@ -40,7 +40,7 @@ export const TodayPlan: React.FC = () => {
   const { data: careGraph } = useQuery<CareGraphData | null>({
     queryKey: ['care-graph', 'today'],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/care-graph`);
+      const res = await fetch(`${API_BASE_URL}/api/v1/care-graph`);
       if (!res.ok) return null;
       const json = await res.json();
       return json.data as CareGraphData;
@@ -51,7 +51,7 @@ export const TodayPlan: React.FC = () => {
 
   const logMutation = useMutation({
     mutationFn: async ({ routineId, status }: { routineId: number, status: string }) => {
-      const res = await fetch(`${API_BASE_URL}/routines/${routineId}/log`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/routines/${routineId}/log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
