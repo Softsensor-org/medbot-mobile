@@ -47,7 +47,12 @@ export default function RoutinesScreen() {
           },
         },
         {
-          onSuccess: () => setInfo("Routine marked complete."),
+          onSuccess: (result) =>
+            setInfo(
+              result?.mode === "queued"
+                ? "Routine action queued offline and will sync automatically."
+                : "Routine marked complete.",
+            ),
           onError: (err) => setError(err instanceof Error ? err.message : "Unable to complete routine"),
         },
       );
@@ -99,8 +104,12 @@ export default function RoutinesScreen() {
         },
       },
       {
-        onSuccess: () => {
-          setInfo("Routine deferred with commit details.");
+        onSuccess: (result) => {
+          setInfo(
+            result?.mode === "queued"
+              ? "Routine defer queued offline and will sync automatically."
+              : "Routine deferred with commit details.",
+          );
           setSelectedAssignment(null);
         },
         onError: (err) => setError(err instanceof Error ? err.message : "Unable to defer routine"),
@@ -120,6 +129,37 @@ export default function RoutinesScreen() {
       {isLoading ? <Text style={styles.metaText}>Loading assignments...</Text> : null}
       {(error || loadError) ? <Text style={[styles.metaText, styles.error]}>{error || loadError}</Text> : null}
       {info ? <Text style={[styles.metaText, styles.info]}>{info}</Text> : null}
+      {((completeMutation.syncStatus && completeMutation.syncStatus !== "idle") ||
+        (deferMutation.syncStatus && deferMutation.syncStatus !== "idle")) ? (
+        <View style={styles.syncBanner} testID="routine-sync-status">
+          <Text style={styles.metaText}>
+            {completeMutation.syncStatus === "queued" || deferMutation.syncStatus === "queued"
+              ? "A routine action is queued for sync."
+              : null}
+            {completeMutation.syncStatus === "syncing" || deferMutation.syncStatus === "syncing"
+              ? "Syncing routine actions..."
+              : null}
+            {completeMutation.syncStatus === "synced" || deferMutation.syncStatus === "synced"
+              ? "Routine sync complete."
+              : null}
+            {completeMutation.syncStatus === "failed" || deferMutation.syncStatus === "failed"
+              ? "Routine sync failed. Retry."
+              : null}
+          </Text>
+          {completeMutation.syncStatus === "failed" && (
+            <Pressable onPress={() => void completeMutation.retrySync()} testID="routine-complete-sync-retry-button">
+              <Text style={styles.retryText}>Retry complete sync</Text>
+            </Pressable>
+          )}
+          {deferMutation.syncStatus === "failed" && (
+            <Pressable onPress={() => void deferMutation.retrySync()} testID="routine-defer-sync-retry-button">
+              <Text style={styles.retryText}>Retry defer sync</Text>
+            </Pressable>
+          )}
+          {completeMutation.syncError ? <Text style={[styles.metaText, styles.error]}>{completeMutation.syncError}</Text> : null}
+          {deferMutation.syncError ? <Text style={[styles.metaText, styles.error]}>{deferMutation.syncError}</Text> : null}
+        </View>
+      ) : null}
 
       {!isLoading && activeAssignments.length === 0 ? (
         <Text style={styles.metaText}>No active routine assignments.</Text>
@@ -263,6 +303,18 @@ const styles = StyleSheet.create({
   },
   info: {
     color: colors.teal,
+  },
+  syncBanner: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.sm,
+    gap: spacing.xs,
+  },
+  retryText: {
+    ...typography.label,
+    color: colors.primary,
   },
   card: {
     borderRadius: 10,

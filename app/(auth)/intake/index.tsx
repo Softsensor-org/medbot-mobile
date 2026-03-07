@@ -4,18 +4,28 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { colors, typography, spacing } from "../../../src/theme";
 import { useSetIntakeMode } from "../../../src/hooks/useWellness";
 import { IntakeModeValue } from "../../../src/types/medical";
+import { showToast } from "../../../src/providers/ToastProvider";
 
 export default function IntakeModeSelector() {
   const router = useRouter();
   const params = useLocalSearchParams<{ sessionId: string }>();
   const sessionId = Array.isArray(params.sessionId) ? params.sessionId[0] : params.sessionId;
 
-  const { mutate: setIntakeMode, isPending } = useSetIntakeMode();
+  const {
+    mutate: setIntakeMode,
+    isPending,
+    syncStatus,
+    syncError,
+    retrySync,
+  } = useSetIntakeMode();
 
   const handleSelectMode = useCallback((mode: IntakeModeValue, targetRoute: string) => {
     if (sessionId) {
       setIntakeMode({ sessionId, mode }, {
-        onSuccess: () => {
+        onSuccess: (result) => {
+          if (result?.mode === "queued") {
+            showToast("success", "Queued", "Mode saved offline and queued for sync.");
+          }
           router.push({
             pathname: targetRoute as any, // eslint-disable-line @typescript-eslint/no-explicit-any
             params: { sessionId }
@@ -32,6 +42,23 @@ export default function IntakeModeSelector() {
     <View style={styles.container}>
       <Text style={styles.title}>How can we help?</Text>
       <Text style={styles.subtitle}>Choose how you'd like to start</Text>
+
+      {syncStatus && syncStatus !== "idle" && (
+        <View style={styles.syncBanner} testID="intake-mode-sync-status">
+          <Text style={styles.syncText}>
+            {syncStatus === "queued" && "Intake mode queued for sync."}
+            {syncStatus === "syncing" && "Syncing intake mode..."}
+            {syncStatus === "synced" && "Intake mode sync complete."}
+            {syncStatus === "failed" && "Intake mode sync failed. Retry."}
+          </Text>
+          {syncStatus === "failed" && (
+            <TouchableOpacity onPress={() => void retrySync()} testID="intake-mode-sync-retry-button">
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+      {syncError ? <Text style={styles.syncError}>{syncError}</Text> : null}
 
       <TouchableOpacity
         style={[styles.card, isPending && styles.cardDisabled]}
@@ -88,6 +115,28 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSecondary,
     marginBottom: spacing.xl,
+  },
+  syncBanner: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  syncText: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+  },
+  retryText: {
+    ...typography.label,
+    color: colors.primary,
+  },
+  syncError: {
+    ...typography.caption,
+    color: colors.error,
+    marginBottom: spacing.sm,
   },
   card: {
     backgroundColor: colors.surface,
