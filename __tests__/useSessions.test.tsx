@@ -44,19 +44,28 @@ describe("useSessions hooks", () => {
     queryClient.clear();
   });
 
-  it("useCreateSession calls chat API and invalidates list", async () => {
+  it("useCreateSession calls chat API with a session id", async () => {
     const { queryClient, wrapper } = createWrapper();
-    const mockResponse = { success: true, session_id: "new-123" };
+    const mockResponse = { response_type: "clarification", message: "ok", suggestions: [], intent: "greeting" };
     (medicalApi.chat as jest.Mock).mockResolvedValue(mockResponse);
 
     const { result, unmount } = renderHook(() => useCreateSession(), { wrapper });
 
+    let createdSessionId = "";
     await act(async () => {
-      await result.current.mutateAsync("start");
+      const created = await result.current.mutateAsync({
+        sessionId: "session-new-123",
+        query: "Start consultation",
+      });
+      createdSessionId = created.sessionId;
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(medicalApi.chat).toHaveBeenCalledWith({ message: "start" });
+    expect(createdSessionId).toBe("session-new-123");
+    expect(medicalApi.chat).toHaveBeenCalledWith({
+      query: "Start consultation",
+      session_id: "session-new-123",
+    });
 
     unmount();
     queryClient.clear();

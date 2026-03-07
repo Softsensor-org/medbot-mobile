@@ -11,7 +11,7 @@ import type {
 } from "../types/medical";
 
 export interface MedicalChatRequest {
-  message: string;
+  query: string;
   session_id?: string;
   image_base64?: string;
 }

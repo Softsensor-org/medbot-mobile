@@ -1,8 +1,8 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { useRouter } from 'expo-router';
 import CareScreen from '../app/(auth)/(tabs)/care';
-import { useSessions } from '../src/hooks/useSessions';
+import { useCreateSession, useSessions } from '../src/hooks/useSessions';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock @expo/vector-icons
@@ -18,6 +18,7 @@ jest.mock('expo-router', () => ({
 // Mock useSessions hook
 jest.mock('../src/hooks/useSessions', () => ({
   useSessions: jest.fn(),
+  useCreateSession: jest.fn(),
 }));
 
 const queryClient = new QueryClient({
@@ -36,10 +37,15 @@ describe('CareScreen', () => {
   const mockRouter = {
     push: jest.fn(),
   };
+  const mutateAsync = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
+    (useCreateSession as jest.Mock).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    });
   });
 
   it('renders loading state correctly', () => {
@@ -133,7 +139,42 @@ describe('CareScreen', () => {
     expect(mockRouter.push).toHaveBeenCalledWith('/(auth)/chat/session-123');
   });
 
-  it('navigates to intake when start new session is pressed', () => {
+  it('reuses an open session when start new session is pressed', async () => {
+    (useSessions as jest.Mock).mockReturnValue({
+      isLoading: false,
+      data: {
+        sessions: [
+          {
+            session_id: 'session-open',
+            status: 'active',
+            triage_label: 'clinician_review',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            priority_score: 60,
+          },
+        ],
+        count: 1,
+      },
+      isError: false,
+      refetch: jest.fn(),
+      isRefetching: false,
+    });
+
+    const { getByTestId } = render(<CareScreen />, { wrapper });
+
+    fireEvent.press(getByTestId('start-session-button'));
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: '/(auth)/intake',
+        params: { sessionId: 'session-open' },
+      });
+    });
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('creates a new session when none can be reused', async () => {
+    mutateAsync.mockResolvedValue({ sessionId: 'session-new' });
     (useSessions as jest.Mock).mockReturnValue({
       isLoading: false,
       data: { sessions: [], count: 0 },
@@ -143,10 +184,36 @@ describe('CareScreen', () => {
     });
 
     const { getByText } = render(<CareScreen />, { wrapper });
-    
+
     fireEvent.press(getByText('Start New Session'));
-    
-    expect(mockRouter.push).toHaveBeenCalledWith('/(auth)/intake');
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledTimes(1);
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: '/(auth)/intake',
+        params: { sessionId: 'session-new' },
+      });
+    });
+  });
+
+  it('shows retry state when bootstrap fails', async () => {
+    mutateAsync.mockRejectedValue(new Error('network'));
+    (useSessions as jest.Mock).mockReturnValue({
+      isLoading: false,
+      data: { sessions: [], count: 0 },
+      isError: false,
+      refetch: jest.fn(),
+      isRefetching: false,
+    });
+
+    const { getByText } = render(<CareScreen />, { wrapper });
+
+    fireEvent.press(getByText('Start New Session'));
+
+    await waitFor(() => {
+      expect(getByText('Unable to start a session right now. Please retry.')).toBeTruthy();
+      expect(getByText('Retry start')).toBeTruthy();
+    });
   });
 
   it('triggers refetch on pull to refresh', async () => {
