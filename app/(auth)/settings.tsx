@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { colors, typography, spacing } from "../../src/theme";
 import { borderRadius } from "../../src/theme/spacing";
+import { useEngagementSettings } from "../../src/hooks/useEngagementSettings";
 import type { ReminderPreferences } from "../../src/notifications";
 import {
   DEFAULT_PREFERENCES,
@@ -37,12 +38,14 @@ function SettingRow({
   value,
   onValueChange,
   disabled,
+  testID,
 }: {
   label: string;
   description?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
   disabled?: boolean;
+  testID?: string;
 }) {
   return (
     <View style={[styles.row, disabled && styles.rowDisabled]}>
@@ -64,6 +67,7 @@ function SettingRow({
         disabled={disabled}
         trackColor={{ false: colors.border, true: colors.primaryLight }}
         thumbColor={value ? colors.primary : colors.surface}
+        testID={testID}
       />
     </View>
   );
@@ -124,6 +128,7 @@ function TimePicker({
 }
 
 export default function SettingsScreen() {
+  const { hapticsEnabled, setHapticsEnabled } = useEngagementSettings();
   const [prefs, setPrefs] = useState<ReminderPreferences>({
     ...DEFAULT_PREFERENCES,
   });
@@ -205,6 +210,17 @@ export default function SettingsScreen() {
       contentContainerStyle={styles.content}
     >
       <Text style={styles.title}>Settings</Text>
+
+      <SectionHeader title="Feedback" />
+      <View style={styles.card}>
+        <SettingRow
+          label="Haptic Feedback"
+          description="Gentle vibration for completion, milestones, and warning acknowledgment."
+          value={hapticsEnabled}
+          onValueChange={setHapticsEnabled}
+          testID="settings-haptics-switch"
+        />
+      </View>
 
       <SectionHeader title="Notifications" />
       <View style={styles.card}>

@@ -9,6 +9,13 @@ const mockRequestPermission = jest.fn();
 const mockSetupChannels = jest.fn();
 const mockSyncSchedule = jest.fn();
 
+jest.mock("../src/hooks/useEngagementSettings", () => ({
+  useEngagementSettings: () => ({
+    hapticsEnabled: true,
+    setHapticsEnabled: jest.fn(),
+  }),
+}));
+
 jest.mock("../src/notifications", () => ({
   DEFAULT_PREFERENCES: {
     pushEnabled: false,
@@ -87,9 +94,9 @@ describe("SettingsScreen", () => {
     await waitFor(() => {
       expect(mockLoadPreferences).toHaveBeenCalled();
     });
-    // Find the first switch (Push Notifications)
+    // switches[0] is Haptic Feedback, switches[1] is Push Notifications
     const switches = getAllByRole("switch");
-    fireEvent(switches[0], "valueChange", true);
+    fireEvent(switches[1], "valueChange", true);
     await waitFor(() => {
       expect(mockRequestPermission).toHaveBeenCalled();
     });
@@ -102,7 +109,7 @@ describe("SettingsScreen", () => {
       expect(mockLoadPreferences).toHaveBeenCalled();
     });
     const switches = getAllByRole("switch");
-    fireEvent(switches[0], "valueChange", true);
+    fireEvent(switches[1], "valueChange", true);
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
         "Permission Required",
@@ -121,8 +128,8 @@ describe("SettingsScreen", () => {
       expect(mockLoadPreferences).toHaveBeenCalled();
     });
     const switches = getAllByRole("switch");
-    // switches[1] is Routine Reminders
-    fireEvent(switches[1], "valueChange", true);
+    // switches[2] is Routine Reminders (after Haptics + Push)
+    fireEvent(switches[2], "valueChange", true);
     await waitFor(() => {
       expect(mockSavePreferences).toHaveBeenCalledWith(
         expect.objectContaining({ routineReminders: true }),

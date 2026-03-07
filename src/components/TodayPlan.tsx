@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { colors, typography, spacing } from '../theme';
 import { DailyCarePlan, CarePlanAction } from '../types/medical';
 import { API_BASE_URL } from '../api/config';
 import { colorFor } from '../status/statusHelpers';
+import { triggerEngagementHaptic } from '../engagement/haptics';
 
 interface TriageSummary {
   triage_label?: string | null;
@@ -25,6 +26,7 @@ interface CareGraphData {
 
 export const TodayPlan: React.FC = () => {
   const queryClient = useQueryClient();
+  const [safetyAcknowledged, setSafetyAcknowledged] = useState(false);
 
   const { data: plan, isLoading, isError } = useQuery<DailyCarePlan>({
     queryKey: ['care-plan', 'today'],
@@ -66,8 +68,20 @@ export const TodayPlan: React.FC = () => {
 
   const handleToggle = useCallback((routineId: number | undefined, currentDone: boolean) => {
     if (!routineId || currentDone || logMutation.isPending) return;
-    logMutation.mutate({ routineId, status: 'completed' });
+    logMutation.mutate(
+      { routineId, status: 'completed' },
+      {
+        onSuccess: () => {
+          void triggerEngagementHaptic("routine_complete");
+        },
+      },
+    );
   }, [logMutation]);
+
+  const handleAcknowledgeSafety = useCallback(() => {
+    setSafetyAcknowledged(true);
+    void triggerEngagementHaptic("warning_acknowledged");
+  }, []);
 
   if (isLoading) {
     return <ActivityIndicator style={{ padding: spacing.xl }} color={colors.primary} />;
@@ -117,9 +131,20 @@ export const TodayPlan: React.FC = () => {
       {isElevatedRisk && (
         <View style={styles.alert}>
           <MaterialIcons name="warning" size={20} color={colors.amber} />
-          <Text style={styles.alertText}>
-            Elevated risk detected. Prioritize your routine and monitor symptoms.
-          </Text>
+          <View style={styles.alertBody}>
+            <Text style={styles.alertText}>
+              Elevated risk detected. Prioritize your routine and monitor symptoms.
+            </Text>
+            <TouchableOpacity
+              onPress={handleAcknowledgeSafety}
+              style={styles.alertButton}
+              testID="todayplan-safety-ack-button"
+            >
+              <Text style={styles.alertButtonText}>
+                {safetyAcknowledged ? "Acknowledged" : "Acknowledge Safety Note"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -215,11 +240,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     alignItems: 'center',
   },
+  alertBody: {
+    marginLeft: spacing.sm,
+    flex: 1,
+    gap: spacing.xs,
+  },
   alertText: {
     ...typography.bodySmall,
     color: colors.amber,
-    marginLeft: spacing.sm,
     flex: 1,
+  },
+  alertButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.amber,
+    backgroundColor: colors.surface,
+  },
+  alertButtonText: {
+    ...typography.caption,
+    color: colors.amber,
+    fontWeight: "700",
   },
   chipContainer: {
     flexDirection: 'row',
