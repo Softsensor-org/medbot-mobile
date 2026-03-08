@@ -35,6 +35,10 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 
+/**
+ * IMP-170: Escalation gate tests aligned to backend contract.
+ * Transcript data is now a bare TranscriptMessage[] array.
+ */
 describe("ChatScreen escalation gate", () => {
   const mockRouter = { back: jest.fn(), push: jest.fn() };
 
@@ -44,8 +48,9 @@ describe("ChatScreen escalation gate", () => {
       sessionId: "esc-test-1",
     });
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
+    // IMP-170: bare array, not { transcript: [] }
     (useSessionTranscript as jest.Mock).mockReturnValue({
-      data: { transcript: [] },
+      data: [],
       isLoading: false,
     });
     (useEvidenceSnapshot as jest.Mock).mockReturnValue({ data: null });
@@ -82,7 +87,6 @@ describe("ChatScreen escalation gate", () => {
       fireEvent.press(getByTestId("send-button"));
     });
 
-    // Escalation modal should be visible
     expect(getByText("Seek Emergency Care")).toBeTruthy();
     expect(
       getByText("Please call emergency services right away.")
@@ -117,7 +121,6 @@ describe("ChatScreen escalation gate", () => {
       fireEvent.press(getByTestId("send-button"));
     });
 
-    // No escalation modal
     expect(queryByText("Seek Emergency Care")).toBeNull();
     expect(queryByText("Urgent Medical Attention Needed")).toBeNull();
   });
@@ -152,15 +155,12 @@ describe("ChatScreen escalation gate", () => {
       fireEvent.press(getByTestId("send-button"));
     });
 
-    // Modal is visible
     expect(getByTestId("escalation-acknowledge-button")).toBeTruthy();
 
-    // Dismiss
     await act(async () => {
       fireEvent.press(getByTestId("escalation-acknowledge-button"));
     });
 
-    // Modal should be gone
     expect(queryByText("Seek Emergency Care")).toBeNull();
   });
 });

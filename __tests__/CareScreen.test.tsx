@@ -5,17 +5,14 @@ import CareScreen from '../app/(auth)/(tabs)/care';
 import { useCreateSession, useSessions } from '../src/hooks/useSessions';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Mock @expo/vector-icons
 jest.mock('@expo/vector-icons', () => ({
   MaterialIcons: 'MaterialIcons',
 }));
 
-// Mock expo-router
 jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
 }));
 
-// Mock useSessions hook
 jest.mock('../src/hooks/useSessions', () => ({
   useSessions: jest.fn(),
   useCreateSession: jest.fn(),
@@ -32,6 +29,15 @@ const queryClient = new QueryClient({
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
+
+/**
+ * IMP-170: Test fixtures aligned to backend contract (IMP-161).
+ *
+ * Backend session list returns bare SessionMeta[] with status enum:
+ * new/waiting/assigned/closed (not active/resolved/escalated).
+ * triage_label is NOT in SessionMeta (stripped by Pydantic).
+ */
+const NOW = new Date().toISOString();
 
 describe('CareScreen', () => {
   const mockRouter = {
@@ -58,57 +64,58 @@ describe('CareScreen', () => {
     });
 
     render(<CareScreen />, { wrapper });
-    // ActivityIndicator doesn't have a role, but we can check if it's there by testing for container
-    // or just assume if it's not showing error or list, it's loading
   });
 
   it('renders empty state when no sessions found', () => {
+    // IMP-170: bare array, not { sessions: [], count: 0 }
     (useSessions as jest.Mock).mockReturnValue({
       isLoading: false,
-      data: { sessions: [], count: 0 },
+      data: [],
       isError: false,
       refetch: jest.fn(),
       isRefetching: false,
     });
 
     const { getByText } = render(<CareScreen />, { wrapper });
-    
+
     expect(getByText('No sessions yet')).toBeTruthy();
     expect(getByText('Start New Session')).toBeTruthy();
   });
 
-  it('renders session list when data is available', () => {
+  it('renders session list with backend-aligned status values', () => {
+    // IMP-170: status uses backend enum (new/waiting/assigned/closed)
     const mockSessions = [
       {
         session_id: 'session-1',
-        status: 'active',
-        triage_label: 'urgent',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        status: 'waiting',
+        created_at: NOW,
+        updated_at: NOW,
+        last_message_at: NOW,
         priority_score: 80,
       },
       {
         session_id: 'session-2',
-        status: 'resolved',
-        triage_label: 'self_care',
-        created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        status: 'closed',
+        created_at: new Date(Date.now() - 86400000).toISOString(),
         updated_at: new Date(Date.now() - 86400000).toISOString(),
+        last_message_at: new Date(Date.now() - 86400000).toISOString(),
         priority_score: 20,
       },
     ];
 
+    // IMP-170: bare array
     (useSessions as jest.Mock).mockReturnValue({
       isLoading: false,
-      data: { sessions: mockSessions, count: 2 },
+      data: mockSessions,
       isError: false,
       refetch: jest.fn(),
       isRefetching: false,
     });
 
-    const { getByText } = render(<CareScreen />, { wrapper });
-    
-    expect(getByText(/urgent/i)).toBeTruthy();
-    expect(getByText(/self care/i)).toBeTruthy();
+    const { getAllByText, getByText } = render(<CareScreen />, { wrapper });
+
+    expect(getAllByText(/waiting/i).length).toBeGreaterThan(0);
+    expect(getAllByText(/closed/i).length).toBeGreaterThan(0);
     expect(getByText('session-1', { exact: false })).toBeTruthy();
     expect(getByText('session-2', { exact: false })).toBeTruthy();
   });
@@ -117,44 +124,43 @@ describe('CareScreen', () => {
     const mockSessions = [
       {
         session_id: 'session-123',
-        status: 'active',
-        triage_label: 'urgent',
-        created_at: new Date().toISOString(),
+        status: 'new',
+        created_at: NOW,
+        updated_at: NOW,
+        last_message_at: NOW,
         priority_score: 80,
       },
     ];
 
     (useSessions as jest.Mock).mockReturnValue({
       isLoading: false,
-      data: { sessions: mockSessions, count: 1 },
+      data: mockSessions,
       isError: false,
       refetch: jest.fn(),
       isRefetching: false,
     });
 
     const { getByText } = render(<CareScreen />, { wrapper });
-    
+
     fireEvent.press(getByText('Resume consultation'));
-    
+
     expect(mockRouter.push).toHaveBeenCalledWith('/(auth)/chat/session-123');
   });
 
-  it('reuses an open session when start new session is pressed', async () => {
+  it('reuses a reusable session (new/waiting) on start', async () => {
+    // IMP-170: reusable status is now new/waiting (not active/escalated)
     (useSessions as jest.Mock).mockReturnValue({
       isLoading: false,
-      data: {
-        sessions: [
-          {
-            session_id: 'session-open',
-            status: 'active',
-            triage_label: 'clinician_review',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            priority_score: 60,
-          },
-        ],
-        count: 1,
-      },
+      data: [
+        {
+          session_id: 'session-open',
+          status: 'waiting',
+          created_at: NOW,
+          updated_at: NOW,
+          last_message_at: NOW,
+          priority_score: 60,
+        },
+      ],
       isError: false,
       refetch: jest.fn(),
       isRefetching: false,
@@ -177,7 +183,7 @@ describe('CareScreen', () => {
     mutateAsync.mockResolvedValue({ sessionId: 'session-new' });
     (useSessions as jest.Mock).mockReturnValue({
       isLoading: false,
-      data: { sessions: [], count: 0 },
+      data: [],
       isError: false,
       refetch: jest.fn(),
       isRefetching: false,
@@ -200,7 +206,7 @@ describe('CareScreen', () => {
     mutateAsync.mockRejectedValue(new Error('network'));
     (useSessions as jest.Mock).mockReturnValue({
       isLoading: false,
-      data: { sessions: [], count: 0 },
+      data: [],
       isError: false,
       refetch: jest.fn(),
       isRefetching: false,
@@ -216,21 +222,30 @@ describe('CareScreen', () => {
     });
   });
 
-  it('triggers refetch on pull to refresh', async () => {
-    const refetch = jest.fn();
+  it('does not reuse closed/assigned sessions', async () => {
+    mutateAsync.mockResolvedValue({ sessionId: 'session-fresh' });
     (useSessions as jest.Mock).mockReturnValue({
       isLoading: false,
-      data: { sessions: [], count: 0 },
+      data: [
+        {
+          session_id: 'session-done',
+          status: 'closed',
+          created_at: NOW,
+          updated_at: NOW,
+          last_message_at: NOW,
+        },
+      ],
       isError: false,
-      refetch,
+      refetch: jest.fn(),
       isRefetching: false,
     });
 
-    render(<CareScreen />, { wrapper });
-    
-    // We need to find the FlatList and trigger refresh
-    // Note: This is implementation dependent, but we can check if refetch is called
-    // Testing RefreshControl directly is hard in unit tests, 
-    // but we can check the onRefresh prop of the FlatList if we could access it.
+    const { getByTestId } = render(<CareScreen />, { wrapper });
+
+    fireEvent.press(getByTestId('start-session-button'));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledTimes(1);
+    });
   });
 });
