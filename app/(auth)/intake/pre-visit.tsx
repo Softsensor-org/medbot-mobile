@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -52,6 +52,21 @@ export default function PreVisitScreen() {
   const [selectedApptType, setSelectedApptType] = useState<AppointmentType | null>(appointmentType || null);
   const [apptDateStr, setApptDateStr] = useState(apptContext?.appointment_datetime || "");
   const [apptLocation, setApptLocation] = useState(apptContext?.clinic_location || "");
+
+  useEffect(() => {
+    if (apptContext) {
+      if (apptContext.appointment_type && !selectedApptType) {
+        setSelectedApptType(apptContext.appointment_type);
+        setStep(2);
+      }
+      if (apptContext.appointment_datetime && !apptDateStr) {
+        setApptDateStr(apptContext.appointment_datetime);
+      }
+      if (apptContext.clinic_location && !apptLocation) {
+        setApptLocation(apptContext.clinic_location);
+      }
+    }
+  }, [apptContext]);
 
   const apptDate = React.useMemo(() => {
     if (!apptDateStr) return new Date();
