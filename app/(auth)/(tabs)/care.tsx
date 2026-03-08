@@ -33,8 +33,9 @@ export default function CareScreen() {
     if (isBootstrapping) return;
     setBootstrapError(null);
 
-    const reusable = data?.sessions?.find((session) =>
-      session.status === "active" || session.status === "new" || session.status === "escalated",
+    // IMP-161: data is now a bare SessionMeta[] from backend
+    const reusable = data?.find((session) =>
+      session.status === "new" || session.status === "waiting",
     );
     if (reusable?.session_id) {
       navigateToIntake(reusable.session_id);
@@ -47,14 +48,15 @@ export default function CareScreen() {
     } catch {
       setBootstrapError("Unable to start a session right now. Please retry.");
     }
-  }, [createSession, data?.sessions, isBootstrapping, navigateToIntake]);
+  }, [createSession, data, isBootstrapping, navigateToIntake]);
 
   const onRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
 
   const renderSessionCard = ({ item }: { item: SessionMeta }) => {
-    const triageColor = colorFor(item.triage_label);
+    // IMP-161: triage_label is not in backend SessionMeta; use status for display
+    const statusColor = colorFor(item.status);
     const dateStr = item.last_message_at || item.updated_at || item.created_at;
     const relativeTime = dateStr 
       ? formatDistanceToNow(new Date(dateStr), { addSuffix: true })
@@ -67,9 +69,9 @@ export default function CareScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.cardHeader}>
-          <View style={[styles.triageBadge, { backgroundColor: triageColor }]}>
+          <View style={[styles.triageBadge, { backgroundColor: statusColor }]}>
             <Text style={styles.triageText}>
-              {(item.triage_label || "Pending").replace("_", " ")}
+              {(item.status || "Pending").replace("_", " ")}
             </Text>
           </View>
           <Text style={styles.timestamp}>{relativeTime}</Text>
@@ -168,7 +170,7 @@ export default function CareScreen() {
       </View>
 
       <FlatList
-        data={data?.sessions}
+        data={data}
         renderItem={renderSessionCard}
         keyExtractor={(item) => item.session_id}
         contentContainerStyle={styles.listContent}

@@ -54,6 +54,8 @@ export interface SessionMeta {
 export interface TranscriptMessage {
   role: "user" | "assistant" | "system";
   content: string;
+  /** Used for local optimistic messages; not always present from backend. */
+  timestamp?: string;
   model_output?: Record<string, unknown>;
 }
 

@@ -5,7 +5,6 @@ import { medicalApi } from "../src/api/medicalApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 
-// Mock the APIs
 jest.mock("../src/api/sessionsApi");
 jest.mock("../src/api/medicalApi");
 
@@ -24,20 +23,28 @@ const createWrapper = () => {
   return { queryClient, wrapper };
 };
 
+/**
+ * IMP-170: Hook tests aligned to backend contract (IMP-161).
+ * sessionsApi.list() returns bare SessionMeta[] (not { sessions, count }).
+ */
 describe("useSessions hooks", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("useSessions fetches session list", async () => {
+  it("useSessions fetches bare session array", async () => {
     const { queryClient, wrapper } = createWrapper();
-    const mockData = { sessions: [{ session_id: "1" }], count: 1 };
+    // IMP-170: bare array from backend
+    const mockData = [
+      { session_id: "1", status: "new", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", last_message_at: "2026-01-01T00:00:00Z" },
+    ];
     (sessionsApi.list as jest.Mock).mockResolvedValue(mockData);
 
     const { result, unmount } = renderHook(() => useSessions(), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(mockData);
+    expect(Array.isArray(result.current.data)).toBe(true);
     expect(sessionsApi.list).toHaveBeenCalled();
 
     unmount();
