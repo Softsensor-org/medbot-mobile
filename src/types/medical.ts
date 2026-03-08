@@ -112,6 +112,37 @@ export interface DailyCarePlan {
   avoid_today: string[];
   watch_for: string[];
   confidence_context: string;
+  adaptation?: CarePlanAdaptation;
+}
+
+export interface CarePlanAdaptationSignals {
+  adherence_rate_7d: number | null;
+  logged_events_7d: number;
+  deferred_or_skipped_7d: number;
+  symptom_avg_severity_7d: number | null;
+  symptom_max_severity_7d: number | null;
+  symptom_events_7d: number;
+  high_symptom_burden: boolean;
+  emergency_keywords_present: boolean;
+  safety_events_7d: number;
+  context_tags: string[];
+}
+
+export interface CarePlanAdaptationAdjustment {
+  code: string;
+  title: string;
+  detail: string;
+  priority: "high" | "medium" | "low";
+}
+
+export interface CarePlanAdaptation {
+  status: "active" | "suppressed" | "fallback";
+  suppressed: boolean;
+  reason_codes: string[];
+  confidence_band: "High" | "Moderate" | "Low";
+  signals: CarePlanAdaptationSignals;
+  next_day_adjustments: CarePlanAdaptationAdjustment[];
+  fallback_message?: string | null;
 }
 
 // --- Pre-visit Check-in (MB-709) ---
