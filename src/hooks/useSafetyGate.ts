@@ -17,21 +17,11 @@ export function useSafetyGate() {
   const { data: sessions = [] } = useSessions({ sort_by: "updated_at", sort_order: "desc" });
 
   const safety = useMemo<SafetyStatus>(() => {
-    // 1. Check for active backend triage sessions (Clinical Hard-stop)
-    // We check the most recently updated session
-    if (sessions.length > 0) {
-        const latest = sessions[0];
-        const triage = latest.latest_model_output?.triage_label;
-        if (triage === 'urgent' || triage === 'clinician_review') {
-            return {
-                isSafe: false,
-                reason: 'backend_restriction',
-                severity: triage === 'urgent' ? 'high' : 'medium',
-                message: 'Your care plan is temporarily suspended for clinical review. Please speak with your care team before continuing routines.',
-                cta: { label: 'Go to Consultation', route: `/(auth)/chat/${latest.session_id}` }
-            };
-        }
-    }
+    // 1. Backend triage check placeholder (IMP-162)
+    // IMP-161: Backend SessionMeta does not include latest_model_output
+    // or triage_label (stripped by Pydantic validation). The previous
+    // check on `latest.latest_model_output?.triage_label` was dead code.
+    // IMP-162 will add a proper triage-based safety gate.
 
     // 2. Check for severe symptoms (Red Flag from local logs)
     const hasSevereSymptom = progress?.symptoms.some(s => s.severity >= 4.5);
