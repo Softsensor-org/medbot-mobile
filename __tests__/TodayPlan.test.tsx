@@ -28,11 +28,46 @@ const createWrapper = () => {
   };
 };
 
+function renderWithClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
 function ok(data: unknown) {
   return Promise.resolve({
     ok: true,
     json: async () => ({ success: true, data }),
   }) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
+
+function mockFetchWithPlan(planData: unknown) {
+  (global.fetch as jest.Mock) = jest.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/api/v1/care-plan/today")) {
+      return {
+        ok: true,
+        json: async () => ({ success: true, data: planData }),
+      } as Response;
+    }
+    if (url.includes("/api/v1/care-graph")) {
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { triage_sessions: [], event_counts: {} },
+        }),
+      } as Response;
+    }
+    return {
+      ok: false,
+      json: async () => ({}),
+    } as Response;
+  });
 }
 
 describe("TodayPlan engagement behavior", () => {
@@ -92,5 +127,93 @@ describe("TodayPlan engagement behavior", () => {
     });
     unmount();
     renderTarget.queryClient.clear();
+  });
+});
+
+describe("TodayPlan adaptation", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("renders adaptation adjustments when active", async () => {
+    mockFetchWithPlan({
+      confidence_context: "Personalized from your routine history.",
+      am_actions: [{ id: 1, action: "Cleanse", done: false }],
+      pm_actions: [{ id: 2, action: "Moisturize", done: false }],
+      avoid_today: [],
+      watch_for: [],
+      adaptation: {
+        status: "active",
+        suppressed: false,
+        reason_codes: [],
+        confidence_band: "Moderate",
+        signals: {
+          adherence_rate_7d: 0.42,
+          logged_events_7d: 3,
+          deferred_or_skipped_7d: 1,
+          symptom_avg_severity_7d: 4,
+          symptom_max_severity_7d: 5,
+          symptom_events_7d: 2,
+          high_symptom_burden: false,
+          emergency_keywords_present: false,
+          safety_events_7d: 0,
+          context_tags: ["stress"],
+        },
+        next_day_adjustments: [
+          {
+            code: "simplify_core_steps",
+            title: "Simplify to core steps",
+            detail: "Focus on cleanser, moisturizer, and SPF to improve consistency tomorrow.",
+            priority: "high",
+          },
+        ],
+        fallback_message: null,
+      },
+    });
+
+    const { getByText } = renderWithClient(<TodayPlan />);
+
+    await waitFor(() => {
+      expect(getByText("Tomorrow's adjustments")).toBeTruthy();
+      expect(getByText("Simplify to core steps")).toBeTruthy();
+    });
+  });
+
+  it("renders suppression fallback copy when adaptation is suppressed", async () => {
+    mockFetchWithPlan({
+      confidence_context: "Safety-first mode is active.",
+      am_actions: [],
+      pm_actions: [],
+      avoid_today: [],
+      watch_for: [],
+      adaptation: {
+        status: "suppressed",
+        suppressed: true,
+        reason_codes: ["safety_events_present"],
+        confidence_band: "Low",
+        signals: {
+          adherence_rate_7d: null,
+          logged_events_7d: 0,
+          deferred_or_skipped_7d: 0,
+          symptom_avg_severity_7d: null,
+          symptom_max_severity_7d: null,
+          symptom_events_7d: 0,
+          high_symptom_burden: false,
+          emergency_keywords_present: false,
+          safety_events_7d: 1,
+          context_tags: [],
+        },
+        next_day_adjustments: [],
+        fallback_message: "Adaptive changes are paused because recent safety signals were detected.",
+      },
+    });
+
+    const { getByText } = renderWithClient(<TodayPlan />);
+
+    await waitFor(() => {
+      expect(
+        getByText("Adaptive changes are paused because recent safety signals were detected."),
+      ).toBeTruthy();
+    });
   });
 });

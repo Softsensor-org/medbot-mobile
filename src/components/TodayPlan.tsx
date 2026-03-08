@@ -99,6 +99,7 @@ export const TodayPlan: React.FC = () => {
   const symptomEvents = careGraph?.event_counts?.symptom_event || 0;
   const safetyEvents = careGraph?.event_counts?.safety_event || 0;
   const isElevatedRisk = latestTriage?.triage_label === 'urgent' || safetyEvents > 0;
+  const adaptation = plan.adaptation;
 
   const renderActionList = (actions: CarePlanAction[]) => (
     actions.map((item, idx) => (
@@ -158,6 +159,35 @@ export const TodayPlan: React.FC = () => {
                 {latestTriage.triage_label.replace('_', ' ')}
               </Text>
             </View>
+          )}
+        </View>
+      )}
+
+      {adaptation && (
+        <View style={styles.adaptationContainer}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Tomorrow's adjustments</Text>
+          </View>
+          {adaptation.suppressed ? (
+            <View style={styles.suppressedRow}>
+              <MaterialIcons name="health-and-safety" size={18} color={colors.error} />
+              <Text style={styles.suppressedText}>
+                {adaptation.fallback_message || 'Adaptive changes are paused while safety checks are active.'}
+              </Text>
+            </View>
+          ) : (
+            <>
+              {adaptation.next_day_adjustments.map((item) => (
+                <View key={item.code} style={styles.adjustmentRow}>
+                  <Text style={styles.adjustmentTitle}>{item.title}</Text>
+                  <Text style={styles.adjustmentDetail}>{item.detail}</Text>
+                </View>
+              ))}
+              {adaptation.status === 'fallback' && adaptation.fallback_message && (
+                <Text style={styles.fallbackText}>{adaptation.fallback_message}</Text>
+              )}
+            </>
           )}
         </View>
       )}
@@ -285,6 +315,43 @@ const styles = StyleSheet.create({
   },
   section: {
     marginVertical: spacing.sm,
+  },
+  adaptationContainer: {
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: 10,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  adjustmentRow: {
+    marginBottom: spacing.sm,
+  },
+  adjustmentTitle: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  adjustmentDetail: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  suppressedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  suppressedText: {
+    ...typography.bodySmall,
+    color: colors.error,
+    marginLeft: spacing.xs,
+    flex: 1,
+  },
+  fallbackText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
   },
   sectionHeader: {
     flexDirection: 'row',
