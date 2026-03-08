@@ -33,6 +33,12 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 
+/**
+ * IMP-170: Chat test fixtures aligned to backend contract (IMP-161).
+ *
+ * Backend transcript endpoint returns bare TranscriptMessage[] array,
+ * not { transcript: [...] }.
+ */
 describe('ChatScreen', () => {
   const mockRouter = { back: jest.fn(), push: jest.fn() };
   const mockSessionId = 'test-session-123';
@@ -44,13 +50,12 @@ describe('ChatScreen', () => {
   });
 
   it('renders transcript messages correctly', async () => {
+    // IMP-170: bare array, not { transcript: [...] }
     (useSessionTranscript as jest.Mock).mockReturnValue({
-      data: {
-        transcript: [
-          { role: 'user', content: 'Hello doctor', timestamp: '2026-03-05T10:00:00Z' },
-          { role: 'assistant', content: 'How can I help?', timestamp: '2026-03-05T10:00:05Z' },
-        ],
-      },
+      data: [
+        { role: 'user', content: 'Hello doctor' },
+        { role: 'assistant', content: 'How can I help?' },
+      ],
       isLoading: false,
     });
     (useEvidenceSnapshot as jest.Mock).mockReturnValue({ data: null });
@@ -62,7 +67,8 @@ describe('ChatScreen', () => {
   });
 
   it('shows evidence progress when snapshot is available', () => {
-    (useSessionTranscript as jest.Mock).mockReturnValue({ data: { transcript: [] }, isLoading: false });
+    // IMP-170: bare array
+    (useSessionTranscript as jest.Mock).mockReturnValue({ data: [], isLoading: false });
     (useEvidenceSnapshot as jest.Mock).mockReturnValue({
       data: {
         slots: [{ name: 'location', state: 'provided', value: 'arm' }],
@@ -78,25 +84,23 @@ describe('ChatScreen', () => {
   });
 
   it('handles message sending and streaming', async () => {
-    (useSessionTranscript as jest.Mock).mockReturnValue({ data: { transcript: [] }, isLoading: false });
+    (useSessionTranscript as jest.Mock).mockReturnValue({ data: [], isLoading: false });
     (useEvidenceSnapshot as jest.Mock).mockReturnValue({ data: null });
-    
-    // Mock streamChat to simulate token events
+
     (streamChat as jest.Mock).mockImplementation((options) => {
       const { onEvent } = options;
-      // Trigger events synchronously for easier testing
       onEvent({ type: 'token', content: 'Sure, ' });
       onEvent({ type: 'token', content: 'tell me more.' });
-      return jest.fn(); // cleanup
+      return jest.fn();
     });
 
     const { getByPlaceholderText, getByTestId } = render(<ChatScreen />, { wrapper });
 
     const input = getByPlaceholderText('Type a message...');
     fireEvent.changeText(input, 'I have a rash');
-    
+
     const sendButton = getByTestId('send-button');
-    
+
     await act(async () => {
       fireEvent.press(sendButton);
     });
@@ -112,9 +116,21 @@ describe('ChatScreen', () => {
 
   it('handles invalid session id', () => {
     (useLocalSearchParams as jest.Mock).mockReturnValue({ sessionId: null });
-    
+
     const { getByText } = render(<ChatScreen />, { wrapper });
-    
+
     expect(getByText(/Invalid session ID/i)).toBeTruthy();
+  });
+
+  it('handles empty transcript from backend', () => {
+    (useSessionTranscript as jest.Mock).mockReturnValue({
+      data: [],
+      isLoading: false,
+    });
+    (useEvidenceSnapshot as jest.Mock).mockReturnValue({ data: null });
+
+    // Should not crash on empty bare array
+    const { getByPlaceholderText } = render(<ChatScreen />, { wrapper });
+    expect(getByPlaceholderText('Type a message...')).toBeTruthy();
   });
 });

@@ -13,9 +13,19 @@ const TRIAGE_ICON_MAP: Record<TriageLabel, string> = {
   urgent: "Warning",
 };
 
-export function colorFor(status: TriageLabel | undefined): string {
+/** IMP-161: Session status colors for backend-aligned SessionMeta. */
+const SESSION_STATUS_COLOR_MAP: Record<string, string> = {
+  new: colors.triageSelfCare,
+  waiting: colors.triageClinician,
+  assigned: colors.triageClinician,
+  closed: colors.textDisabled,
+};
+
+export function colorFor(status: TriageLabel | string | undefined): string {
   if (!status) return colors.textDisabled;
-  return TRIAGE_COLOR_MAP[status] ?? colors.textDisabled;
+  return TRIAGE_COLOR_MAP[status as TriageLabel]
+    ?? SESSION_STATUS_COLOR_MAP[status]
+    ?? colors.textDisabled;
 }
 
 export function iconFor(status: TriageLabel | undefined): string {

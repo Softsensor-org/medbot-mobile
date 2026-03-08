@@ -47,9 +47,10 @@ export default function ChatScreen() {
   // Local state for optimistic UI and streaming
   const [messages, setMessages] = useState<TranscriptMessage[]>([]);
 
+  // IMP-161: transcriptData is now a bare TranscriptMessage[] array
   useEffect(() => {
-    if (transcriptData?.transcript) {
-      setMessages(transcriptData.transcript);
+    if (transcriptData && Array.isArray(transcriptData)) {
+      setMessages(transcriptData);
     }
   }, [transcriptData]);
 
