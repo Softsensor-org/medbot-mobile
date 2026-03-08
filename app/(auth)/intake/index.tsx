@@ -27,14 +27,14 @@ export default function IntakeModeSelector() {
             showToast("success", "Queued", "Mode saved offline and queued for sync.");
           }
           router.push({
-            pathname: targetRoute as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+            pathname: targetRoute as import('expo-router').Href,
             params: { sessionId }
           });
         }
       });
     } else {
       // If no session yet, just go to the screen
-      router.push(targetRoute as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      router.push(targetRoute as import('expo-router').Href);
     }
   }, [sessionId, setIntakeMode, router]);
 
@@ -91,7 +91,7 @@ export default function IntakeModeSelector() {
       {sessionId && (
         <TouchableOpacity
           style={styles.backToChat}
-          onPress={() => router.push({ pathname: "/(auth)/chat/[sessionId]", params: { sessionId } } as any)} // eslint-disable-line @typescript-eslint/no-explicit-any
+          onPress={() => router.push({ pathname: "/(auth)/chat/[sessionId]", params: { sessionId } } as import('expo-router').Href)}
         >
           <Text style={styles.backToChatText}>Return to Chat</Text>
         </TouchableOpacity>

@@ -12,6 +12,7 @@ export default tseslint.config(
       "android/",
       "ios/",
       "babel.config.js",
+      ".worktrees/",
     ],
   },
   {

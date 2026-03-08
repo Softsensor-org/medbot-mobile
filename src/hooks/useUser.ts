@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
-import { OnboardingBrief, PreferenceProfile, GoalJourney, GoalJourneyCreate } from "../types/user";
+import api from "../api/client";
+import { OnboardingBrief, PreferenceProfile, GoalJourney, GoalJourneyCreate, UserProfile } from "../types/user";
 
 export const userKeys = {
   all: ["user"] as const,
@@ -9,6 +9,21 @@ export const userKeys = {
   preferences: () => [...userKeys.all, "preferences"] as const,
   goals: () => [...userKeys.all, "goals"] as const,
 };
+
+export function useUser() {
+  const { data: profile, isLoading } = useQuery({
+    queryKey: userKeys.profile(),
+    queryFn: async () => {
+      const response = await api.get("/user/profile");
+      return response.data.data as UserProfile;
+    },
+  });
+
+  return {
+    user: profile,
+    isLoading,
+  };
+}
 
 export function useOnboardingBrief() {
   return useQuery({
@@ -78,3 +93,5 @@ export function useUpsertGoalJourney() {
     },
   });
 }
+
+export const useCreateGoalJourney = useUpsertGoalJourney;
