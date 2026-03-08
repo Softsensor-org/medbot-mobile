@@ -11,13 +11,15 @@ import {
   Share,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../theme';
+import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { usePatientProgress } from '../hooks/useProgress';
+import { useRouter } from 'expo-router';
 import { format, parseISO } from 'date-fns';
 import { SymptomTrendPoint, AdherenceTrendPoint, ProgressPhoto } from '../api/analyticsApi';
+import { WeeklyReveal } from './WeeklyReveal';
 import { deriveStreakRescueState } from '../engagement/streakRescue';
 import { buildPhiSafeShareMessage, buildPhiSafeShareSummary } from '../engagement/shareScaffold';
-import { triggerEngagementHaptic } from '../engagement/haptics';
+import { hapticService } from '../api/HapticService';
 import { useEngagementSettings } from '../hooks/useEngagementSettings';
 
 interface ProgressBoardProps {
@@ -28,6 +30,7 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - spacing.lg * 2 - spacing.md) / 2;
 
 export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
+  const router = useRouter();
   const { data, isLoading, isError, refetch } = usePatientProgress(days);
   const { hapticsEnabled } = useEngagementSettings();
   const [rescueActivated, setRescueActivated] = useState(false);
@@ -67,12 +70,12 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
 
   const handleCompleteRescueStep = useCallback(() => {
     setRescueCompleted(true);
-    void triggerEngagementHaptic("routine_complete");
+    hapticService.triggerSuccess();
   }, []);
 
   const handleCelebrateMilestone = useCallback(() => {
     setMilestoneCelebrated(true);
-    void triggerEngagementHaptic("milestone_achieved");
+    hapticService.triggerSuccess();
   }, []);
 
   const handleShare = useCallback(async () => {
@@ -86,7 +89,8 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Summary Cards */}
+      <WeeklyReveal />
+
       <View style={styles.grid}>
         <View style={styles.statCard}>
           <MaterialIcons name="analytics" size={24} color={colors.primary} />
@@ -96,7 +100,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
         <View style={styles.statCard}>
           <MaterialIcons name="bug-report" size={24} color={colors.warning} />
           <Text testID="symptom-value" style={styles.statValue}>{summary.symptom_count}</Text>
-          <Text style={styles.statLabel}>Symptom Logs</Text>
+          <Text style={styles.statLabel}>Symptoms</Text>
         </View>
         <View style={styles.statCard}>
           <MaterialIcons name="photo-library" size={24} color={colors.success} />
@@ -155,25 +159,28 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
         </View>
       )}
 
-      {/* Symptom Severity Trend (Simple Bar Chart) */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Symptom Severity</Text>
         {symptoms.length > 0 ? (
           <View style={styles.chartContainer}>
             <View style={styles.chartArea}>
               {symptoms.map((point: SymptomTrendPoint, index: number) => (
-                <View key={index} style={styles.barWrapper}>
+                <TouchableOpacity 
+                  key={index} 
+                  style={styles.barWrapper}
+                  onPress={() => router.push({ pathname: "/timeline", params: { date: point.date } })}
+                >
                   <View 
                     style={[
                       styles.bar, 
                       { height: (point.severity / 5) * 100 },
                       point.severity >= 4 ? { backgroundColor: colors.error } :
                       point.severity >= 3 ? { backgroundColor: colors.warning } :
-                      { backgroundColor: colors.primaryLight }
+                      { backgroundColor: colors.infoLight }
                     ]} 
                   />
                   <Text style={styles.barLabel}>{format(parseISO(point.date), 'MM/dd')}</Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -182,14 +189,17 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
         )}
       </View>
 
-      {/* Adherence Trend */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Routine Adherence</Text>
         {adherence.length > 0 ? (
           <View style={styles.chartContainer}>
             <View style={styles.chartArea}>
               {adherence.map((point: AdherenceTrendPoint, index: number) => (
-                <View key={index} style={styles.barWrapper}>
+                <TouchableOpacity 
+                  key={index} 
+                  style={styles.barWrapper}
+                  onPress={() => router.push({ pathname: "/timeline", params: { date: point.date } })}
+                >
                   <View 
                     style={[
                       styles.bar, 
@@ -197,7 +207,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
                     ]} 
                   />
                   <Text style={styles.barLabel}>{format(parseISO(point.date), 'MM/dd')}</Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -206,21 +216,24 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
         )}
       </View>
 
-      {/* Photo Gallery */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Progress Photos</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/timeline")}>
             <Text style={styles.viewAll}>View All</Text>
           </TouchableOpacity>
         </View>
         {photos.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
             {photos.map((photo: ProgressPhoto) => (
-              <View key={photo.id} style={styles.photoWrapper}>
+              <TouchableOpacity 
+                key={photo.id} 
+                style={styles.photoWrapper}
+                onPress={() => router.push("/timeline")}
+              >
                 <Image source={{ uri: photo.url }} style={styles.photo} />
                 <Text style={styles.photoDate}>{format(parseISO(photo.timestamp), 'MMM dd')}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         ) : (
@@ -283,15 +296,11 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     alignItems: 'center',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    ...shadows.sm,
   },
   statValue: {
     ...typography.h2,
@@ -301,7 +310,6 @@ const styles = StyleSheet.create({
   statLabel: {
     ...typography.caption,
     color: colors.textSecondary,
-    fontWeight: '600',
   },
   rescueCard: {
     backgroundColor: colors.surface,
@@ -383,15 +391,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.h3,
     color: colors.textPrimary,
-    marginBottom: spacing.md,
   },
   chartContainer: {
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     height: 180,
+    ...shadows.sm,
   },
   chartArea: {
     flex: 1,
@@ -406,7 +414,7 @@ const styles = StyleSheet.create({
   },
   bar: {
     width: 12,
-    borderRadius: 4,
+    borderRadius: borderRadius.xs,
     minHeight: 4,
   },
   barLabel: {
@@ -424,7 +432,7 @@ const styles = StyleSheet.create({
   photo: {
     width: 100,
     height: 100,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
     backgroundColor: colors.surfaceVariant,
   },
   photoDate: {
@@ -434,7 +442,7 @@ const styles = StyleSheet.create({
   },
   viewAll: {
     ...typography.bodySmall,
-    color: colors.primary,
+    color: colors.secondary,
     fontWeight: '600',
   },
   emptyText: {
@@ -453,7 +461,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
     backgroundColor: colors.primary,
   },
   retryText: {
@@ -483,7 +491,7 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     alignSelf: "flex-start",
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,

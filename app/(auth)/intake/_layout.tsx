@@ -7,6 +7,8 @@ export default function IntakeLayout() {
       <Stack.Screen name="index" options={{ title: "Start Session" }} />
       <Stack.Screen name="symptom-log" options={{ title: "Log Symptom" }} />
       <Stack.Screen name="pre-visit" options={{ title: "Pre-Visit Check-In" }} />
+      <Stack.Screen name="camera" options={{ title: "Capture Photo", headerShown: false }} />
+      <Stack.Screen name="review" options={{ title: "Review Packet" }} />
     </Stack>
   );
 }

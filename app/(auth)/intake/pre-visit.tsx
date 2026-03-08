@@ -21,6 +21,9 @@ import {
 } from "../../../src/hooks/useWellness";
 import { AppointmentType, PreVisitQuestion } from "../../../src/types/medical";
 import { showToast } from "../../../src/providers/ToastProvider";
+import { NativeDateTimePicker } from "../../../src/components/common/NativeDateTimePicker";
+import { parse, format as formatDate, isValid } from "date-fns";
+import { ChipSelect } from "../../../src/components/common/ChipSelect";
 
 export default function PreVisitScreen() {
   const router = useRouter();
@@ -47,16 +50,24 @@ export default function PreVisitScreen() {
 
   const [step, setStep] = useState<1 | 2>(appointmentType ? 2 : 1);
   const [selectedApptType, setSelectedApptType] = useState<AppointmentType | null>(appointmentType || null);
-  const [apptDate, setApptDate] = useState(apptContext?.appointment_datetime || "");
+  const [apptDateStr, setApptDateStr] = useState(apptContext?.appointment_datetime || "");
   const [apptLocation, setApptLocation] = useState(apptContext?.clinic_location || "");
 
-  // Simple local state for answers
+  const apptDate = React.useMemo(() => {
+    if (!apptDateStr) return new Date();
+    let d = parse(apptDateStr, "yyyy-MM-dd HH:mm", new Date());
+    if (!isValid(d)) {
+      d = new Date(apptDateStr);
+    }
+    return isValid(d) ? d : new Date();
+  }, [apptDateStr]);
+
   const [localAnswers, setLocalAnswers] = useState<Record<number, string>>({});
   const effectiveAppointmentType = appointmentType || selectedApptType || "";
   const { data: questions, isLoading: isLoadingQuestions } = usePrevisitQuestions(effectiveAppointmentType);
 
   const handleSetAppt = useCallback(() => {
-    if (!sessionId || !selectedApptType || !apptDate) {
+    if (!sessionId || !selectedApptType || !apptDateStr) {
       showToast("error", "Error", "Please fill in all appointment details");
       return;
     }
@@ -66,7 +77,7 @@ export default function PreVisitScreen() {
         sessionId,
         appointment: {
           appointment_type: selectedApptType,
-          appointment_datetime: apptDate,
+          appointment_datetime: apptDateStr,
           clinic_location: apptLocation,
         },
       },
@@ -81,7 +92,7 @@ export default function PreVisitScreen() {
         },
       }
     );
-  }, [sessionId, selectedApptType, apptDate, apptLocation, setApptContext]);
+  }, [sessionId, selectedApptType, apptDateStr, apptLocation, setApptContext]);
 
   const handleAnswerSubmit = useCallback((questionId: number) => {
     const answer = localAnswers[questionId];
@@ -130,6 +141,12 @@ export default function PreVisitScreen() {
     );
   };
 
+  const apptTypeOptions = [
+    { value: "clinic", label: "Clinic" },
+    { value: "telemed", label: "Telemed" },
+    { value: "urgent_care", label: "Urgent Care" },
+  ];
+
   if (isLoadingAppt || isLoadingReadiness) {
     return (
       <View style={styles.centerContainer}>
@@ -169,35 +186,20 @@ export default function PreVisitScreen() {
 
           <Text style={styles.sectionTitle}>Appointment Details</Text>
           
-          <Text style={styles.label}>Type of Appointment</Text>
-          <View style={styles.typeContainer}>
-            {(["clinic", "telemed", "urgent_care"] as AppointmentType[]).map((t) => (
-              <TouchableOpacity
-                key={t}
-                style={[
-                  styles.typeButton,
-                  selectedApptType === t && styles.typeButtonSelected,
-                ]}
-                onPress={() => setSelectedApptType(t)}
-              >
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    selectedApptType === t && styles.typeButtonTextSelected,
-                  ]}
-                >
-                  {t.replace("_", " ")}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <ChipSelect
+            label="Type of Appointment"
+            options={apptTypeOptions}
+            selectedValue={selectedApptType}
+            onSelect={(val) => setSelectedApptType(val)}
+            horizontal={false}
+          />
 
-          <Text style={styles.label}>Date & Time (YYYY-MM-DD HH:MM)</Text>
-          <TextInput
-            style={styles.input}
+          <NativeDateTimePicker
+            label="Date & Time"
+            mode="datetime"
             value={apptDate}
-            onChangeText={setApptDate}
-            placeholder="e.g. 2026-03-15 10:30"
+            onChange={(date) => setApptDateStr(formatDate(date, "yyyy-MM-dd HH:mm"))}
+            testID="previsit-date-picker"
           />
 
           <Text style={styles.label}>Location / Clinic Name</Text>
@@ -340,32 +342,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginTop: spacing.md,
     marginBottom: spacing.xs,
-  },
-  typeContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  typeButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  typeButtonSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  typeButtonText: {
-    ...typography.bodySmall,
-    color: colors.textPrimary,
-    textTransform: "capitalize",
-  },
-  typeButtonTextSelected: {
-    color: colors.surface,
-    fontWeight: "600",
   },
   input: {
     backgroundColor: colors.surface,

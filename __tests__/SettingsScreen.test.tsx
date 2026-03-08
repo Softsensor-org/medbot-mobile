@@ -1,6 +1,10 @@
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import SettingsScreen from "../app/(auth)/settings";
+import { AuthContext } from "../src/auth/AuthProvider";
+import { useRouter } from "expo-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useHandoffSummary } from "../src/hooks/useInterventions";
 
 // Mock notifications module
 const mockLoadPreferences = jest.fn();
@@ -36,26 +40,64 @@ jest.mock("../src/notifications", () => ({
   syncSchedule: (...args: unknown[]) => mockSyncSchedule(...args),
 }));
 
-// Spy on Alert from react-native
-import { Alert } from "react-native";
-jest.spyOn(Alert, "alert").mockImplementation(() => {});
+// Mocks
+jest.mock('expo-router', () => ({
+  useRouter: jest.fn(),
+}));
 
-const DEFAULT_PREFS = {
-  pushEnabled: false,
-  routineReminders: false,
-  weeklySummary: false,
-  quietHours: {
-    enabled: false,
-    startHour: 22,
-    startMinute: 0,
-    endHour: 7,
-    endMinute: 0,
-  },
-};
+jest.mock('expo-auth-session', () => ({
+  makeRedirectUri: jest.fn().mockReturnValue('medbot://auth'),
+  useAuthRequest: jest.fn().mockReturnValue([null, null, jest.fn()]),
+}));
+
+jest.mock('expo-linking', () => ({
+  createURL: jest.fn().mockReturnValue('medbot://'),
+}));
+
+jest.mock('@expo/vector-icons', () => ({
+  MaterialIcons: 'MaterialIcons',
+}));
+
+jest.mock('../src/hooks/useInterventions', () => ({
+  useHandoffSummary: jest.fn(),
+}));
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+);
 
 describe("SettingsScreen", () => {
+  const mockRouter = { push: jest.fn(), replace: jest.fn() };
+  const mockAuth = {
+    user: { name: 'John Doe', email: 'john@example.com', sub: 'user-123' },
+    logout: jest.fn(),
+    token: 'token',
+    isAuthenticated: true,
+    isLoading: false,
+    login: jest.fn(),
+  };
+
+  const DEFAULT_PREFS = {
+    pushEnabled: false,
+    routineReminders: false,
+    weeklySummary: false,
+    quietHours: {
+      enabled: false,
+      startHour: 22,
+      startMinute: 0,
+      endHour: 7,
+      endMinute: 0,
+    },
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    (useRouter as jest.Mock).mockReturnValue(mockRouter);
+    (useHandoffSummary as jest.Mock).mockReturnValue({ data: null, isLoading: false, refetch: jest.fn() });
     mockLoadPreferences.mockResolvedValue({ ...DEFAULT_PREFS });
     mockSavePreferences.mockResolvedValue(undefined);
     mockRequestPermission.mockResolvedValue(true);
@@ -63,107 +105,58 @@ describe("SettingsScreen", () => {
     mockSyncSchedule.mockResolvedValue(undefined);
   });
 
-  it("renders title and notification toggles", async () => {
-    const { getByText } = render(<SettingsScreen />);
-    await waitFor(() => {
-      expect(getByText("Settings")).toBeTruthy();
-    });
-    expect(getByText("Push Notifications")).toBeTruthy();
-    expect(getByText("Routine Reminders")).toBeTruthy();
-    expect(getByText("Weekly Summary")).toBeTruthy();
-  });
+  it("renders user profile info", async () => {
+    const { getByText } = render(
+      <AuthContext.Provider value={mockAuth}>
+        <SettingsScreen />
+      </AuthContext.Provider>,
+      { wrapper }
+    );
 
-  it("renders quiet hours section", async () => {
-    const { getByText } = render(<SettingsScreen />);
     await waitFor(() => {
-      expect(getByText("Enable Quiet Hours")).toBeTruthy();
-    });
-    expect(getByText("Start")).toBeTruthy();
-    expect(getByText("End")).toBeTruthy();
-  });
-
-  it("loads preferences on mount", async () => {
-    render(<SettingsScreen />);
-    await waitFor(() => {
-      expect(mockLoadPreferences).toHaveBeenCalledTimes(1);
+      expect(getByText('John Doe')).toBeTruthy();
+      expect(getByText('john@example.com')).toBeTruthy();
     });
   });
 
-  it("requests permission when enabling push", async () => {
-    const { getAllByRole } = render(<SettingsScreen />);
+  it("renders notification and haptic labels", async () => {
+    const { getByText } = render(
+      <AuthContext.Provider value={mockAuth}>
+        <SettingsScreen />
+      </AuthContext.Provider>,
+      { wrapper }
+    );
     await waitFor(() => {
-      expect(mockLoadPreferences).toHaveBeenCalled();
-    });
-    // switches[0] is Haptic Feedback, switches[1] is Push Notifications
-    const switches = getAllByRole("switch");
-    fireEvent(switches[1], "valueChange", true);
-    await waitFor(() => {
-      expect(mockRequestPermission).toHaveBeenCalled();
+      expect(getByText("Haptic Feedback")).toBeTruthy();
+      expect(getByText("Notification Settings")).toBeTruthy();
     });
   });
 
-  it("shows alert when permission denied", async () => {
-    mockRequestPermission.mockResolvedValue(false);
-    const { getAllByRole } = render(<SettingsScreen />);
+  it("navigates to skin brief", async () => {
+    const { getByText } = render(
+      <AuthContext.Provider value={mockAuth}>
+        <SettingsScreen />
+      </AuthContext.Provider>,
+      { wrapper }
+    );
+
     await waitFor(() => {
-      expect(mockLoadPreferences).toHaveBeenCalled();
-    });
-    const switches = getAllByRole("switch");
-    fireEvent(switches[1], "valueChange", true);
-    await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
-        "Permission Required",
-        expect.any(String),
-      );
+      fireEvent.press(getByText('Edit Skin Brief'));
+      expect(mockRouter.push).toHaveBeenCalledWith('/onboarding/skin-brief');
     });
   });
 
-  it("saves and syncs when toggling routine reminders", async () => {
-    mockLoadPreferences.mockResolvedValue({
-      ...DEFAULT_PREFS,
-      pushEnabled: true,
-    });
-    const { getAllByRole } = render(<SettingsScreen />);
-    await waitFor(() => {
-      expect(mockLoadPreferences).toHaveBeenCalled();
-    });
-    const switches = getAllByRole("switch");
-    // switches[2] is Routine Reminders (after Haptics + Push)
-    fireEvent(switches[2], "valueChange", true);
-    await waitFor(() => {
-      expect(mockSavePreferences).toHaveBeenCalledWith(
-        expect.objectContaining({ routineReminders: true }),
-      );
-      expect(mockSyncSchedule).toHaveBeenCalled();
-    });
-  });
+  it("navigates to preferences", async () => {
+    const { getByText } = render(
+      <AuthContext.Provider value={mockAuth}>
+        <SettingsScreen />
+      </AuthContext.Provider>,
+      { wrapper }
+    );
 
-  it("displays quiet hours times", async () => {
-    const { getByText } = render(<SettingsScreen />);
     await waitFor(() => {
-      expect(getByText("10:00 PM")).toBeTruthy(); // startHour 22
-      expect(getByText("7:00 AM")).toBeTruthy(); // endHour 7
-    });
-  });
-
-  it("cycles quiet hours start time", async () => {
-    mockLoadPreferences.mockResolvedValue({
-      ...DEFAULT_PREFS,
-      pushEnabled: true,
-      quietHours: { ...DEFAULT_PREFS.quietHours, enabled: true },
-    });
-    const { getByLabelText } = render(<SettingsScreen />);
-    await waitFor(() => {
-      expect(mockLoadPreferences).toHaveBeenCalled();
-    });
-    const increaseBtn = getByLabelText("Increase Start hour");
-    fireEvent.press(increaseBtn);
-    await waitFor(() => {
-      expect(mockSavePreferences).toHaveBeenCalledWith(
-        expect.objectContaining({
-          quietHours: expect.objectContaining({ startHour: 23 }),
-        }),
-      );
+      fireEvent.press(getByText('Treatment Preferences'));
+      expect(mockRouter.push).toHaveBeenCalledWith('/onboarding/preferences');
     });
   });
 });

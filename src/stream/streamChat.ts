@@ -5,7 +5,7 @@ import type { ModelStreamEvent } from "../types/ai";
 
 export interface StreamChatOptions {
   sessionId: string;
-  message: string;
+  query: string;
   imageBase64?: string;
   onEvent: (event: ModelStreamEvent) => void;
   onError?: (error: Error) => void;
@@ -17,14 +17,14 @@ export interface StreamChatOptions {
  * Returns a cleanup function to close the connection.
  */
 export async function streamChat(options: StreamChatOptions): Promise<() => void> {
-  const { sessionId, message, imageBase64, onEvent, onError, onComplete } = options;
+  const { sessionId, query, imageBase64, onEvent, onError, onComplete } = options;
 
   const token = await getAccessToken();
-  const url = `${API_BASE_URL}/api/v1/medical_chat_stream`;
+  const url = `${API_BASE_URL}/api/v1/medical/medical_chat_stream`;
 
   const body = JSON.stringify({
     session_id: sessionId,
-    message,
+    query,
     ...(imageBase64 ? { image_base64: imageBase64 } : {}),
   });
 

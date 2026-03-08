@@ -3,6 +3,8 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-nati
 import { useRouter } from "expo-router";
 import { colors, typography, spacing } from "../../../src/theme";
 import { TodayPlan } from "../../../src/components/TodayPlan";
+import { HeroDashboard } from "../../../src/components/HeroDashboard";
+import { AutopilotCard } from "../../../src/components/AutopilotCard";
 import { MaterialIcons } from "@expo/vector-icons";
 
 export default function DailyScreen() {
@@ -23,7 +25,9 @@ export default function DailyScreen() {
         </TouchableOpacity>
       </View>
 
-      <TodayPlan />
+      <HeroDashboard />
+
+      <AutopilotCard />
 
       <View style={styles.infoCard}>
         <MaterialIcons name="lightbulb-outline" size={20} color={colors.primary} />

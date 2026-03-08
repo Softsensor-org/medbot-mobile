@@ -68,3 +68,22 @@ export function useCreateSession() {
     },
   });
 }
+
+export function useSessionPacket(sessionId: string) {
+  return useQuery({
+    queryKey: [...sessionKeys.detail(sessionId), "packet"],
+    queryFn: () => sessionsApi.getPacket(sessionId),
+    enabled: !!sessionId,
+  });
+}
+
+export function useSharePacket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ sessionId }: { sessionId: string }) => sessionsApi.sharePacket(sessionId),
+    onSuccess: (_, { sessionId }) => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
+    },
+  });
+}

@@ -3,15 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  ActivityIndicator,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { colors, typography, spacing } from '../theme';
+import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { DailyCarePlan, CarePlanAction } from '../types/medical';
 import { API_BASE_URL } from '../api/config';
-import { colorFor } from '../status/statusHelpers';
 import { triggerEngagementHaptic } from '../engagement/haptics';
 
 interface TriageSummary {
@@ -68,13 +67,9 @@ export const TodayPlan: React.FC = () => {
 
   const handleToggle = useCallback((routineId: number | undefined, currentDone: boolean) => {
     if (!routineId || currentDone || logMutation.isPending) return;
+    void triggerEngagementHaptic("routine_complete");
     logMutation.mutate(
       { routineId, status: 'completed' },
-      {
-        onSuccess: () => {
-          void triggerEngagementHaptic("routine_complete");
-        },
-      },
     );
   }, [logMutation]);
 
@@ -84,19 +79,14 @@ export const TodayPlan: React.FC = () => {
   }, []);
 
   if (isLoading) {
-    return <ActivityIndicator style={{ padding: spacing.xl }} color={colors.primary} />;
+    return <ActivityIndicator color={colors.primary} style={{ margin: spacing.xl }} />;
   }
 
   if (isError || !plan) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Failed to load today's plan.</Text>
-      </View>
-    );
+    return <Text style={styles.errorText}>Failed to load your plan</Text>;
   }
 
   const latestTriage = careGraph?.triage_sessions?.[0];
-  const symptomEvents = careGraph?.event_counts?.symptom_event || 0;
   const safetyEvents = careGraph?.event_counts?.safety_event || 0;
   const isElevatedRisk = latestTriage?.triage_label === 'urgent' || safetyEvents > 0;
   const adaptation = plan.adaptation;
@@ -131,7 +121,7 @@ export const TodayPlan: React.FC = () => {
 
       {isElevatedRisk && (
         <View style={styles.alert}>
-          <MaterialIcons name="warning" size={20} color={colors.amber} />
+          <MaterialIcons name="warning" size={20} color={colors.warning} />
           <View style={styles.alertBody}>
             <Text style={styles.alertText}>
               Elevated risk detected. Prioritize your routine and monitor symptoms.
@@ -146,20 +136,6 @@ export const TodayPlan: React.FC = () => {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      )}
-
-      {careGraph && (
-        <View style={styles.chipContainer}>
-          {symptomEvents > 0 && <View style={styles.chip}><Text style={styles.chipText}>Symptoms: {symptomEvents}</Text></View>}
-          {safetyEvents > 0 && <View style={[styles.chip, { borderColor: colors.error }]}><Text style={[styles.chipText, { color: colors.error }]}>Safety: {safetyEvents}</Text></View>}
-          {latestTriage?.triage_label && (
-            <View style={[styles.chip, { backgroundColor: colorFor(latestTriage.triage_label as any) }]}> {/* eslint-disable-line @typescript-eslint/no-explicit-any */}
-              <Text style={[styles.chipText, { color: colors.surface }]}>
-                {latestTriage.triage_label.replace('_', ' ')}
-              </Text>
-            </View>
-          )}
         </View>
       )}
 
@@ -239,36 +215,31 @@ export const TodayPlan: React.FC = () => {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    marginBottom: spacing.lg,
+    marginVertical: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    ...shadows.md,
   },
   cardTitle: {
-    ...typography.h3,
+    ...typography.h2,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   contextText: {
-    ...typography.caption,
+    ...typography.bodySmall,
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
   alert: {
     flexDirection: 'row',
-    backgroundColor: '#FFFBEB',
+    backgroundColor: colors.warningLight,
     padding: spacing.md,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderRadius: borderRadius.md,
     marginBottom: spacing.md,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.warning,
   },
   alertBody: {
     marginLeft: spacing.sm,
@@ -277,8 +248,7 @@ const styles = StyleSheet.create({
   },
   alertText: {
     ...typography.bodySmall,
-    color: colors.amber,
-    flex: 1,
+    color: colors.textPrimary,
   },
   alertButton: {
     alignSelf: "flex-start",
@@ -286,43 +256,32 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: colors.amber,
+    borderColor: colors.warning,
     backgroundColor: colors.surface,
   },
   alertButtonText: {
     ...typography.caption,
-    color: colors.amber,
+    color: colors.warning,
     fontWeight: "700",
-  },
-  chipContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  chip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-  },
-  section: {
-    marginVertical: spacing.sm,
   },
   adaptationContainer: {
     backgroundColor: colors.surfaceVariant,
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    ...typography.label,
+    fontWeight: '700',
+    marginLeft: spacing.xs,
+    color: colors.textPrimary,
   },
   adjustmentRow: {
     marginBottom: spacing.sm,
@@ -353,24 +312,17 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: spacing.xs,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    ...typography.label,
-    fontWeight: '700',
-    marginLeft: spacing.xs,
+  section: {
+    marginVertical: spacing.sm,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.xs,
+    gap: spacing.sm,
   },
   actionText: {
-    ...typography.bodySmall,
-    marginLeft: spacing.sm,
+    ...typography.body,
     color: colors.textPrimary,
   },
   actionDoneText: {
@@ -380,7 +332,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: colors.divider,
-    marginVertical: spacing.sm,
+    marginVertical: spacing.md,
   },
   footerRow: {
     flexDirection: 'row',
@@ -390,16 +342,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   footerText: {
-    ...typography.caption,
+    ...typography.bodySmall,
     color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  errorContainer: {
-    padding: spacing.xl,
-    alignItems: 'center',
+    marginBottom: 4,
   },
   errorText: {
     ...typography.bodySmall,
     color: colors.error,
-  }
+    textAlign: 'center',
+    margin: spacing.md,
+  },
 });

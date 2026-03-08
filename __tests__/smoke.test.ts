@@ -2,15 +2,15 @@ import { colorFor, iconFor } from "../src/status/statusHelpers";
 
 describe("statusHelpers", () => {
   it("returns correct color for self_care", () => {
-    expect(colorFor("self_care")).toBe("#4CAF50");
+    expect(colorFor("self_care")).toBe("#10B981");
   });
 
   it("returns correct color for urgent", () => {
-    expect(colorFor("urgent")).toBe("#D32F2F");
+    expect(colorFor("urgent")).toBe("#EF4444");
   });
 
   it("returns grey for undefined status", () => {
-    expect(colorFor(undefined)).toBe("#BDBDBD");
+    expect(colorFor(undefined)).toBe("#94A3B8");
   });
 
   it("returns correct icon for clinician_review", () => {

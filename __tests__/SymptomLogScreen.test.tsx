@@ -25,6 +25,13 @@ jest.mock('@expo/vector-icons', () => ({
   MaterialIcons: 'MaterialIcons',
 }));
 
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(),
+  notificationAsync: jest.fn(),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium' },
+  NotificationFeedbackType: { Success: 'success', Error: 'error' },
+}));
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
@@ -55,11 +62,8 @@ describe('SymptomLogScreen', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('renders symptom types after loading', () => {
+  it('renders symptom types as chips', () => {
     const { getByText } = render(<SymptomLogScreen />, { wrapper });
-    
-    // Open modal
-    fireEvent.press(getByText('Select symptom type...'));
     
     expect(getByText('Rash')).toBeTruthy();
     expect(getByText('Fever')).toBeTruthy();
@@ -73,15 +77,14 @@ describe('SymptomLogScreen', () => {
 
     const { getByText, getByPlaceholderText, getAllByText } = render(<SymptomLogScreen />, { wrapper });
 
-    // Select type
-    fireEvent.press(getByText('Select symptom type...'));
+    // Select type chip
     fireEvent.press(getByText('Rash'));
 
     // Set notes
     const notesInput = getByPlaceholderText('Add any additional details...');
     fireEvent.changeText(notesInput, 'It is on my left arm');
 
-    // Submit - pick the button one
+    // Submit
     const submitButtons = getAllByText('Log Symptom');
     fireEvent.press(submitButtons[submitButtons.length - 1]);
 
@@ -105,7 +108,6 @@ describe('SymptomLogScreen', () => {
 
     const { getByText, getAllByText } = render(<SymptomLogScreen />, { wrapper });
 
-    fireEvent.press(getByText('Select symptom type...'));
     fireEvent.press(getByText('Rash'));
     
     const submitButtons = getAllByText('Log Symptom');
