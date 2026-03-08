@@ -11,12 +11,19 @@ import {
 import { useRoutineAssignments } from "../../../src/hooks/useRoutineAssignments";
 import { useCompleteAssignment, useDeferAssignment } from "../../../src/hooks/useRoutineActions";
 import type { RescheduleIntentType, RoutineAssignment } from "../../../src/types/medical";
-import { colors, typography, spacing } from "../../../src/theme";
+import { colors, typography, spacing, borderRadius, shadows } from "../../../src/theme";
+import { NativeDateTimePicker } from "../../../src/components/common/NativeDateTimePicker";
+import { parseISO, isValid } from "date-fns";
+import { ChipSelect } from "../../../src/components/common/ChipSelect";
+import { hapticService } from "../../../src/api/HapticService";
+import { useSafetyGate } from "../../../src/hooks/useSafetyGate";
+import { SafetyGateOverlay } from "../../../src/components/SafetyGateOverlay";
 
 export default function RoutinesScreen() {
   const { data: assignments = [], isLoading, error: queryError } = useRoutineAssignments();
   const completeMutation = useCompleteAssignment();
   const deferMutation = useDeferAssignment();
+  const { safety, isLoading: isLoadingSafety } = useSafetyGate();
 
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -36,6 +43,7 @@ export default function RoutinesScreen() {
     (assignmentId: number) => {
       setError(null);
       setInfo(null);
+      hapticService.triggerWarning();
       completeMutation.mutate(
         {
           assignmentId,
@@ -47,12 +55,14 @@ export default function RoutinesScreen() {
           },
         },
         {
-          onSuccess: (result) =>
+          onSuccess: (result) => {
+            hapticService.triggerSuccess();
             setInfo(
               result?.mode === "queued"
                 ? "Routine action queued offline and will sync automatically."
                 : "Routine marked complete.",
-            ),
+            );
+          },
           onError: (err) => setError(err instanceof Error ? err.message : "Unable to complete routine"),
         },
       );
@@ -84,6 +94,7 @@ export default function RoutinesScreen() {
   const handleSubmitDefer = useCallback(() => {
     if (!selectedAssignment) return;
     if (rescheduleType === "specific_time" && !targetAt.trim()) {
+      hapticService.triggerError();
       setError("Target time is required for specific_time.");
       return;
     }
@@ -105,6 +116,7 @@ export default function RoutinesScreen() {
       },
       {
         onSuccess: (result) => {
+          hapticService.triggerSuccess();
           setInfo(
             result?.mode === "queued"
               ? "Routine defer queued offline and will sync automatically."
@@ -119,78 +131,100 @@ export default function RoutinesScreen() {
 
   const activeAssignments = assignments.filter((item) => item.status === "active");
 
+  const deferOptions = [
+    { value: "too_busy", label: "Too busy" },
+    { value: "waiting_for_product", label: "Waiting for product" },
+    { value: "skin_irritated", label: "Skin irritated" },
+    { value: "travel", label: "Travel" },
+  ];
+
+  const rescheduleOptions = [
+    { value: "later_today", label: "Later today" },
+    { value: "tomorrow", label: "Tomorrow" },
+    { value: "skip_for_now", label: "Skip for now" },
+    { value: "specific_time", label: "Specific time" },
+  ];
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Routines</Text>
-      <Text style={styles.placeholder}>
-        Right action completes the assignment. Left action opens the Commit Box for structured defer + reschedule.
-      </Text>
-
-      {isLoading ? <Text style={styles.metaText}>Loading assignments...</Text> : null}
-      {(error || loadError) ? <Text style={[styles.metaText, styles.error]}>{error || loadError}</Text> : null}
-      {info ? <Text style={[styles.metaText, styles.info]}>{info}</Text> : null}
-      {((completeMutation.syncStatus && completeMutation.syncStatus !== "idle") ||
-        (deferMutation.syncStatus && deferMutation.syncStatus !== "idle")) ? (
-        <View style={styles.syncBanner} testID="routine-sync-status">
-          <Text style={styles.metaText}>
-            {completeMutation.syncStatus === "queued" || deferMutation.syncStatus === "queued"
-              ? "A routine action is queued for sync."
-              : null}
-            {completeMutation.syncStatus === "syncing" || deferMutation.syncStatus === "syncing"
-              ? "Syncing routine actions..."
-              : null}
-            {completeMutation.syncStatus === "synced" || deferMutation.syncStatus === "synced"
-              ? "Routine sync complete."
-              : null}
-            {completeMutation.syncStatus === "failed" || deferMutation.syncStatus === "failed"
-              ? "Routine sync failed. Retry."
-              : null}
+      
+      {!safety.isSafe && safety.reason !== 'low_confidence' ? (
+        <SafetyGateOverlay safety={safety} />
+      ) : (
+        <>
+          <Text style={styles.placeholder}>
+            Right action completes the assignment. Left action opens the Commit Box for structured defer + reschedule.
           </Text>
-          {completeMutation.syncStatus === "failed" && (
-            <Pressable onPress={() => void completeMutation.retrySync()} testID="routine-complete-sync-retry-button">
-              <Text style={styles.retryText}>Retry complete sync</Text>
-            </Pressable>
-          )}
-          {deferMutation.syncStatus === "failed" && (
-            <Pressable onPress={() => void deferMutation.retrySync()} testID="routine-defer-sync-retry-button">
-              <Text style={styles.retryText}>Retry defer sync</Text>
-            </Pressable>
-          )}
-          {completeMutation.syncError ? <Text style={[styles.metaText, styles.error]}>{completeMutation.syncError}</Text> : null}
-          {deferMutation.syncError ? <Text style={[styles.metaText, styles.error]}>{deferMutation.syncError}</Text> : null}
-        </View>
-      ) : null}
 
-      {!isLoading && activeAssignments.length === 0 ? (
-        <Text style={styles.metaText}>No active routine assignments.</Text>
-      ) : null}
+          {(isLoading || isLoadingSafety) ? <Text style={styles.metaText}>Loading assignments...</Text> : null}
+          {(error || loadError) ? <Text style={[styles.metaText, styles.error]}>{error || loadError}</Text> : null}
+          {info ? <Text style={[styles.metaText, styles.info]}>{info}</Text> : null}
 
-      {activeAssignments.map((assignment) => (
-        <View key={assignment.id} style={styles.card}>
-          <Text style={styles.cardTitle}>{assignment.routine_name || `Routine #${assignment.routine_id}`}</Text>
-          {assignment.routine_description ? (
-            <Text style={styles.cardSubtitle}>{assignment.routine_description}</Text>
+          {((completeMutation.syncStatus && completeMutation.syncStatus !== "idle") ||
+            (deferMutation.syncStatus && deferMutation.syncStatus !== "idle")) ? (
+            <View style={styles.syncBanner} testID="routine-sync-status">
+              <Text style={styles.metaText}>
+                {completeMutation.syncStatus === "queued" || deferMutation.syncStatus === "queued"
+                  ? "A routine action is queued for sync."
+                  : null}
+                {completeMutation.syncStatus === "syncing" || deferMutation.syncStatus === "syncing"
+                  ? "Syncing routine actions..."
+                  : null}
+                {completeMutation.syncStatus === "synced" || deferMutation.syncStatus === "synced"
+                  ? "Routine sync complete."
+                  : null}
+                {completeMutation.syncStatus === "failed" || deferMutation.syncStatus === "failed"
+                  ? "Routine sync failed. Retry."
+                  : null}
+              </Text>
+              {completeMutation.syncStatus === "failed" && (
+                <Pressable onPress={() => void completeMutation.retrySync()} testID="routine-complete-sync-retry-button">
+                  <Text style={styles.retryText}>Retry complete sync</Text>
+                </Pressable>
+              )}
+              {deferMutation.syncStatus === "failed" && (
+                <Pressable onPress={() => void deferMutation.retrySync()} testID="routine-defer-sync-retry-button">
+                  <Text style={styles.retryText}>Retry defer sync</Text>
+                </Pressable>
+              )}
+              {completeMutation.syncError ? <Text style={[styles.metaText, styles.error]}>{completeMutation.syncError}</Text> : null}
+              {deferMutation.syncError ? <Text style={[styles.metaText, styles.error]}>{deferMutation.syncError}</Text> : null}
+            </View>
           ) : null}
-          <View style={styles.actionsRow}>
-            <Pressable
-              style={[styles.button, styles.completeButton, isSubmitting && styles.buttonDisabled]}
-              disabled={isSubmitting}
-              onPress={() => handleComplete(assignment.id)}
-              testID="routine-complete-button"
-            >
-              <Text style={styles.buttonText}>Complete</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.button, styles.deferButton, isSubmitting && styles.buttonDisabled]}
-              disabled={isSubmitting}
-              onPress={() => openCommitBox(assignment)}
-              testID="routine-defer-button"
-            >
-              <Text style={styles.buttonText}>Defer (Commit Box)</Text>
-            </Pressable>
-          </View>
-        </View>
-      ))}
+
+          {!isLoading && activeAssignments.length === 0 ? (
+            <Text style={styles.metaText}>No active routine assignments.</Text>
+          ) : null}
+
+          {activeAssignments.map((assignment) => (
+            <View key={assignment.id} style={styles.card}>
+              <Text style={styles.cardTitle}>{assignment.routine_name || `Routine #${assignment.routine_id}`}</Text>
+              {assignment.routine_description ? (
+                <Text style={styles.cardSubtitle}>{assignment.routine_description}</Text>
+              ) : null}
+              <View style={styles.actionsRow}>
+                <Pressable
+                  style={[styles.button, styles.completeButton, isSubmitting && styles.buttonDisabled]}
+                  disabled={isSubmitting}
+                  onPress={() => handleComplete(assignment.id)}
+                  testID="routine-complete-button"
+                >
+                  <Text style={styles.buttonText}>Complete</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.button, styles.deferButton, isSubmitting && styles.buttonDisabled]}
+                  disabled={isSubmitting}
+                  onPress={() => openCommitBox(assignment)}
+                  testID="routine-defer-button"
+                >
+                  <Text style={styles.buttonText}>Defer (Commit Box)</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
 
       <Modal visible={selectedAssignment !== null} animationType="slide" transparent onRequestClose={closeCommitBox}>
         <View style={styles.modalBackdrop}>
@@ -198,55 +232,30 @@ export default function RoutinesScreen() {
             <Text style={styles.modalTitle}>Commit Box</Text>
             <Text style={styles.modalHint}>Capture a structured defer reason and reschedule intent.</Text>
 
-            <Text style={styles.label}>Defer reason</Text>
-            <View style={styles.chipsRow}>
-              {[
-                { code: "too_busy", label: "Too busy" },
-                { code: "waiting_for_product", label: "Waiting for product" },
-                { code: "skin_irritated", label: "Skin irritated" },
-                { code: "travel", label: "Travel" },
-              ].map((option) => (
-                <Pressable
-                  key={option.code}
-                  onPress={() => setDeferReasonCode(option.code)}
-                  style={[styles.chip, deferReasonCode === option.code && styles.chipSelected]}
-                >
-                  <Text style={styles.chipText}>{option.label}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <ChipSelect
+              label="Defer reason"
+              options={deferOptions}
+              selectedValue={deferReasonCode}
+              onSelect={(val) => setDeferReasonCode(val)}
+              horizontal={false}
+            />
 
-            <Text style={styles.label}>Reschedule intent</Text>
-            <View style={styles.chipsRow}>
-              {[
-                { value: "later_today" as const, label: "Later today" },
-                { value: "tomorrow" as const, label: "Tomorrow" },
-                { value: "skip_for_now" as const, label: "Skip for now" },
-                { value: "specific_time" as const, label: "Specific time" },
-              ].map((option) => (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setRescheduleType(option.value)}
-                  style={[styles.chip, rescheduleType === option.value && styles.chipSelected]}
-                >
-                  <Text style={styles.chipText}>{option.label}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <ChipSelect
+              label="Reschedule intent"
+              options={rescheduleOptions}
+              selectedValue={rescheduleType}
+              onSelect={(val) => setRescheduleType(val)}
+              horizontal={false}
+            />
 
             {rescheduleType === "specific_time" ? (
-              <>
-                <Text style={styles.label}>Target ISO time</Text>
-                <TextInput
-                  value={targetAt}
-                  onChangeText={setTargetAt}
-                  placeholder="2026-02-26T09:00:00Z"
-                  placeholderTextColor={colors.textSecondary}
-                  style={styles.input}
-                  autoCapitalize="none"
-                  testID="routine-target-time-input"
-                />
-              </>
+              <NativeDateTimePicker
+                label="Target time"
+                mode="datetime"
+                value={isValid(parseISO(targetAt)) ? parseISO(targetAt) : new Date()}
+                onChange={(date) => setTargetAt(date.toISOString())}
+                testID="routine-target-time-picker"
+              />
             ) : null}
 
             <Text style={styles.label}>Comment (optional)</Text>
@@ -383,27 +392,6 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.textPrimary,
     marginTop: spacing.sm,
-  },
-  chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-  },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.borderMuted,
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: colors.surfaceLight,
-  },
-  chipSelected: {
-    borderColor: colors.teal,
-    backgroundColor: colors.tealLight,
-  },
-  chipText: {
-    ...typography.caption,
-    color: colors.textPrimary,
   },
   input: {
     borderWidth: 1,

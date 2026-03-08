@@ -103,7 +103,7 @@ describe('ChatScreen', () => {
 
     expect(streamChat).toHaveBeenCalledWith(expect.objectContaining({
       sessionId: mockSessionId,
-      message: 'I have a rash',
+      query: 'I have a rash',
     }));
 
     expect(getByTestId('streamed-content')).toBeTruthy();

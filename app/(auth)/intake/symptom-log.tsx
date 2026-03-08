@@ -7,15 +7,16 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Modal,
-  FlatList,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, typography, spacing } from "../../../src/theme";
+import * as Haptics from "expo-haptics";
+import { colors, typography, spacing, borderRadius, shadows } from "../../../src/theme";
 import { useSymptomTypes, useLogSymptom } from "../../../src/hooks/useSymptomLogging";
 import { SymptomType, Symptom } from "../../../src/types/medical";
 import { showToast } from "../../../src/providers/ToastProvider";
+import { ChipSelect } from "../../../src/components/common/ChipSelect";
+import { hapticService } from "../../../src/api/HapticService";
 
 type SymptomLogPayload = Omit<Symptom, "id" | "created_at"> & { session_id?: string };
 
@@ -36,7 +37,6 @@ export default function SymptomLogScreen() {
   const [selectedType, setSelectedType] = useState<SymptomType | null>(null);
   const [severity, setSeverity] = useState<number>(3);
   const [notes, setNotes] = useState("");
-  const [isTypeModalVisible, setIsTypeModalVisible] = useState(false);
 
   const handleSubmit = useCallback(() => {
     if (!selectedType) {
@@ -50,21 +50,21 @@ export default function SymptomLogScreen() {
       description: selectedType.name,
       notes,
       occurred_at: new Date().toISOString(),
-      // Link to session if we have one
       ...(sessionId ? { session_id: sessionId } : {}),
     };
 
     logSymptom(
-      payload as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      payload as any,
       {
         onSuccess: (result) => {
+          hapticService.triggerSuccess();
           if (result?.mode === "queued") {
             showToast("success", "Queued", "Saved offline. We will sync this symptom automatically.");
           } else {
             showToast("success", "Success", "Symptom logged successfully");
           }
           if (sessionId) {
-            router.push({ pathname: "/(auth)/chat/[sessionId]", params: { sessionId } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+            router.push({ pathname: "/(auth)/chat/[sessionId]", params: { sessionId } } as any);
           } else {
             router.back();
           }
@@ -77,18 +77,15 @@ export default function SymptomLogScreen() {
     );
   }, [selectedType, severity, notes, logSymptom, router, sessionId]);
 
-  const renderTypeItem = ({ item }: { item: SymptomType }) => (
-    <TouchableOpacity
-      style={styles.typeItem}
-      onPress={() => {
-        setSelectedType(item);
-        setIsTypeModalVisible(false);
-      }}
-    >
-      <Text style={styles.typeItemName}>{item.name}</Text>
-      <Text style={styles.typeItemDesc}>{item.description}</Text>
-    </TouchableOpacity>
-  );
+  const handleSeverityChange = (num: number) => {
+    hapticService.triggerSelection();
+    setSeverity(num);
+  };
+
+  const symptomOptions = (symptomTypes || []).map(t => ({
+    value: t.id,
+    label: t.name,
+  }));
 
   if (isLoadingTypes) {
     return (
@@ -127,16 +124,16 @@ export default function SymptomLogScreen() {
 
         {syncError ? <Text style={styles.syncError}>{syncError}</Text> : null}
 
-        <Text style={styles.label}>What symptom are you experiencing?</Text>
-        <TouchableOpacity
-          style={styles.selector}
-          onPress={() => setIsTypeModalVisible(true)}
-        >
-          <Text style={selectedType ? styles.selectorText : styles.placeholderText}>
-            {selectedType ? selectedType.name : "Select symptom type..."}
-          </Text>
-          <MaterialIcons name="arrow-drop-down" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
+        <ChipSelect
+          label="What symptom are you experiencing?"
+          options={symptomOptions}
+          selectedValue={selectedType?.id || null}
+          onSelect={(id) => {
+            const type = symptomTypes?.find(t => t.id === id);
+            if (type) setSelectedType(type);
+          }}
+          horizontal={true}
+        />
 
         <Text style={styles.label}>How severe is it? (1-5)</Text>
         <View style={styles.severityContainer}>
@@ -147,7 +144,7 @@ export default function SymptomLogScreen() {
                 styles.severityButton,
                 severity === num && styles.severityButtonSelected,
               ]}
-              onPress={() => setSeverity(num)}
+              onPress={() => handleSeverityChange(num)}
             >
               <Text
                 style={[
@@ -188,30 +185,6 @@ export default function SymptomLogScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
-
-      <Modal
-        visible={isTypeModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsTypeModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Symptom Type</Text>
-              <TouchableOpacity onPress={() => setIsTypeModalVisible(false)}>
-                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={symptomTypes}
-              renderItem={renderTypeItem}
-              keyExtractor={(item) => item.id.toString()}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -275,24 +248,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.xs,
   },
-  selector: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: spacing.md,
-  },
-  selectorText: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  placeholderText: {
-    ...typography.body,
-    color: colors.textDisabled,
-  },
   severityContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -333,7 +288,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     height: 120,
     textAlignVertical: "top",
@@ -341,11 +296,12 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     alignItems: "center",
     marginTop: spacing.xl,
     marginBottom: spacing.xxl,
+    ...shadows.md,
   },
   submitButtonDisabled: {
     backgroundColor: colors.textDisabled,
@@ -353,50 +309,5 @@ const styles = StyleSheet.create({
   submitButtonText: {
     ...typography.button,
     color: colors.surface,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "80%",
-    paddingBottom: spacing.xxl,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  modalTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-  },
-  typeItem: {
-    padding: spacing.md,
-  },
-  typeItemName: {
-    ...typography.body,
-    fontWeight: "bold",
-    color: colors.textPrimary,
-  },
-  typeItemDesc: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.divider,
-  },
-  errorText: {
-    ...typography.body,
-    color: colors.error,
   },
 });

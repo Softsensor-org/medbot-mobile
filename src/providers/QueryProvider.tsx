@@ -1,12 +1,23 @@
 import React from "react";
-import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache, onlineManager } from "@tanstack/react-query";
+import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import NetInfo from "@react-native-community/netinfo";
 import { capabilityQueryOptions } from "../api/capabilityGuard";
 import { processOfflineQueue } from "../offline/offlineActionQueue";
 import { medicalKeys, routineKeys, wellnessKeys } from "../queryKeys";
+import { mmkvPersister } from "../api/PersistenceService";
+import { FEATURE_FLAGS } from "../config/constants";
 
 const isTestEnv = process.env.NODE_ENV === "test";
 
-const queryClient = new QueryClient({
+// Configure online manager for React Native
+onlineManager.setEventListener((setOnline) => {
+  return NetInfo.addEventListener((state) => {
+    setOnline(!!state.isConnected);
+  });
+});
+
+export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error) => {
       if (__DEV__) console.error("[QueryCache] Error:", error.message);
@@ -20,16 +31,27 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: isTestEnv ? Infinity : 5 * 60 * 1000,
+      gcTime: isTestEnv ? Infinity : 24 * 60 * 60 * 1000, // 24 hours for offline cache
       retry: 2,
       refetchOnWindowFocus: false,
+      networkMode: (FEATURE_FLAGS.ENABLE_OFFLINE_MODE && !isTestEnv) ? "offlineFirst" : "online",
     },
     mutations: {
-      retry: 1,
-      gcTime: isTestEnv ? Infinity : 5 * 60 * 1000,
+      networkMode: (FEATURE_FLAGS.ENABLE_OFFLINE_MODE && !isTestEnv) ? "offlineFirst" : "online",
+      retry: 3, // More retries for mutations
+      gcTime: isTestEnv ? Infinity : 24 * 60 * 60 * 1000,
     },
   },
 });
+
+// Apply persistence
+if (FEATURE_FLAGS.ENABLE_OFFLINE_MODE && !isTestEnv) {
+  persistQueryClient({
+    queryClient,
+    persister: mmkvPersister,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  });
+}
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
@@ -71,16 +93,16 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       void runSync();
     };
 
-    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
-      window.addEventListener("online", onOnline);
-    }
+    const unsubscribe = NetInfo.addEventListener((state) => {
+        if (state.isConnected) {
+            onOnline();
+        }
+    });
 
     return () => {
       active = false;
       clearInterval(intervalId);
-      if (typeof window !== "undefined" && typeof window.removeEventListener === "function") {
-        window.removeEventListener("online", onOnline);
-      }
+      unsubscribe();
     };
   }, []);
 

@@ -70,7 +70,7 @@ export default function ChatScreen() {
     try {
       await streamChat({
         sessionId,
-        message: userMessage.content,
+        query: userMessage.content,
         onEvent: (event) => {
           if (event.type === "token") {
             setIsStreamedContent((prev) => prev + event.content);

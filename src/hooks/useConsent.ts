@@ -1,32 +1,33 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { consentApi } from "../api/consentApi";
-import type { ConsentRecordRequest } from "../types/consent";
+import { consentApi, ConsentRecordRequest } from "../api/consentApi";
 
 export const consentKeys = {
   all: ["consent"] as const,
-  types: () => [...consentKeys.all, "types"] as const,
   status: () => [...consentKeys.all, "status"] as const,
-  records: () => [...consentKeys.all, "records"] as const,
+  types: () => [...consentKeys.all, "types"] as const,
+  user: () => [...consentKeys.all, "user"] as const,
 };
-
-export function useConsentTypes() {
-  return useQuery({
-    queryKey: consentKeys.types(),
-    queryFn: () => consentApi.getTypes(),
-  });
-}
 
 export function useConsentStatus() {
   return useQuery({
     queryKey: consentKeys.status(),
     queryFn: () => consentApi.getStatus(),
+    staleTime: 60_000,
   });
 }
 
-export function useConsentRecords() {
+export function useConsentTypes() {
   return useQuery({
-    queryKey: consentKeys.records(),
-    queryFn: () => consentApi.getUserRecords(),
+    queryKey: consentKeys.types(),
+    queryFn: () => consentApi.getTypes(),
+    staleTime: 300_000,
+  });
+}
+
+export function useUserConsents() {
+  return useQuery({
+    queryKey: consentKeys.user(),
+    queryFn: () => consentApi.getUserConsents(),
   });
 }
 
@@ -34,11 +35,9 @@ export function useRecordConsent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: ConsentRecordRequest) =>
-      consentApi.recordConsent(request),
+    mutationFn: (payload: ConsentRecordRequest) => consentApi.recordConsent(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: consentKeys.status() });
-      queryClient.invalidateQueries({ queryKey: consentKeys.records() });
+      queryClient.invalidateQueries({ queryKey: consentKeys.all });
     },
   });
 }

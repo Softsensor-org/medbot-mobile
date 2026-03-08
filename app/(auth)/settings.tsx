@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
   Alert,
   Platform,
@@ -9,125 +9,27 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { colors, typography, spacing } from "../../src/theme";
-import { borderRadius } from "../../src/theme/spacing";
+import { useRouter } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
+import { colors, typography, spacing, borderRadius, shadows } from "../../src/theme";
+import { AuthContext } from "../../src/auth/AuthProvider";
+import { HandoffSummaryCard } from "../../src/components/HandoffSummaryCard";
 import { useEngagementSettings } from "../../src/hooks/useEngagementSettings";
 import type { ReminderPreferences } from "../../src/notifications";
 import {
   DEFAULT_PREFERENCES,
   loadPreferences,
   savePreferences,
-  requestPermission,
-  setupChannels,
   syncSchedule,
 } from "../../src/notifications";
 
-function formatTime(hour: number, minute: number): string {
-  const h = hour % 12 || 12;
-  const ampm = hour < 12 ? "AM" : "PM";
-  return `${h}:${String(minute).padStart(2, "0")} ${ampm}`;
-}
-
 function SectionHeader({ title }: { title: string }) {
-  return <Text style={styles.sectionHeader}>{title}</Text>;
-}
-
-function SettingRow({
-  label,
-  description,
-  value,
-  onValueChange,
-  disabled,
-  testID,
-}: {
-  label: string;
-  description?: string;
-  value: boolean;
-  onValueChange: (v: boolean) => void;
-  disabled?: boolean;
-  testID?: string;
-}) {
-  return (
-    <View style={[styles.row, disabled && styles.rowDisabled]}>
-      <View style={styles.rowText}>
-        <Text style={[styles.rowLabel, disabled && styles.textDisabled]}>
-          {label}
-        </Text>
-        {description ? (
-          <Text
-            style={[styles.rowDescription, disabled && styles.textDisabled]}
-          >
-            {description}
-          </Text>
-        ) : null}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled}
-        trackColor={{ false: colors.border, true: colors.primaryLight }}
-        thumbColor={value ? colors.primary : colors.surface}
-        testID={testID}
-      />
-    </View>
-  );
-}
-
-function TimePicker({
-  label,
-  hour,
-  minute,
-  onChangeHour,
-  disabled,
-}: {
-  label: string;
-  hour: number;
-  minute: number;
-  onChangeHour: (h: number) => void;
-  disabled?: boolean;
-}) {
-  const cycleHour = useCallback(
-    (direction: 1 | -1) => {
-      if (disabled) return;
-      onChangeHour((hour + direction + 24) % 24);
-    },
-    [hour, onChangeHour, disabled],
-  );
-
-  return (
-    <View style={[styles.timePickerRow, disabled && styles.rowDisabled]}>
-      <Text style={[styles.timeLabel, disabled && styles.textDisabled]}>
-        {label}
-      </Text>
-      <View style={styles.timeControl}>
-        <TouchableOpacity
-          onPress={() => cycleHour(-1)}
-          disabled={disabled}
-          style={styles.timeButton}
-          accessibilityLabel={`Decrease ${label} hour`}
-        >
-          <Text style={styles.timeButtonText}>-</Text>
-        </TouchableOpacity>
-        <Text
-          style={[styles.timeValue, disabled && styles.textDisabled]}
-          accessibilityLabel={`${label} time`}
-        >
-          {formatTime(hour, minute)}
-        </Text>
-        <TouchableOpacity
-          onPress={() => cycleHour(1)}
-          disabled={disabled}
-          style={styles.timeButton}
-          accessibilityLabel={`Increase ${label} hour`}
-        >
-          <Text style={styles.timeButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
+  const auth = useContext(AuthContext);
   const { hapticsEnabled, setHapticsEnabled } = useEngagementSettings();
   const [prefs, setPrefs] = useState<ReminderPreferences>({
     ...DEFAULT_PREFERENCES,
@@ -141,151 +43,151 @@ export default function SettingsScreen() {
     });
   }, []);
 
-  const updatePrefs = useCallback(
-    async (patch: Partial<ReminderPreferences>) => {
-      const next = { ...prefs, ...patch };
-      setPrefs(next);
-      await savePreferences(next);
-      await syncSchedule(next);
-    },
-    [prefs],
-  );
-
-  const handlePushToggle = useCallback(
-    async (enabled: boolean) => {
-      if (enabled) {
-        const granted = await requestPermission();
-        if (!granted) {
-          Alert.alert(
-            "Permission Required",
-            "Please enable notifications in your device settings to receive reminders.",
-          );
-          return;
-        }
-        await setupChannels();
-      }
-      await updatePrefs({ pushEnabled: enabled });
-    },
-    [updatePrefs],
-  );
-
-  const handleQuietHoursToggle = useCallback(
-    (enabled: boolean) => {
-      updatePrefs({
-        quietHours: { ...prefs.quietHours, enabled },
-      });
-    },
-    [prefs.quietHours, updatePrefs],
-  );
-
-  const handleQuietStart = useCallback(
-    (h: number) => {
-      updatePrefs({
-        quietHours: { ...prefs.quietHours, startHour: h },
-      });
-    },
-    [prefs.quietHours, updatePrefs],
-  );
-
-  const handleQuietEnd = useCallback(
-    (h: number) => {
-      updatePrefs({
-        quietHours: { ...prefs.quietHours, endHour: h },
-      });
-    },
-    [prefs.quietHours, updatePrefs],
-  );
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Logout", 
+          style: "destructive",
+          onPress: async () => {
+            await auth?.logout();
+            router.replace("/sign-in");
+          }
+        },
+      ]
+    );
+  };
 
   if (!loaded) {
     return (
-      <View style={styles.container}>
+      <View style={styles.center}>
         <Text style={styles.title}>Settings</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
-      <Text style={styles.title}>Settings</Text>
-
-      <SectionHeader title="Feedback" />
-      <View style={styles.card}>
-        <SettingRow
-          label="Haptic Feedback"
-          description="Gentle vibration for completion, milestones, and warning acknowledgment."
-          value={hapticsEnabled}
-          onValueChange={setHapticsEnabled}
-          testID="settings-haptics-switch"
-        />
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Settings</Text>
       </View>
 
-      <SectionHeader title="Notifications" />
-      <View style={styles.card}>
-        <SettingRow
-          label="Push Notifications"
-          description="Receive reminders for routines and weekly summaries"
-          value={prefs.pushEnabled}
-          onValueChange={handlePushToggle}
-        />
-
-        <View style={styles.divider} />
-
-        <SettingRow
-          label="Routine Reminders"
-          description="Daily reminders for your skincare routines"
-          value={prefs.routineReminders}
-          onValueChange={(v) => updatePrefs({ routineReminders: v })}
-          disabled={!prefs.pushEnabled}
-        />
-
-        <View style={styles.divider} />
-
-        <SettingRow
-          label="Weekly Summary"
-          description="Get a weekly overview of your skin health progress"
-          value={prefs.weeklySummary}
-          onValueChange={(v) => updatePrefs({ weeklySummary: v })}
-          disabled={!prefs.pushEnabled}
-        />
+      <View style={styles.profileSection}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {auth?.user?.name?.[0] || auth?.user?.email?.[0] || "?"}
+          </Text>
+        </View>
+        <View style={styles.profileInfo}>
+          <Text style={styles.profileName}>{auth?.user?.name || "Patient"}</Text>
+          <Text style={styles.profileEmail}>{auth?.user?.email || "No email"}</Text>
+        </View>
       </View>
 
-      <SectionHeader title="Quiet Hours" />
-      <View style={styles.card}>
-        <SettingRow
-          label="Enable Quiet Hours"
-          description="Suppress notifications during set hours"
-          value={prefs.quietHours.enabled}
-          onValueChange={handleQuietHoursToggle}
-          disabled={!prefs.pushEnabled}
-        />
-
-        <View style={styles.divider} />
-
-        <TimePicker
-          label="Start"
-          hour={prefs.quietHours.startHour}
-          minute={prefs.quietHours.startMinute}
-          onChangeHour={handleQuietStart}
-          disabled={!prefs.pushEnabled || !prefs.quietHours.enabled}
-        />
-
-        <TimePicker
-          label="End"
-          hour={prefs.quietHours.endHour}
-          minute={prefs.quietHours.endMinute}
-          onChangeHour={handleQuietEnd}
-          disabled={!prefs.pushEnabled || !prefs.quietHours.enabled}
-        />
+      <View style={styles.section}>
+        <SectionHeader title="Feedback" />
+        <View style={styles.menuItem}>
+          <View style={styles.menuItemLeft}>
+            <MaterialIcons name="vibration" size={24} color={colors.primary} />
+            <Text style={styles.menuItemText}>Haptic Feedback</Text>
+          </View>
+          <Switch
+            value={hapticsEnabled}
+            onValueChange={setHapticsEnabled}
+            trackColor={{ false: colors.border, true: colors.primaryLight }}
+            thumbColor={hapticsEnabled ? colors.primary : colors.surface}
+            testID="settings-haptics-switch"
+          />
+        </View>
       </View>
 
-      {Platform.OS === "web" && (
-        <Text style={styles.webNote}>
-          Push notifications are only available on iOS and Android.
-        </Text>
-      )}
+      <View style={styles.section}>
+        <SectionHeader title="Personalization" />
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => router.push("/onboarding/skin-brief")}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialIcons name="face" size={24} color={colors.primary} />
+            <Text style={styles.menuItemText}>Edit Skin Brief</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => router.push("/onboarding/preferences")}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialIcons name="tune" size={24} color={colors.primary} />
+            <Text style={styles.menuItemText}>Treatment Preferences</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => router.push("/onboarding/goal-journey")}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialIcons name="flag" size={24} color={colors.primary} />
+            <Text style={styles.menuItemText}>Define Skin Goal</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => router.push("/interventions")}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialIcons name="medication" size={24} color={colors.primary} />
+            <Text style={styles.menuItemText}>Intervention Ledger</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeader title="Trust & Privacy" />
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => router.push("/consent")}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialIcons name="gavel" size={24} color={colors.primary} />
+            <Text style={styles.menuItemText}>Consents & Legal</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => router.push("/notifications")}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialIcons name="notifications" size={24} color={colors.primary} />
+            <Text style={styles.menuItemText}>Notification Settings</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <MaterialIcons name="logout" size={20} color={colors.error} />
+          <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+      </View>
+
+      <HandoffSummaryCard />
+
+      <View style={styles.footer}>
+        <Text style={styles.versionText}>Medbot Mobile v0.1.0</Text>
+      </View>
     </ScrollView>
   );
 }
@@ -296,97 +198,107 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
+    paddingBottom: spacing.xl,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingTop: spacing.xl,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   title: {
     ...typography.h2,
     color: colors.textPrimary,
-    marginBottom: spacing.lg,
   },
-  sectionHeader: {
-    ...typography.label,
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: spacing.sm,
-    marginTop: spacing.md,
-  },
-  card: {
+  profileSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.lg,
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: spacing.md,
   },
-  row: {
-    flexDirection: "row",
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.primaryLight,
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  rowDisabled: {
-    opacity: 0.5,
-  },
-  rowText: {
-    flex: 1,
     marginRight: spacing.md,
   },
-  rowLabel: {
-    ...typography.body,
+  avatarText: {
+    ...typography.h3,
+    color: colors.primary,
+    textTransform: "uppercase",
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    ...typography.h3,
     color: colors.textPrimary,
   },
-  rowDescription: {
-    ...typography.caption,
+  profileEmail: {
+    ...typography.bodySmall,
     color: colors.textSecondary,
-    marginTop: 2,
   },
-  textDisabled: {
-    color: colors.textDisabled,
+  section: {
+    marginTop: spacing.md,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderTopColor: colors.border,
+    borderBottomColor: colors.border,
   },
-  divider: {
-    height: 1,
-    backgroundColor: colors.divider,
-    marginHorizontal: spacing.md,
+  sectionTitle: {
+    ...typography.label,
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+    textTransform: "uppercase",
   },
-  timePickerRow: {
+  menuItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
   },
-  timeLabel: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  timeControl: {
+  menuItemLeft: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.md,
   },
-  timeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surfaceVariant,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  timeButtonText: {
-    ...typography.h3,
-    color: colors.primary,
-  },
-  timeValue: {
+  menuItemText: {
     ...typography.body,
     color: colors.textPrimary,
-    minWidth: 80,
-    textAlign: "center",
   },
-  webNote: {
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  logoutText: {
+    ...typography.button,
+    color: colors.error,
+  },
+  footer: {
+    padding: spacing.xl,
+    alignItems: "center",
+  },
+  versionText: {
     ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: spacing.md,
+    color: colors.textDisabled,
   },
 });

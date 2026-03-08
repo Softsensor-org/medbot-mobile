@@ -33,6 +33,23 @@ jest.mock('../src/providers/ToastProvider', () => ({
   showToast: jest.fn(),
 }));
 
+jest.mock('../src/components/common/NativeDateTimePicker', () => {
+  const ReactNode = require('react');
+  const { View, Text, TextInput } = require('react-native');
+  return {
+    NativeDateTimePicker: ({ label, onChange, testID }: any) => (
+      <View>
+        <Text>{label}</Text>
+        <TextInput
+          testID={testID}
+          placeholder={label}
+          onChangeText={(text: string) => onChange(new Date(text))}
+        />
+      </View>
+    ),
+  };
+});
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
@@ -42,36 +59,34 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('PreVisitScreen', () => {
-  const mockRouter = { back: jest.fn() };
-  const mockSessionId = 'session-123';
+  const mockRouter = { back: jest.fn(), push: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useLocalSearchParams as jest.Mock).mockReturnValue({ sessionId: mockSessionId });
-    
-    // Provide default implementations
+    (useLocalSearchParams as jest.Mock).mockReturnValue({ sessionId: 'session-123' });
     (useAppointmentContext as jest.Mock).mockReturnValue({ data: null, isLoading: false });
     (usePrevisitReadiness as jest.Mock).mockReturnValue({ data: null, isLoading: false });
+    (useSetAppointmentContext as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
     (usePrevisitQuestions as jest.Mock).mockReturnValue({ data: [], isLoading: false });
     (useSubmitPrevisitAnswer as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
-    (useSetAppointmentContext as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
   });
 
   it('renders step 1 (appointment details) when no appointment exists', () => {
     const { getByText, getByPlaceholderText } = render(<PreVisitScreen />, { wrapper });
 
     expect(getByText('Appointment Details')).toBeTruthy();
+    expect(getByPlaceholderText('Date & Time')).toBeTruthy();
     expect(getByPlaceholderText('e.g. Downtown Skin Clinic')).toBeTruthy();
   });
 
   it('navigates to step 2 after setting appointment', async () => {
     (useAppointmentContext as jest.Mock).mockReturnValue({ data: null, isLoading: false });
     (usePrevisitReadiness as jest.Mock).mockReturnValue({ data: null, isLoading: false });
-    const mockSetAppt = jest.fn((data, callbacks) => {
+    const mockSetAppt = jest.fn((_, callbacks) => {
       // Simulate success and update mock for next render
       (useAppointmentContext as jest.Mock).mockReturnValue({ 
-        data: { appointment_type: 'clinic', appointment_datetime: '2026-03-10', clinic_location: 'Clinic' }, 
+        data: { appointment_type: 'clinic', appointment_datetime: '2026-03-10 10:00', clinic_location: 'Clinic' }, 
         isLoading: false 
       });
       callbacks.onSuccess();
@@ -81,8 +96,8 @@ describe('PreVisitScreen', () => {
 
     const { getByText, getByPlaceholderText } = render(<PreVisitScreen />, { wrapper });
 
-    fireEvent.press(getByText('clinic'));
-    fireEvent.changeText(getByPlaceholderText('e.g. 2026-03-15 10:30'), '2026-03-10');
+    fireEvent.press(getByText('Clinic'));
+    fireEvent.changeText(getByPlaceholderText('Date & Time'), '2026-03-10 10:00');
     fireEvent.changeText(getByPlaceholderText('e.g. Downtown Skin Clinic'), 'Clinic');
     
     await act(async () => {
@@ -93,17 +108,17 @@ describe('PreVisitScreen', () => {
   });
 
   it('renders questions in step 2', () => {
-    (useAppointmentContext as jest.Mock).mockReturnValue({ 
-      data: { appointment_type: 'clinic' }, 
-      isLoading: false 
+    (useAppointmentContext as jest.Mock).mockReturnValue({
+      data: { appointment_type: 'clinic', appointment_datetime: '2026-03-10 10:00' },
+      isLoading: false,
     });
-    (usePrevisitReadiness as jest.Mock).mockReturnValue({ 
-      data: { readiness_pct: 0.5, answers_provided: [1] }, 
-      isLoading: false 
+    (usePrevisitQuestions as jest.Mock).mockReturnValue({
+      data: [{ id: 1, text: 'Question 1', required: true }],
+      isLoading: false,
     });
-    (usePrevisitQuestions as jest.Mock).mockReturnValue({ 
-      data: [{ id: 1, text: 'Question 1', required: true }], 
-      isLoading: false 
+    (usePrevisitReadiness as jest.Mock).mockReturnValue({
+      data: { readiness_pct: 0.5, answers_provided: [] },
+      isLoading: false,
     });
     (useSubmitPrevisitAnswer as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
 

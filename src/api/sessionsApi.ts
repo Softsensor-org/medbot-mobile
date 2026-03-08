@@ -45,6 +45,14 @@ class SessionsApiService extends BaseApiService {
   async getEvidenceSnapshot(sessionId: string): Promise<EvidenceSnapshot> {
     return this.get<EvidenceSnapshot>(`/${sessionId}/evidence-snapshot`);
   }
+
+  async sharePacket(sessionId: string): Promise<any> {
+    return this.post<any>(`/${sessionId}/share`);
+  }
+
+  async getPacket(sessionId: string): Promise<any> {
+    return this.get<any>(`/${sessionId}/packet`);
+  }
 }
 
 export const sessionsApi = new SessionsApiService();
