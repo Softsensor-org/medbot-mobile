@@ -5,6 +5,8 @@ export const FEATURE_FLAGS = {
   ENABLE_PHOTO_UPLOAD: true,
   ENABLE_PUSH_NOTIFICATIONS: false,
   ENABLE_OFFLINE_MODE: false,
+  /** IMP-159: Aspirational wave surfaces (goal journeys, trajectory, reveal). */
+  ENABLE_ASPIRATIONAL_WAVE: false,
 } as const;
 
 export const APP_CONSTANTS = {
