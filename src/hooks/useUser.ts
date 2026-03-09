@@ -75,7 +75,7 @@ export function useGoalJourneys() {
   return useQuery<GoalJourney[]>({
     queryKey: userKeys.goals(),
     queryFn: async () => {
-      const response = await api.get("/goals/journeys");
+      const response = await api.get("/api/v1/goals/journeys");
       return response.data.data;
     },
   });
@@ -85,7 +85,7 @@ export function useUpsertGoalJourney() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: GoalJourneyCreate) => {
-      const response = await api.post("/goals/journeys", payload);
+      const response = await api.post("/api/v1/goals/journeys", payload);
       return response.data.data as GoalJourney;
     },
     onSuccess: () => {

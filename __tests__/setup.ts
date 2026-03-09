@@ -82,3 +82,45 @@ jest.mock('expo-sensors', () => ({
     setUpdateInterval: jest.fn(),
   },
 }));
+
+jest.mock('expo-secure-store', () => {
+  const store = new Map<string, string>();
+  return {
+    getItemAsync: jest.fn(async (key: string) => store.get(key) || null),
+    setItemAsync: jest.fn(async (key: string, value: string) => { store.set(key, value); }),
+    deleteItemAsync: jest.fn(async (key: string) => { store.delete(key); }),
+    __resetSecureStore: () => store.clear(),
+  };
+});
+
+jest.mock('../src/api/client', () => ({
+  __esModule: true,
+  default: {
+    interceptors: {
+      request: { use: jest.fn(), eject: jest.fn(), handlers: [] },
+      response: { use: jest.fn(), eject: jest.fn(), handlers: [] },
+    },
+    get: jest.fn().mockResolvedValue({ data: { success: true } }),
+    post: jest.fn().mockResolvedValue({ data: { success: true } }),
+    put: jest.fn().mockResolvedValue({ data: { success: true } }),
+    delete: jest.fn().mockResolvedValue({ data: { success: true } }),
+  },
+  api: {
+    interceptors: {
+      request: { use: jest.fn(), eject: jest.fn(), handlers: [] },
+      response: { use: jest.fn(), eject: jest.fn(), handlers: [] },
+    },
+  }
+}));
+
+// Global teardown to ensure no open handles or leaked state
+afterEach(() => {
+  jest.useRealTimers();
+  jest.clearAllMocks();
+  
+  const mmkv = require('react-native-mmkv');
+  if (mmkv.__resetAllMMKVInstances) mmkv.__resetAllMMKVInstances();
+  
+  const secureStore = require('expo-secure-store');
+  if (secureStore.__resetSecureStore) secureStore.__resetSecureStore();
+});

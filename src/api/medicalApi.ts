@@ -18,15 +18,15 @@ export interface MedicalChatRequest {
 
 class MedicalApiService extends BaseApiService {
   constructor() {
-    super("/api/v1/medical");
+    super("/api/v1");
   }
 
   async chat(req: MedicalChatRequest): Promise<ChatResponse> {
-    return this.post<ChatResponse>("/medical_chat", req);
+    return this.post<ChatResponse>("/medical/medical_chat", req);
   }
 
   async getSymptomTypes(): Promise<SymptomType[]> {
-    return this.get<SymptomType[]>("/symptoms/types");
+    return this.get<SymptomType[]>("/symptom-types");
   }
 
   async logSymptom(symptom: Omit<Symptom, "id" | "created_at">): Promise<Symptom> {
@@ -70,6 +70,28 @@ class MedicalApiService extends BaseApiService {
       `/routines/assignments/${assignmentId}/actions`,
       payload,
       idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined,
+    );
+  }
+
+  async uploadPhoto(sessionId: string, base64: string): Promise<{ url: string; filename: string }> {
+    const formData = new FormData();
+    // In React Native, FormData requires a specific object shape for files
+    // But since we are passing base64 to the backend, we can just send it as a field 
+    // or use the multipart format if the backend expects a file.
+    // The backend media.py expects an 'UploadFile'.
+    
+    // We'll use the 'file' key as expected by FastAPI's File(...)
+    const filename = `upload_${Date.now()}.jpg`;
+    formData.append('file', {
+      uri: base64,
+      name: filename,
+      type: 'image/jpeg',
+    } as any);
+
+    return this.post<{ url: string; filename: string }>(
+      `/media/upload/${sessionId}`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
     );
   }
 }

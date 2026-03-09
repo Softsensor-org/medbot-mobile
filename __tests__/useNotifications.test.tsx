@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react-native';
-import { useNotifications, validateDeepLink } from '../src/hooks/useNotifications';
+import { useNotifications } from '../src/hooks/useNotifications';
+import { validateDeepLink } from '../src/utils/deepLinkValidator';
 import { notificationService } from '../src/api/NotificationService';
 
 // Mocks
