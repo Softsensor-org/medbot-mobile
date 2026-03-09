@@ -22,16 +22,30 @@ jest.mock('expo-asset', () => ({
 }), { virtual: true });
 
 jest.mock('react-native-mmkv', () => {
+  const instances = new Map<string, ReturnType<typeof createStatefulStorage>>();
+
+  function createStatefulStorage(config?: { id?: string }) {
+    const id = config?.id ?? '__default__';
+    if (instances.has(id)) return instances.get(id)!;
+    const store = new Map<string, string | number | boolean>();
+    const instance = {
+      set: jest.fn((key: string, value: string | number | boolean) => { store.set(key, value); }),
+      getString: jest.fn((key: string) => { const v = store.get(key); return typeof v === 'string' ? v : undefined; }),
+      getNumber: jest.fn((key: string) => { const v = store.get(key); return typeof v === 'number' ? v : undefined; }),
+      getBoolean: jest.fn((key: string) => { const v = store.get(key); return typeof v === 'boolean' ? v : undefined; }),
+      contains: jest.fn((key: string) => store.has(key)),
+      delete: jest.fn((key: string) => { store.delete(key); }),
+      remove: jest.fn((key: string) => { store.delete(key); }),
+      clearAll: jest.fn(() => { store.clear(); }),
+    };
+    instances.set(id, instance);
+    return instance;
+  }
+
   return {
-    MMKV: jest.fn().mockImplementation(() => ({
-      set: jest.fn(),
-      getString: jest.fn(),
-      getNumber: jest.fn(),
-      getBoolean: jest.fn(),
-      contains: jest.fn(),
-      delete: jest.fn(),
-      clearAll: jest.fn(),
-    })),
+    MMKV: jest.fn().mockImplementation(createStatefulStorage),
+    createMMKV: jest.fn().mockImplementation(createStatefulStorage),
+    __resetAllMMKVInstances: () => { instances.forEach(i => i.clearAll()); instances.clear(); },
   };
 });
 
