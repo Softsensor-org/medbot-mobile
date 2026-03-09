@@ -89,7 +89,12 @@ class NotificationService {
   getSettings(): NotificationSettings {
     const saved = storage.getString("notification-settings");
     if (!saved) return DEFAULT_NOTIFICATION_SETTINGS;
-    return JSON.parse(saved);
+    try {
+      return JSON.parse(saved);
+    } catch {
+      console.warn("[NotificationService] corrupt notification-settings in storage, resetting to defaults");
+      return DEFAULT_NOTIFICATION_SETTINGS;
+    }
   }
 
   saveSettings(settings: NotificationSettings) {
