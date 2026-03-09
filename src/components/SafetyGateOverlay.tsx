@@ -9,6 +9,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { SafetyStatus } from '../hooks/useSafetyGate';
 import { useRouter } from 'expo-router';
+import { validateDeepLink } from '../utils/deepLinkValidator';
 
 interface SafetyGateOverlayProps {
   safety: SafetyStatus;
@@ -44,7 +45,7 @@ export const SafetyGateOverlay: React.FC<SafetyGateOverlayProps> = ({ safety }) 
 
       <TouchableOpacity 
         style={[styles.ctaButton, { backgroundColor: getColor() }]}
-        onPress={() => router.push(safety.cta.route as any)}
+        onPress={() => router.push(validateDeepLink(safety.cta.route))}
       >
         <Text style={styles.ctaText}>{safety.cta.label}</Text>
         <MaterialIcons name="arrow-forward" size={18} color={colors.surface} />

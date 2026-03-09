@@ -15,6 +15,7 @@ import { useFeatureFlags } from '../hooks/useFeatureFlags';
 import { SafetyGateOverlay } from './SafetyGateOverlay';
 import { analytics } from '../api/AnalyticsService';
 import { useRouter } from 'expo-router';
+import { validateDeepLink } from '../utils/deepLinkValidator';
 import { format, parseISO } from 'date-fns';
 
 export const WeeklyReveal: React.FC = () => {
@@ -48,7 +49,7 @@ export const WeeklyReveal: React.FC = () => {
 
   const handleCta = () => {
     analytics.track('weekly_reveal_cta_clicked', { label: insight.cta.label, status: insight.status });
-    router.push(insight.cta.route as any);
+    router.push(validateDeepLink(insight.cta.route));
   };
 
   const getStatusIcon = () => {
