@@ -1,11 +1,11 @@
-import { MMKV } from "react-native-mmkv";
+import { createMMKV } from "react-native-mmkv";
 import { Persister, PersistedClient } from "@tanstack/react-query-persist-client";
 
 /**
  * High-performance persistence layer using MMKV.
  * Provides a synchronous storage engine for TanStack Query state.
  */
-export const storage = new MMKV({
+export const storage = createMMKV({
   id: "medbot-query-cache",
 });
 
@@ -29,7 +29,7 @@ export const mmkvPersister: Persister = {
     }
   },
   removeClient: () => {
-    storage.delete("react-query-cache");
+    storage.remove("react-query-cache");
   },
 };
 
@@ -56,7 +56,7 @@ export const persistenceService = {
     }
   },
   delete: async (key: string): Promise<void> => {
-    storage.delete(key);
+    storage.remove(key);
   }
 };
 

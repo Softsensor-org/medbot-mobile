@@ -1,7 +1,6 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Alert,
-  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -11,7 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, typography, spacing, borderRadius, shadows } from "../../src/theme";
+import { colors, typography, spacing } from "../../src/theme";
 import { AuthContext } from "../../src/auth/AuthProvider";
 import { HandoffSummaryCard } from "../../src/components/HandoffSummaryCard";
 import { useEngagementSettings } from "../../src/hooks/useEngagementSettings";
@@ -19,8 +18,6 @@ import type { ReminderPreferences } from "../../src/notifications";
 import {
   DEFAULT_PREFERENCES,
   loadPreferences,
-  savePreferences,
-  syncSchedule,
 } from "../../src/notifications";
 
 function SectionHeader({ title }: { title: string }) {
@@ -31,7 +28,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const auth = useContext(AuthContext);
   const { hapticsEnabled, setHapticsEnabled } = useEngagementSettings();
-  const [prefs, setPrefs] = useState<ReminderPreferences>({
+  const [_prefs, setPrefs] = useState<ReminderPreferences>({
     ...DEFAULT_PREFERENCES,
   });
   const [loaded, setLoaded] = useState(false);

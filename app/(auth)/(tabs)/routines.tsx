@@ -11,7 +11,7 @@ import {
 import { useRoutineAssignments } from "../../../src/hooks/useRoutineAssignments";
 import { useCompleteAssignment, useDeferAssignment } from "../../../src/hooks/useRoutineActions";
 import type { RescheduleIntentType, RoutineAssignment } from "../../../src/types/medical";
-import { colors, typography, spacing, borderRadius, shadows } from "../../../src/theme";
+import { colors, typography, spacing } from "../../../src/theme";
 import { NativeDateTimePicker } from "../../../src/components/common/NativeDateTimePicker";
 import { parseISO, isValid } from "date-fns";
 import { ChipSelect } from "../../../src/components/common/ChipSelect";

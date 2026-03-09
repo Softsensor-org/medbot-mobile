@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
   Switch,
-  TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -16,7 +15,7 @@ import { NativeDateTimePicker } from '../../src/components/common/NativeDateTime
 import { parse, format } from 'date-fns';
 
 export default function NotificationsSettingsScreen() {
-  const router = useRouter();
+  const _router = useRouter();
   const { settings, updateSettings, requestPermissions, isLoading } = useNotifications();
 
   const handleToggleEnabled = async (value: boolean) => {

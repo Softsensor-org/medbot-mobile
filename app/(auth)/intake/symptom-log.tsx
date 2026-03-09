@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { colors, typography, spacing, borderRadius, shadows } from "../../../src/theme";
 import { useSymptomTypes, useLogSymptom } from "../../../src/hooks/useSymptomLogging";
 import { SymptomType, Symptom } from "../../../src/types/medical";

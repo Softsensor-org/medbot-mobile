@@ -74,6 +74,7 @@ export function useAutopilot() {
         assignmentId: r.id,
         payload: {
           action: 'complete',
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           completed_at: new Date().toISOString(),
           completion_rate: 1.0
         }

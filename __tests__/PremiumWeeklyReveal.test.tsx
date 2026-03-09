@@ -5,7 +5,6 @@ import { useWeeklyReveal } from '../src/hooks/useWeeklyReveal';
 import { useTrajectory } from '../src/hooks/useTrajectory';
 import { useSafetyGate } from '../src/hooks/useSafetyGate';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { View, Text } from 'react-native';
 
 // Mocks
 jest.mock('expo-router', () => ({
@@ -33,7 +32,7 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 
 jest.mock('../src/components/common/CompareSlider', () => {
-  const ReactNode = require('react');
+  const _ReactNode = require('react');
   const { View: MockView, Text: MockText } = require('react-native');
   return {
     CompareSlider: () => <MockView testID="compare-slider"><MockText>Slider</MockText></MockView>,

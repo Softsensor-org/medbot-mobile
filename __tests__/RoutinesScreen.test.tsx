@@ -21,7 +21,7 @@ jest.mock('../src/hooks/useSafetyGate', () => ({
 }));
 
 jest.mock('../src/components/common/NativeDateTimePicker', () => {
-  const ReactNode = require('react');
+  const _ReactNode = require('react');
   const { View, Text, TextInput } = require('react-native');
   return {
     NativeDateTimePicker: ({ label, onChange, testID }: any) => (

@@ -60,8 +60,8 @@ describe('useSafetyGate', () => {
   it('triggers backend_restriction when urgent session exists', () => {
     (useWeeklyReveal as jest.Mock).mockReturnValue({ insight: { status: 'stable' } });
     (usePatientProgress as jest.Mock).mockReturnValue({ data: { symptoms: [] }, isLoading: false });
-    (useSessions as jest.Mock).mockReturnValue({ 
-        data: [{ session_id: 's1', latest_model_output: { triage_label: 'urgent' } }] 
+    (useSessions as jest.Mock).mockReturnValue({
+        data: [{ session_id: 's1', status: 'assigned' }]
     });
 
     const { result } = renderHook(() => useSafetyGate(), { wrapper });

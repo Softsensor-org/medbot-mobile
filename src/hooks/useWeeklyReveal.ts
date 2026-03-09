@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { usePatientProgress } from './useProgress';
-import { subDays, isAfter, parseISO } from 'date-fns';
 import { ProgressPhoto } from '../api/analyticsApi';
 
 export interface WeeklyInsight {
@@ -22,8 +21,6 @@ export function useWeeklyReveal() {
     if (!data) return null;
 
     const { symptoms, adherence, photos } = data;
-    const weekAgo = subDays(new Date(), 7);
-
     // 1. Data Density (Confidence)
     // 7 days * (1 routine + 1 symptom) = 14 events for max confidence
     const eventCount = symptoms.length + adherence.length;

@@ -29,7 +29,7 @@ export default function IntakeModeSelector() {
           router.push({
             pathname: targetRoute as import('expo-router').Href,
             params: { sessionId }
-          });
+          } as import('expo-router').Href);
         }
       });
     } else {

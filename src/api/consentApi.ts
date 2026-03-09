@@ -1,4 +1,5 @@
 import { BaseApiService } from "./BaseApiService";
+import type { ConsentStatusItem } from "../types/consent";
 
 export type ConsentStatus = "accepted" | "declined" | "revoked";
 
@@ -50,11 +51,11 @@ export interface ConsentStatusResponse {
   total_consents: number;
   required_consents: number;
   optional_consents: number;
-  accepted_required: number;
-  accepted_optional: number;
-  pending_required: PendingConsentItem[];
-  pending_optional: PendingConsentItem[];
-  expired_consents: ExpiredConsentItem[];
+  accepted_required: ConsentStatusItem[];
+  accepted_optional: ConsentStatusItem[];
+  pending_required: ConsentStatusItem[];
+  pending_optional: ConsentStatusItem[];
+  expired_consents: ConsentStatusItem[];
   requires_action: boolean;
 }
 

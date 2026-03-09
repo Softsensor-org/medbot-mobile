@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, ScrollView } from 'react-native';
 import { ProgressBoard } from '../../../src/components/ProgressBoard';
 import { TrajectoryBoard } from '../../../src/components/TrajectoryBoard';
 import { colors, spacing } from '../../../src/theme';

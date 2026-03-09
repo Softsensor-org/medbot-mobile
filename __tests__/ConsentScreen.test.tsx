@@ -127,10 +127,12 @@ describe("ConsentScreen", () => {
         requires_action: true,
         pending_required: [
           {
+            id: "privacy_notice",
             consent_type_id: "privacy_notice",
             title: "Privacy Notice",
             type: "required",
             status: "pending",
+            version: "1.0",
             current_version: "1.0",
             version_match: true,
             expired: false,
@@ -155,10 +157,12 @@ describe("ConsentScreen", () => {
         requires_action: false,
         accepted_required: [
           {
+            id: "privacy_notice",
             consent_type_id: "privacy_notice",
             title: "Privacy Notice",
             type: "required",
             status: "accepted",
+            version: "1.0",
             consent_version: "1.0",
             current_version: "1.0",
             version_match: true,
@@ -286,10 +290,12 @@ describe("ConsentScreen", () => {
       data: mockStatus({
         accepted_required: [
           {
+            id: "privacy_notice",
             consent_type_id: "privacy_notice",
             title: "Privacy Notice",
             type: "required",
             status: "accepted",
+            version: "1.0",
             consent_version: "1.0",
             current_version: "1.0",
             version_match: true,
@@ -315,10 +321,12 @@ describe("ConsentScreen", () => {
         requires_action: true,
         expired_consents: [
           {
+            id: "privacy_notice",
             consent_type_id: "privacy_notice",
             title: "Privacy Notice",
             type: "required",
             status: "accepted",
+            version: "1.0",
             consent_version: "1.0",
             current_version: "1.0",
             version_match: true,

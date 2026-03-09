@@ -4,6 +4,7 @@ export type AnalyticsEvent =
   | 'autopilot_step_skip'
   | 'weekly_reveal_viewed'
   | 'weekly_reveal_cta_clicked'
+  | 'weekly_reveal_share_clicked'
   | 'safety_gate_triggered'
   | 'safety_gate_cta_clicked';
 

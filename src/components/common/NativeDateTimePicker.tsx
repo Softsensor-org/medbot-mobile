@@ -67,7 +67,7 @@ export const NativeDateTimePicker: React.FC<NativeDateTimePickerProps> = ({
       if (mode === "date") return format(value, "PPP");
       if (mode === "time") return format(value, "p");
       return format(value, "PPP p");
-    } catch (e) {
+    } catch {
       return placeholder || "Select date/time";
     }
   };
