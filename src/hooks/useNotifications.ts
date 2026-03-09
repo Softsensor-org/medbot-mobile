@@ -4,44 +4,7 @@ import { notificationService, NotificationSettings } from '../api/NotificationSe
 import { hapticService } from '../api/HapticService';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-
-const ALLOWED_ROUTES = [
-  '/weekly-reveal',
-  '/(auth)/(tabs)',
-  '/(auth)/(tabs)/routines',
-  '/(auth)/(tabs)/progress',
-  '/(auth)/intake',
-  '/(auth)/intake/camera',
-  '/(auth)/intake/symptom-log',
-  '/(auth)/settings',
-  '/(auth)/notifications',
-];
-
-export function validateDeepLink(url: string | undefined | null): import('expo-router').Href {
-  const fallback = '/(auth)/(tabs)' as import('expo-router').Href;
-  if (!url) return fallback;
-  
-  // Exact match
-  if (ALLOWED_ROUTES.includes(url)) {
-    return url as import('expo-router').Href;
-  }
-  
-  // Pattern match for chat sessions
-  if (url.startsWith('/(auth)/chat/') && url.length > 13) {
-    const sessionId = url.split('/')[3];
-    if (/^[a-zA-Z0-9-]+$/.test(sessionId)) {
-      return url as import('expo-router').Href;
-    }
-  } else if (url.startsWith('/chat/') && url.length > 6) {
-    const sessionId = url.split('/')[2];
-    if (/^[a-zA-Z0-9-]+$/.test(sessionId)) {
-      return url as import('expo-router').Href;
-    }
-  }
-
-  console.warn(`[Notifications] Blocked untrusted deeplink: ${url}`);
-  return fallback;
-}
+import { validateDeepLink } from '../utils/deepLinkValidator';
 
 export const useNotifications = () => {
   const queryClient = useQueryClient();
