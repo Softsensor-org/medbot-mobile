@@ -17,6 +17,7 @@ import { SafetyGateOverlay } from './SafetyGateOverlay';
 import { CompareSlider } from './common/CompareSlider';
 import { analytics } from '../api/AnalyticsService';
 import { useRouter } from 'expo-router';
+import { validateDeepLink } from '../utils/deepLinkValidator';
 import { format, parseISO } from 'date-fns';
 import { useMotion } from '../hooks/useMotion';
 
@@ -148,7 +149,7 @@ export const PremiumWeeklyReveal: React.FC = () => {
             style={[styles.ctaButton, { backgroundColor: getStatusColor() }]}
             onPress={() => {
                 analytics.track('weekly_reveal_cta_clicked', { label: insight.cta.label, is_premium: true });
-                router.push(insight.cta.route as any);
+                router.push(validateDeepLink(insight.cta.route));
             }}
         >
             <Text style={styles.ctaText}>{insight.cta.label}</Text>
