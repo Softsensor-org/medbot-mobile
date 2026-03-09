@@ -27,7 +27,7 @@ export default function IntakeModeSelector() {
             showToast("success", "Queued", "Mode saved offline and queued for sync.");
           }
           router.push({
-            pathname: targetRoute,
+            pathname: targetRoute as import('expo-router').Href,
             params: { sessionId }
           } as import('expo-router').Href);
         }
