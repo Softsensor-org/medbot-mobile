@@ -1,5 +1,4 @@
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { storage } from './PersistenceService';
@@ -29,6 +28,8 @@ class NotificationService {
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
       }),
     });
   }
@@ -78,7 +79,7 @@ class NotificationService {
         body: `It's time for your ${routineName}!`,
         data: { url: "/(auth)/(tabs)/routines" },
       },
-      trigger: date,
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date },
     });
   }
 

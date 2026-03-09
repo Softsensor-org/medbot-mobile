@@ -2,7 +2,6 @@ import React from "react";
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { colors, typography, spacing } from "../../../src/theme";
-import { TodayPlan } from "../../../src/components/TodayPlan";
 import { HeroDashboard } from "../../../src/components/HeroDashboard";
 import { AutopilotCard } from "../../../src/components/AutopilotCard";
 import { MaterialIcons } from "@expo/vector-icons";

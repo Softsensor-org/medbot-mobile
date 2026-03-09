@@ -55,7 +55,7 @@ describe("streamChat", () => {
     const onEvent = jest.fn();
     await startStream({
       sessionId: "s1",
-      message: "hello",
+      query: "hello",
       onEvent,
     });
 
@@ -72,7 +72,7 @@ describe("streamChat", () => {
     const onComplete = jest.fn();
     await startStream({
       sessionId: "s1",
-      message: "hello",
+      query: "hello",
       onEvent,
       onComplete,
     });
@@ -90,7 +90,7 @@ describe("streamChat", () => {
     const onComplete = jest.fn();
     await startStream({
       sessionId: "s1",
-      message: "hello",
+      query: "hello",
       onEvent,
       onComplete,
     });
@@ -108,7 +108,7 @@ describe("streamChat", () => {
     const onError = jest.fn();
     await startStream({
       sessionId: "s1",
-      message: "hello",
+      query: "hello",
       onEvent,
       onError,
     });
@@ -125,7 +125,7 @@ describe("streamChat", () => {
     const onEvent = jest.fn();
     await startStream({
       sessionId: "s1",
-      message: "hello",
+      query: "hello",
       onEvent,
     });
 
@@ -138,7 +138,7 @@ describe("streamChat", () => {
     const onError = jest.fn();
     await startStream({
       sessionId: "s1",
-      message: "hello",
+      query: "hello",
       onEvent: jest.fn(),
       onError,
     });
@@ -155,7 +155,7 @@ describe("streamChat", () => {
   it("returns a cleanup function that closes the connection", async () => {
     const cleanup = await startStream({
       sessionId: "s1",
-      message: "hello",
+      query: "hello",
       onEvent: jest.fn(),
     });
 

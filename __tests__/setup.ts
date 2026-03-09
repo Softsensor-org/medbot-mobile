@@ -22,16 +22,19 @@ jest.mock('expo-asset', () => ({
 }), { virtual: true });
 
 jest.mock('react-native-mmkv', () => {
+  const mockStorage = () => ({
+    set: jest.fn(),
+    getString: jest.fn(),
+    getNumber: jest.fn(),
+    getBoolean: jest.fn(),
+    contains: jest.fn(),
+    delete: jest.fn(),
+    remove: jest.fn(),
+    clearAll: jest.fn(),
+  });
   return {
-    MMKV: jest.fn().mockImplementation(() => ({
-      set: jest.fn(),
-      getString: jest.fn(),
-      getNumber: jest.fn(),
-      getBoolean: jest.fn(),
-      contains: jest.fn(),
-      delete: jest.fn(),
-      clearAll: jest.fn(),
-    })),
+    MMKV: jest.fn().mockImplementation(mockStorage),
+    createMMKV: jest.fn().mockImplementation(mockStorage),
   };
 });
 

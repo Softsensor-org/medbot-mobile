@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
@@ -20,8 +19,6 @@ import { analytics } from '../api/AnalyticsService';
 import { useRouter } from 'expo-router';
 import { format, parseISO } from 'date-fns';
 import { useMotion } from '../hooks/useMotion';
-
-const { width, height } = Dimensions.get('window');
 
 export const PremiumWeeklyReveal: React.FC = () => {
   const router = useRouter();

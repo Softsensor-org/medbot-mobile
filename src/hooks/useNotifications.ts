@@ -68,8 +68,9 @@ export const useNotifications = () => {
   });
 
   const mutation = useMutation({
-    mutationFn: (newSettings: Partial<NotificationSettings>) => 
-      notificationService.saveSettings({ ...settings, ...newSettings }),
+    mutationFn: async (newSettings: Partial<NotificationSettings>) => {
+      notificationService.saveSettings({ ...settings, ...newSettings } as NotificationSettings);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification_settings'] });
     },

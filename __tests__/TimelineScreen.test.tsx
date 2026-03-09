@@ -23,7 +23,7 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 
 jest.mock('../src/components/common/CompareSlider', () => {
-  const React = require('react');
+  const _React = require('react');
   const { View, Text } = require('react-native');
   return {
     CompareSlider: () => <View testID="compare-slider"><Text>Slider</Text></View>,

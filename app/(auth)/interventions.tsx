@@ -12,13 +12,13 @@ import {
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../src/theme';
-import { useInterventionLedger, useAddIntervention, Intervention } from '../../src/hooks/useInterventions';
+import { useInterventionLedger, useAddIntervention } from '../../src/hooks/useInterventions';
 import { ChipSelect } from '../../src/components/common/ChipSelect';
 import { showToast } from '../../src/providers/ToastProvider';
 import { format, parseISO } from 'date-fns';
 
 export default function InterventionLedgerScreen() {
-  const router = useRouter();
+  const _router = useRouter();
   const { data: ledger = [], isLoading } = useInterventionLedger();
   const addMutation = useAddIntervention();
 

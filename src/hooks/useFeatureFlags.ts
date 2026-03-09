@@ -22,7 +22,7 @@ export function useFeatureFlags() {
       try {
         const response = await api.get("/config/flags");
         return { ...DEFAULT_FLAGS, ...response.data.data };
-      } catch (e) {
+      } catch {
         return DEFAULT_FLAGS;
       }
     },

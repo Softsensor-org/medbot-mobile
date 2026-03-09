@@ -32,10 +32,12 @@ export interface ConsentRecordRequest {
 }
 
 export interface ConsentStatusItem {
+  id: string;
   consent_type_id: string;
   title: string;
   type: "required" | "optional";
   status: ConsentStatus | "pending";
+  version: string;
   consent_version?: string;
   current_version: string;
   version_match: boolean;

@@ -15,7 +15,7 @@ import { useGoalJourneys, useUpsertGoalJourney } from "../../../src/hooks/useUse
 import { showToast } from "../../../src/providers/ToastProvider";
 import { ChipSelect } from "../../../src/components/common/ChipSelect";
 import { NativeDateTimePicker } from "../../../src/components/common/NativeDateTimePicker";
-import { format, addMonths, isBefore, startOfToday } from "date-fns";
+import { addMonths, isBefore, startOfToday } from "date-fns";
 
 const CONSTRAINT_OPTIONS = [
   { value: "sensitive", label: "Sensitive Skin" },

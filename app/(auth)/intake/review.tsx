@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, typography, spacing, borderRadius, shadows } from "../../../src/theme";
+import { colors, typography, spacing } from "../../../src/theme";
 import { useConsentStatus, useConsentTypes, useRecordConsent } from "../../../src/hooks/useConsent";
 import { useSharePacket, useEvidenceSnapshot } from "../../../src/hooks/useSessions";
 import { colorFor } from "../../../src/status/statusHelpers";
@@ -45,7 +45,7 @@ export default function ReviewPacketScreen() {
       await sharePacket.mutateAsync({ sessionId });
       Alert.alert("Success", "Clinical packet shared with your doctor.");
       router.back();
-    } catch (err) {
+    } catch {
       Alert.alert("Error", "Failed to share packet.");
     }
   };
@@ -68,7 +68,7 @@ export default function ReviewPacketScreen() {
       await sharePacket.mutateAsync({ sessionId });
       Alert.alert("Success", "Consents accepted and packet shared.");
       router.back();
-    } catch (err) {
+    } catch {
       Alert.alert("Error", "Failed to process consents or share packet.");
     }
   };

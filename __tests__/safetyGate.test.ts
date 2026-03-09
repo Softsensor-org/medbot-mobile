@@ -1,4 +1,4 @@
-import { evaluateSafetyGate, SafetyStatus } from "../src/hooks/useSafetyGate";
+import { evaluateSafetyGate } from "../src/hooks/useSafetyGate";
 import type { SessionMeta } from "../src/api/sessionsApi";
 
 /**

@@ -36,4 +36,5 @@ axiosRetry(client, {
   },
 });
 
+export { client as api };
 export default client;

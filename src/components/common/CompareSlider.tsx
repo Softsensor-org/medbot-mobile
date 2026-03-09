@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
@@ -6,13 +6,13 @@ import {
   Dimensions,
   Text,
 } from 'react-native';
-import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { MaterialIcons } from '@expo/vector-icons';
+import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 
 const { width } = Dimensions.get('window');
 const SLIDER_WIDTH = width - spacing.lg * 2;
@@ -32,18 +32,19 @@ export const CompareSlider: React.FC<CompareSliderProps> = ({
   afterLabel = "After",
 }) => {
   const translateX = useSharedValue(SLIDER_WIDTH / 2);
+  const startX = useSharedValue(SLIDER_WIDTH / 2);
 
-  const onGestureEvent = useAnimatedGestureHandler<PanGestureHandlerGestureEvent, { startX: number }>({
-    onStart: (_, ctx) => {
-      ctx.startX = translateX.value;
-    },
-    onActive: (event, ctx) => {
-      let nextX = ctx.startX + event.translationX;
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      startX.value = translateX.value;
+    })
+    .onUpdate((event) => {
+      'worklet';
+      let nextX = startX.value + event.translationX;
       if (nextX < 0) nextX = 0;
       if (nextX > SLIDER_WIDTH) nextX = SLIDER_WIDTH;
       translateX.value = nextX;
-    },
-  });
+    });
 
   const afterStyle = useAnimatedStyle(() => ({
     width: translateX.value,
@@ -71,21 +72,18 @@ export const CompareSlider: React.FC<CompareSliderProps> = ({
         </Animated.View>
 
         {/* Interaction Handle */}
-        <PanGestureHandler onGestureEvent={onGestureEvent}>
+        <GestureDetector gesture={panGesture}>
           <Animated.View style={[styles.handle, handleStyle]}>
             <View style={styles.handleLine} />
             <View style={styles.handleCircle}>
                 <MaterialIcons name="unfold-more" size={20} color={colors.surface} style={{ transform: [{ rotate: '90deg' }] }} />
             </View>
           </Animated.View>
-        </PanGestureHandler>
+        </GestureDetector>
       </View>
     </View>
   );
 };
-
-// MaterialIcons needs to be imported if used in this file
-import { MaterialIcons } from '@expo/vector-icons';
 
 const styles = StyleSheet.create({
   container: {

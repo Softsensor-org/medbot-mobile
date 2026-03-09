@@ -38,9 +38,11 @@ export default function TimelineScreen() {
         <View style={styles.photoComparison}>
           <Text style={styles.sectionTitle}>Visual Progress</Text>
           <View style={styles.comparisonWrapper}>
-            <CompareSlider 
-              before={{ url: photos[photos.length - 1].url, timestamp: photos[photos.length - 1].timestamp }}
-              after={{ url: photos[0].url, timestamp: photos[0].timestamp }}
+            <CompareSlider
+              beforeUri={photos[photos.length - 1].url}
+              afterUri={photos[0].url}
+              beforeLabel={safeFormat(photos[photos.length - 1].timestamp, 'MMM d')}
+              afterLabel={safeFormat(photos[0].timestamp, 'MMM d')}
             />
           </View>
         </View>

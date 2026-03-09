@@ -47,10 +47,9 @@ export function useCameraQuality() {
 
       lastX = x; lastY = y; lastZ = z;
 
-      let feedback = 'Hold steady...';
-      if (!isStable) feedback = 'Hold still';
-      else if (!isLevel) feedback = 'Adjust angle';
-      else feedback = 'Perfect! Capture when ready.';
+      const feedback = !isStable ? 'Hold still'
+        : !isLevel ? 'Adjust angle'
+        : 'Perfect! Capture when ready.';
 
       setState({
         isLevel,
