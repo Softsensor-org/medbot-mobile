@@ -20,8 +20,16 @@ export function useFeatureFlags() {
     queryKey: ["feature-flags"],
     queryFn: async () => {
       try {
-        const response = await api.get("/config/flags");
-        return { ...DEFAULT_FLAGS, ...response.data.data };
+        const response = await api.get("/api/v1/capabilities");
+        const data = response.data.data;
+        const modules = data.modules || {};
+        
+        return { 
+          ...DEFAULT_FLAGS,
+          // Map capabilities to flags if present, otherwise defaults
+          autopilot_enabled: modules.usage !== undefined ? modules.usage : DEFAULT_FLAGS.autopilot_enabled,
+          weekly_reveal_enabled: modules.knowledge_base !== undefined ? modules.knowledge_base : DEFAULT_FLAGS.weekly_reveal_enabled,
+        };
       } catch {
         return DEFAULT_FLAGS;
       }

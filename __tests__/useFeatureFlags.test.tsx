@@ -31,18 +31,18 @@ describe('useFeatureFlags', () => {
     const { result } = renderHook(() => useFeatureFlags(), { wrapper });
     
     await waitFor(() => expect(result.current.isSuccess || result.current.isError).toBeTruthy());
-    expect(api.get).toHaveBeenCalledWith('/config/flags');
+    expect(api.get).toHaveBeenCalledWith('/api/v1/capabilities');
   });
 
-  it('merges backend flags with defaults', async () => {
+  it('merges backend flags with defaults from capabilities modules', async () => {
     (api.get as jest.Mock).mockResolvedValue({ 
-      data: { data: { autopilot_enabled: false } } 
+      data: { data: { modules: { usage: false, knowledge_base: false } } } 
     });
     
     const { result } = renderHook(() => useFeatureFlags(), { wrapper });
     
     await waitFor(() => expect(result.current.isSuccess).toBeTruthy());
     expect(result.current.data?.autopilot_enabled).toBe(false);
-    expect(result.current.data?.weekly_reveal_enabled).toBe(true); // default
+    expect(result.current.data?.weekly_reveal_enabled).toBe(false);
   });
 });
