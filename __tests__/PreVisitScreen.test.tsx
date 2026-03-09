@@ -34,10 +34,9 @@ jest.mock('../src/providers/ToastProvider', () => ({
 }));
 
 jest.mock('../src/components/common/NativeDateTimePicker', () => {
-  const ReactNode = require('react');
   const { View, Text, TextInput } = require('react-native');
   return {
-    NativeDateTimePicker: ({ label, onChange, testID }: any) => (
+    NativeDateTimePicker: ({ label, onChange, testID }: { label: string; onChange: (d: Date) => void; testID?: string }) => (
       <View>
         <Text>{label}</Text>
         <TextInput
@@ -126,5 +125,23 @@ describe('PreVisitScreen', () => {
 
     expect(getByText('Question 1 *')).toBeTruthy();
     expect(getByText('50%')).toBeTruthy();
+  });
+
+  it('hydrates state when async context data arrives post-initial render', () => {
+    // Initial render with no data
+    (useAppointmentContext as jest.Mock).mockReturnValue({ data: null, isLoading: true });
+    
+    const { getByText, rerender } = render(<PreVisitScreen />, { wrapper });
+    
+    // Simulate async data arriving
+    (useAppointmentContext as jest.Mock).mockReturnValue({
+      data: { appointment_type: 'clinic', appointment_datetime: '2026-03-10 10:00', clinic_location: 'Downtown Skin Clinic' },
+      isLoading: false,
+    });
+    
+    rerender(<PreVisitScreen />);
+    
+    // Fields should be hydrated, moving to Step 2 automatically
+    expect(getByText('Readiness Score')).toBeTruthy();
   });
 });

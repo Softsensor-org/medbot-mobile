@@ -11,7 +11,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { useHandoffSummary } from '../hooks/useInterventions';
-import { format, parseISO } from 'date-fns';
+import { safeFormat } from '../utils/dateHelpers';
 
 export const HandoffSummaryCard: React.FC = () => {
   const { data: summary, isLoading, refetch } = useHandoffSummary();
@@ -69,7 +69,7 @@ export const HandoffSummaryCard: React.FC = () => {
                   ) : (
                     summary.recent_symptoms.map((s, idx) => (
                       <Text key={idx} style={styles.summaryItem}>
-                        • {s.symptom_name}: Severity {s.severity}/5 ({format(parseISO(s.occurred_at), 'MMM dd')})
+                        • {s.symptom_name}: Severity {s.severity}/5 ({safeFormat(s.occurred_at, 'MMM dd')})
                       </Text>
                     ))
                   )}
@@ -89,7 +89,7 @@ export const HandoffSummaryCard: React.FC = () => {
                 </View>
 
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>Generated on {format(parseISO(summary.generated_at), 'PPP p')}</Text>
+                    <Text style={styles.footerText}>Generated on {safeFormat(summary.generated_at, 'PPP p')}</Text>
                     <Text style={styles.footerHint}>Share this screen with your provider during consultation.</Text>
                 </View>
               </ScrollView>

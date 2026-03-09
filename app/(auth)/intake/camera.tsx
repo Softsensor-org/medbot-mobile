@@ -5,23 +5,24 @@ import {
   View,
   TouchableOpacity,
   ActivityIndicator,
-  Dimensions,
   Image,
+  Alert,
 } from 'react-native';
 import { CameraView, useCameraPermissions, CameraCapturedPicture } from 'expo-camera';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { colors, typography, spacing, borderRadius } from '../../../src/theme';
 import { useCameraQuality } from '../../../src/hooks/useCameraQuality';
-
-const { width, height } = Dimensions.get('window');
+import { useUploadPhoto } from '../../../src/hooks/useEvidence';
 
 export default function CameraCaptureScreen() {
   const router = useRouter();
+  const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const [permission, requestPermission] = useCameraPermissions();
   const quality = useCameraQuality();
-  const cameraRef = useRef<any>(null);
+  const cameraRef = useRef<CameraView>(null);
+  const uploadMutation = useUploadPhoto();
 
   const [isCapturing, setIsCapturing] = useState(false);
   const [photo, setPhoto] = useState<CameraCapturedPicture | null>(null);
@@ -30,7 +31,7 @@ export default function CameraCaptureScreen() {
     if (quality.isLevel && quality.isStable && !photo) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-  }, [quality.isLevel, quality.isStable]);
+  }, [quality.isLevel, quality.isStable, photo]);
 
   if (!permission) {
     return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
@@ -66,9 +67,24 @@ export default function CameraCaptureScreen() {
     }
   };
 
-  const savePhoto = () => {
-    // In a real app, this would upload to backend or navigate to preview with data
-    router.back();
+  const savePhoto = async () => {
+    if (!photo || !sessionId) return;
+    
+    try {
+      // expo-camera base64 doesn't include data: prefix
+      const base64Data = photo.base64?.startsWith('data:') 
+        ? photo.base64 
+        : `data:image/jpeg;base64,${photo.base64}`;
+
+      await uploadMutation.mutateAsync({
+        sessionId,
+        base64: base64Data
+      });
+      
+      router.back();
+    } catch {
+      Alert.alert("Upload Failed", "We couldn't save your photo. Please try again.");
+    }
   };
 
   if (photo) {
@@ -76,13 +92,27 @@ export default function CameraCaptureScreen() {
       <View style={styles.container}>
         <Image source={{ uri: photo.uri }} style={styles.preview} />
         <View style={styles.previewActions}>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => setPhoto(null)}>
+          <TouchableOpacity 
+            style={styles.actionBtn} 
+            onPress={() => setPhoto(null)}
+            disabled={uploadMutation.isPending}
+          >
             <MaterialIcons name="refresh" size={32} color={colors.surface} />
             <Text style={styles.actionText}>Retake</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.confirmBtn]} onPress={savePhoto}>
-            <MaterialIcons name="check" size={32} color={colors.surface} />
-            <Text style={styles.actionText}>Use Photo</Text>
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.confirmBtn]} 
+            onPress={savePhoto}
+            disabled={uploadMutation.isPending}
+          >
+            {uploadMutation.isPending ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <>
+                <MaterialIcons name="check" size={32} color={colors.surface} />
+                <Text style={styles.actionText}>Use Photo</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -97,7 +127,6 @@ export default function CameraCaptureScreen() {
         facing="back"
       >
         <View style={styles.overlay}>
-          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
               <MaterialIcons name="close" size={28} color={colors.surface} />
@@ -106,7 +135,6 @@ export default function CameraCaptureScreen() {
             <View style={{ width: 28 }} />
           </View>
 
-          {/* Level Guide UI */}
           <View style={styles.guideContainer}>
             <View style={[
                 styles.bullseye, 
@@ -124,7 +152,6 @@ export default function CameraCaptureScreen() {
             </Text>
           </View>
 
-          {/* Controls */}
           <View style={styles.controls}>
             <View style={styles.shutterContainer}>
               <TouchableOpacity 

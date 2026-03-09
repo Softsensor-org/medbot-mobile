@@ -14,7 +14,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { usePatientProgress } from '../hooks/useProgress';
 import { useRouter } from 'expo-router';
-import { format, parseISO } from 'date-fns';
+import { safeFormat } from '../utils/dateHelpers';
 import { SymptomTrendPoint, AdherenceTrendPoint, ProgressPhoto } from '../api/analyticsApi';
 import { WeeklyReveal } from './WeeklyReveal';
 import { deriveStreakRescueState } from '../engagement/streakRescue';
@@ -179,7 +179,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
                       { backgroundColor: colors.infoLight }
                     ]} 
                   />
-                  <Text style={styles.barLabel}>{format(parseISO(point.date), 'MM/dd')}</Text>
+                  <Text style={styles.barLabel}>{safeFormat(point.date, 'MM/dd')}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -206,7 +206,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
                       { height: point.rate * 100, backgroundColor: colors.success }
                     ]} 
                   />
-                  <Text style={styles.barLabel}>{format(parseISO(point.date), 'MM/dd')}</Text>
+                  <Text style={styles.barLabel}>{safeFormat(point.date, 'MM/dd')}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -232,7 +232,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
                 onPress={() => router.push("/timeline")}
               >
                 <Image source={{ uri: photo.url }} style={styles.photo} />
-                <Text style={styles.photoDate}>{format(parseISO(photo.timestamp), 'MMM dd')}</Text>
+                <Text style={styles.photoDate}>{safeFormat(photo.timestamp, 'MMM dd')}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>

@@ -1,68 +1,59 @@
-import { renderHook, act } from '@testing-library/react-native';
+import { renderHook } from '@testing-library/react-native';
 import { useAutopilot } from '../src/hooks/useAutopilot';
 import { useRoutineAssignments } from '../src/hooks/useRoutineAssignments';
-import { useCompleteAssignment, useDeferAssignment } from '../src/hooks/useRoutineActions';
-import { usePatientProgress } from '../src/hooks/useProgress';
+import { useEvidenceSessions } from '../src/hooks/useEvidence';
+import { usePreferenceProfile } from '../src/hooks/useUser';
 
 // Mocks
 jest.mock('../src/hooks/useRoutineAssignments', () => ({
   useRoutineAssignments: jest.fn(),
 }));
 
-jest.mock('../src/hooks/useRoutineActions', () => ({
-  useCompleteAssignment: jest.fn(),
-  useDeferAssignment: jest.fn(),
+jest.mock('../src/hooks/useEvidence', () => ({
+  useEvidenceSessions: jest.fn(),
 }));
 
-jest.mock('../src/hooks/useProgress', () => ({
-  usePatientProgress: jest.fn(),
-}));
-
-jest.mock('expo-haptics', () => ({
-  impactAsync: jest.fn(),
-  notificationAsync: jest.fn(),
-  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium' },
-  NotificationFeedbackType: { Success: 'success' },
+jest.mock('../src/hooks/useUser', () => ({
+  usePreferenceProfile: jest.fn(),
 }));
 
 describe('useAutopilot', () => {
-  const mockRoutines = [
-    { id: 1, routine_name: 'Test Routine', status: 'active' },
-  ];
-
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRoutineAssignments as jest.Mock).mockReturnValue({ data: mockRoutines, isLoading: false });
-    (usePatientProgress as jest.Mock).mockReturnValue({ data: { photos: [{ id: 'p1' }] }, isLoading: false });
-    (useCompleteAssignment as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
-    (useDeferAssignment as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
   });
 
-  it('identifies the first active routine as the current step', () => {
-    const { result } = renderHook(() => useAutopilot());
-    expect(result.current.currentStep.title).toBe('Test Routine');
-    expect(result.current.remainingRoutines).toBe(1);
-  });
-
-  it('transitions to complete state when no routines remain', () => {
-    (useRoutineAssignments as jest.Mock).mockReturnValue({ data: [], isLoading: false });
-    const { result } = renderHook(() => useAutopilot());
-    expect(result.current.currentStep.type).toBe('complete');
-  });
-
-  it('calls complete mutation on handleDone', async () => {
-    const mockComplete = jest.fn();
-    (useCompleteAssignment as jest.Mock).mockReturnValue({ mutateAsync: mockComplete, isPending: false });
-    
-    const { result } = renderHook(() => useAutopilot());
-    
-    await act(async () => {
-      await result.current.handleDone();
+  it('generates a list of tasks including routines and sessions', () => {
+    (useRoutineAssignments as jest.Mock).mockReturnValue({ 
+      data: [{ id: 1, routine_name: 'Test Routine', status: 'active' }], 
+      isLoading: false 
     });
+    (useEvidenceSessions as jest.Mock).mockReturnValue({ 
+      data: [{ session_id: 's1', status: 'active' }], 
+      isLoading: false 
+    });
+    (usePreferenceProfile as jest.Mock).mockReturnValue({ 
+      data: { essential: { goals: ['Clear Skin'] } }, 
+      isLoading: false 
+    });
+
+    const { result } = renderHook(() => useAutopilot());
     
-    expect(mockComplete).toHaveBeenCalledWith(expect.objectContaining({
-      assignmentId: 1,
-      payload: expect.objectContaining({ action: 'complete' })
-    }));
+    expect(result.current.tasks).toHaveLength(2);
+    expect(result.current.tasks[0].type).toBe('routine');
+    expect(result.current.tasks[1].type).toBe('evidence');
+  });
+
+  it('adds a profile task when preferences are incomplete', () => {
+    (useRoutineAssignments as jest.Mock).mockReturnValue({ data: [], isLoading: false });
+    (useEvidenceSessions as jest.Mock).mockReturnValue({ data: [], isLoading: false });
+    (usePreferenceProfile as jest.Mock).mockReturnValue({ 
+      data: { essential: { goals: [] } }, 
+      isLoading: false 
+    });
+
+    const { result } = renderHook(() => useAutopilot());
+    
+    const profileTask = result.current.tasks.find(t => t.type === 'profile');
+    expect(profileTask).toBeTruthy();
   });
 });
