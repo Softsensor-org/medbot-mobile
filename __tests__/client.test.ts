@@ -34,6 +34,8 @@ jest.mock("../src/api/config", () => ({
   APP_PLATFORM: "android",
 }));
 
+jest.unmock("../src/api/client");
+
 import { getAccessToken } from "../src/auth/tokenStorage";
 
 const mockGetAccessToken = getAccessToken as jest.Mock;

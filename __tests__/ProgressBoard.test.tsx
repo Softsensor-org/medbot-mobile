@@ -66,7 +66,8 @@ describe('ProgressBoard', () => {
     jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await queryClient.cancelQueries();
     queryClient.clear();
   });
 
