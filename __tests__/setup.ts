@@ -118,7 +118,6 @@ afterEach(() => {
   jest.useRealTimers();
   jest.clearAllMocks();
   
-  // @ts-ignore - access internal mock reset
   const mmkv = require('react-native-mmkv');
   if (mmkv.__resetAllMMKVInstances) mmkv.__resetAllMMKVInstances();
   

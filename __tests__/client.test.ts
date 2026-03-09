@@ -1,3 +1,6 @@
+// Undo the global client mock from setup.ts so we can test the real module
+jest.unmock("../src/api/client");
+
 const mockRequestUse = jest.fn();
 const mockResponseUse = jest.fn();
 const mockInstance = {
