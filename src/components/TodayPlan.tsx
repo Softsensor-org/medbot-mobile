@@ -9,7 +9,8 @@ import {
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
-import { DailyCarePlan, CarePlanAction } from '../types/medical';
+import type { CarePlanAction } from '../types/medical';
+import type { DailyCarePlanWithAdaptation } from '../types/wellness';
 import { API_BASE_URL } from '../api/config';
 import { triggerEngagementHaptic } from '../engagement/haptics';
 
@@ -27,7 +28,7 @@ export const TodayPlan: React.FC = () => {
   const queryClient = useQueryClient();
   const [safetyAcknowledged, setSafetyAcknowledged] = useState(false);
 
-  const { data: plan, isLoading, isError } = useQuery<DailyCarePlan>({
+  const { data: plan, isLoading, isError } = useQuery<DailyCarePlanWithAdaptation>({
     queryKey: ['care-plan', 'today'],
     queryFn: async () => {
       const res = await fetch(`${API_BASE_URL}/api/v1/care-plan/today`);

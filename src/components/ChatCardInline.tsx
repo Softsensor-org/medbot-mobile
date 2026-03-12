@@ -8,7 +8,8 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { colors, typography, spacing, borderRadius } from "../theme";
-import type { ChatCard, SessionSummaryData } from "../types/ai";
+import type { ChatCard } from "../types/ai";
+import type { SessionSummaryData } from "../types/wellness";
 import { sessionsApi } from "../api/sessionsApi";
 
 interface ChatCardInlineProps {

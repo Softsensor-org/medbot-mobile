@@ -6,7 +6,7 @@ import type {
   IntakeModeValue,
   SessionAppointment,
   AppointmentType,
-} from "../types/medical";
+} from "../types/wellness";
 
 class WellnessApiService extends BaseApiService {
   constructor() {

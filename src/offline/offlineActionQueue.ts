@@ -3,11 +3,10 @@ import { Platform } from "react-native";
 import { medicalApi } from "../api/medicalApi";
 import { wellnessApi } from "../api/wellnessApi";
 import type {
-  AppointmentType,
-  IntakeModeValue,
   RoutineAssignmentActionRequest,
   Symptom,
 } from "../types/medical";
+import type { AppointmentType, IntakeModeValue } from "../types/wellness";
 
 const STORAGE_KEY = "medbot.offline.queue.v1";
 
