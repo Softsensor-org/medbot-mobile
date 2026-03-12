@@ -9,6 +9,7 @@ import type {
   RoutineAssignmentActionRequest,
   RoutineAssignmentActionEvent,
   DailySummaryResponse,
+  SkinHealthScoreResponse,
 } from "../types/medical";
 
 export interface MedicalChatRequest {
@@ -100,6 +101,12 @@ class MedicalApiService extends BaseApiService {
     qp.set("days", days.toString());
     if (patientId) qp.set("patient_id", patientId);
     return this.get<DailySummaryResponse>(`/daily-summary?${qp.toString()}`);
+  }
+
+  async getSkinScore(days: number = 28): Promise<SkinHealthScoreResponse> {
+    const qp = new URLSearchParams();
+    qp.set("days", days.toString());
+    return this.get<SkinHealthScoreResponse>(`/skin-score?${qp.toString()}`);
   }
 }
 

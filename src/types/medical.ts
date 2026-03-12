@@ -210,6 +210,26 @@ export interface DailySummaryResponse {
   severity_trend: SeverityTrendPoint[];
 }
 
+// IMP-246: Composite Skin Health Score types
+
+export interface ScoreComponent {
+  name: string;
+  score: number;
+  weight: number;
+  weighted_score: number;
+  description: string;
+}
+
+export interface SkinHealthScoreResponse {
+  patient_id: string;
+  score: number;
+  trend: "improving" | "stable" | "declining";
+  components: ScoreComponent[];
+  computed_at: string;
+  period_days: number;
+  disclaimer: string;
+}
+
 // --- WEL-006: Product inventory + ingredient safety ---
 
 export interface Ingredient {
