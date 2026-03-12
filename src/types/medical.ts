@@ -192,6 +192,24 @@ export interface IntakeMode {
   updated_at: string;
 }
 
+// IMP-239: Daily Summary types
+
+export interface SeverityTrendPoint {
+  date: string;
+  avg_severity: number;
+}
+
+export interface DailySummaryResponse {
+  patient_id: string;
+  period_days: number;
+  adherence_rate: number;
+  trend: "improving" | "stable" | "declining";
+  symptom_count: number;
+  routine_completion_count: number;
+  routine_total_count: number;
+  severity_trend: SeverityTrendPoint[];
+}
+
 // --- WEL-006: Product inventory + ingredient safety ---
 
 export interface Ingredient {

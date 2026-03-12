@@ -8,6 +8,7 @@ import type {
   RoutineAssignmentStatus,
   RoutineAssignmentActionRequest,
   RoutineAssignmentActionEvent,
+  DailySummaryResponse,
 } from "../types/medical";
 
 export interface MedicalChatRequest {
@@ -93,6 +94,12 @@ class MedicalApiService extends BaseApiService {
       formData,
       { headers: { "Content-Type": "multipart/form-data" } }
     );
+  }
+  async getDailySummary(days: number = 7, patientId?: string): Promise<DailySummaryResponse> {
+    const qp = new URLSearchParams();
+    qp.set("days", days.toString());
+    if (patientId) qp.set("patient_id", patientId);
+    return this.get<DailySummaryResponse>(`/daily-summary?${qp.toString()}`);
   }
 }
 
