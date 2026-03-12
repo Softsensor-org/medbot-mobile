@@ -19,7 +19,7 @@ import {
   useSubmitPrevisitAnswer,
   usePrevisitReadiness,
 } from "../../../src/hooks/useWellness";
-import { AppointmentType, PreVisitQuestion } from "../../../src/types/medical";
+import type { AppointmentType, PreVisitQuestion } from "../../../src/types/wellness";
 import { showToast } from "../../../src/providers/ToastProvider";
 import { NativeDateTimePicker } from "../../../src/components/common/NativeDateTimePicker";
 import { parse, format as formatDate, isValid } from "date-fns";

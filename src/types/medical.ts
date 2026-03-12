@@ -27,6 +27,11 @@ export interface Routine {
   id?: number;
   name: string;
   description: string;
+  patient_id?: string;
+  assigned_by?: string;
+  assigned_at?: string;
+  recurrence?: Record<string, unknown>; // Scheduling blob
+  day_part?: 'morning' | 'afternoon' | 'evening';
   active: boolean;
   steps: RoutineStep[];
 }
@@ -93,7 +98,7 @@ export interface RoutineLog {
   id: number;
   routine_id: number;
   patient_id: string;
-  status: "completed" | "deferred" | "skipped";
+  status: 'completed' | 'deferred' | 'skipped';
   completed_at: string;
   completion_rate: number;
   notes?: string;
@@ -112,84 +117,37 @@ export interface DailyCarePlan {
   avoid_today: string[];
   watch_for: string[];
   confidence_context: string;
-  adaptation?: CarePlanAdaptation;
 }
 
-export interface CarePlanAdaptationSignals {
-  adherence_rate_7d: number | null;
-  logged_events_7d: number;
-  deferred_or_skipped_7d: number;
-  symptom_avg_severity_7d: number | null;
-  symptom_max_severity_7d: number | null;
-  symptom_events_7d: number;
-  high_symptom_burden: boolean;
-  emergency_keywords_present: boolean;
-  safety_events_7d: number;
-  context_tags: string[];
-}
+// IMP-050: Care Graph types
 
-export interface CarePlanAdaptationAdjustment {
-  code: string;
-  title: string;
-  detail: string;
-  priority: "high" | "medium" | "low";
-}
-
-export interface CarePlanAdaptation {
-  status: "active" | "suppressed" | "fallback";
-  suppressed: boolean;
-  reason_codes: string[];
-  confidence_band: "High" | "Moderate" | "Low";
-  signals: CarePlanAdaptationSignals;
-  next_day_adjustments: CarePlanAdaptationAdjustment[];
-  fallback_message?: string | null;
-}
-
-// --- Pre-visit Check-in (MB-709) ---
-
-export type AppointmentType = "clinic" | "telemed" | "urgent_care";
-
-export interface SessionAppointment {
+export interface TriageSummary {
   session_id: string;
-  user_id: string;
-  appointment_type: AppointmentType;
-  appointment_datetime: string;
-  clinic_location: string;
+  status: string;
+  triage_label: string | null;
+  confidence_band: string | null;
+  priority_score: number | null;
+  summary_for_patient: string | null;
+  red_flags: string[];
+  evidence_completeness: number | null;
+  is_preliminary: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export interface PreVisitQuestion {
-  id: number;
-  question_set_id: number;
-  question_number: number;
-  text: string;
-  evidence_slot_name: string | null;
-  required: boolean;
-  metadata: Record<string, unknown> | null;
+export interface EventSummary {
+  event_type: string;
+  timestamp: string;
+  session_id: string | null;
+  payload: Record<string, unknown>;
 }
 
-export interface PreVisitReadiness {
-  session_id: string;
-  readiness_pct: number;
-  has_appointment: boolean;
-  appointment_type?: AppointmentType;
-  required_total: number;
-  required_answered: number;
-  missing_required: {
-    question_id: number;
-    text: string;
-    evidence_slot: string | null;
-  }[];
-  answers_provided: number[];
-}
-
-export type IntakeModeValue = "symptom_logging" | "triage_submission";
-
-export interface IntakeMode {
-  session_id: string;
-  mode: IntakeModeValue;
-  updated_at: string;
+export interface CareGraphResponse {
+  patient_id: string;
+  triage_sessions: TriageSummary[];
+  events: EventSummary[];
+  event_counts: Record<string, number>;
+  time_range: Record<string, string | null>;
 }
 
 // IMP-239: Daily Summary types
@@ -203,14 +161,34 @@ export interface DailySummaryResponse {
   patient_id: string;
   period_days: number;
   adherence_rate: number;
-  trend: "improving" | "stable" | "declining";
+  trend: 'improving' | 'stable' | 'declining';
   symptom_count: number;
   routine_completion_count: number;
   routine_total_count: number;
   severity_trend: SeverityTrendPoint[];
 }
 
-// --- WEL-006: Product inventory + ingredient safety ---
+// IMP-246: Composite Skin Health Score types
+
+export interface ScoreComponent {
+  name: string;
+  score: number;
+  weight: number;
+  weighted_score: number;
+  description: string;
+}
+
+export interface SkinHealthScoreResponse {
+  patient_id: string;
+  score: number;
+  trend: 'improving' | 'stable' | 'declining';
+  components: ScoreComponent[];
+  computed_at: string;
+  period_days: number;
+  disclaimer: string;
+}
+
+// WEL-006: Product inventory + ingredient safety
 
 export interface Ingredient {
   id: number;
@@ -218,7 +196,7 @@ export interface Ingredient {
   inci_name?: string;
   category?: string;
   description?: string;
-  risk_level: "low" | "moderate" | "high";
+  risk_level: 'low' | 'moderate' | 'high';
   contraindications: string[];
   sensitivity_triggers: string[];
   pregnancy_safe: boolean;
@@ -249,7 +227,7 @@ export interface UserProduct {
   patient_id: string;
   product_id: number;
   product?: Product;
-  usage_frequency: "daily" | "occasional" | "as-needed";
+  usage_frequency: 'daily' | 'occasional' | 'as-needed';
   started_using_at?: string;
   notes?: string;
   created_at?: string;
@@ -257,7 +235,7 @@ export interface UserProduct {
 
 export interface UserProductCreate {
   product_id: number;
-  usage_frequency: "daily" | "occasional" | "as-needed";
+  usage_frequency: 'daily' | 'occasional' | 'as-needed';
   started_using_at?: string;
   notes?: string;
 }
@@ -274,7 +252,7 @@ export interface RoutineStepProduct {
 export interface IngredientRiskFeedback {
   ingredient_id: number;
   ingredient_name: string;
-  severity: "low" | "moderate" | "high";
+  severity: 'low' | 'moderate' | 'high';
   rationale: string;
 }
 
@@ -288,7 +266,38 @@ export interface SafetyAssessmentRequest {
 export interface SafetyAssessmentResponse {
   product_id: number;
   product_name: string;
-  overall_risk: "low" | "moderate" | "high";
+  overall_risk: 'low' | 'moderate' | 'high';
   ingredient_risks: IngredientRiskFeedback[];
   recommendations: string[];
+}
+
+export interface SafetyAssessmentResult {
+  product_id: number;
+  product_name: string;
+  overall_risk: 'low' | 'moderate' | 'high';
+  ingredient_risks: IngredientRiskFeedback[];
+  recommendations: string[];
+}
+
+// IMP-244: Pulse Check-In types
+
+export interface PulseSubmission {
+  severity: number;
+  note?: string | undefined;
+}
+
+export interface PulseResponse {
+  pulse_id: string;
+  patient_id: string;
+  severity: number;
+  note?: string;
+  created_at: string;
+  timeline_event_id?: string;
+}
+
+export interface PulseEntry {
+  pulse_id: string;
+  severity: number;
+  note?: string;
+  created_at: string;
 }

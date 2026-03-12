@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "rea
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { colors, typography, spacing } from "../../../src/theme";
 import { useSetIntakeMode } from "../../../src/hooks/useWellness";
-import { IntakeModeValue } from "../../../src/types/medical";
+import type { IntakeModeValue } from "../../../src/types/wellness";
 import { showToast } from "../../../src/providers/ToastProvider";
 
 export default function IntakeModeSelector() {
