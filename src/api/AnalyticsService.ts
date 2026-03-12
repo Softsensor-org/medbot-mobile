@@ -13,17 +13,12 @@ class AnalyticsService {
    * Track an event with optional properties.
    * All data must be non-PHI.
    */
-  track(event: AnalyticsEvent, properties?: Record<string, any>) {
-    // In a real app, this would send to Segment, Mixpanel, etc.
-    console.log(`[Analytics] ${event}`, properties);
-    
+  track(_event: AnalyticsEvent, _properties?: Record<string, any>) {
     // We can also send to a generic backend endpoint if available
     // api.post('/analytics/event', { event, properties, timestamp: new Date().toISOString() }).catch(() => {});
   }
 
-  identify(userId: string) {
-    console.log(`[Analytics] Identify user: ${userId}`);
-  }
+  identify(_userId: string) {}
 }
 
 export const analytics = new AnalyticsService();

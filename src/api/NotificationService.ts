@@ -1,7 +1,8 @@
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { storage } from './PersistenceService';
+import { getExpoNotifications } from '../notifications/expoNotifications';
 
 export interface NotificationSettings {
   enabled: boolean;
@@ -22,7 +23,18 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 };
 
 class NotificationService {
-  constructor() {
+  private handlerConfigured = false;
+
+  private async ensureNotificationHandler() {
+    if (this.handlerConfigured) {
+      return;
+    }
+
+    const Notifications = await getExpoNotifications();
+    if (!Notifications) {
+      return;
+    }
+
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
@@ -32,9 +44,20 @@ class NotificationService {
         shouldShowList: true,
       }),
     });
+    this.handlerConfigured = true;
   }
 
   async registerForPushNotificationsAsync() {
+    if (Platform.OS === 'web') {
+      return null;
+    }
+
+    await this.ensureNotificationHandler();
+    const Notifications = await getExpoNotifications();
+    if (!Notifications) {
+      return null;
+    }
+
     if (!Device.isDevice) {
       return null;
     }
@@ -66,6 +89,8 @@ class NotificationService {
   async scheduleRoutineReminder(routineName: string, date: Date) {
     const settings = this.getSettings();
     if (!settings.enabled || !settings.routineReminders) return;
+    const Notifications = await getExpoNotifications();
+    if (!Notifications) return;
 
     // Check quiet hours
     if (settings.quietHoursEnabled && this.isInQuietHours(date, settings)) {
@@ -84,6 +109,8 @@ class NotificationService {
   }
 
   async cancelAllReminders() {
+    const Notifications = await getExpoNotifications();
+    if (!Notifications) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
   }
 

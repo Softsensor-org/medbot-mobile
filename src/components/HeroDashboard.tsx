@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { colors, typography, spacing } from '../theme';
+import { colors, typography, spacing, shadows } from '../theme';
 import { usePatientProgress } from '../hooks/useProgress';
 import { safeFormat } from '../utils/dateHelpers';
 
@@ -131,11 +131,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
     overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...shadows.md,
   },
   latestPhotoContainer: {
     height: 240,

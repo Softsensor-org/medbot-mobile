@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationService, NotificationSettings } from '../api/NotificationService';
 import { hapticService } from '../api/HapticService';
-import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { validateDeepLink } from '../utils/deepLinkValidator';
+import { getExpoNotifications } from '../notifications/expoNotifications';
 
 export const useNotifications = () => {
   const queryClient = useQueryClient();
@@ -12,17 +13,35 @@ export const useNotifications = () => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    let isMounted = true;
+    let removeSubscription: (() => void) | undefined;
+
     // Handle deep links when app is backgrounded/closed
-    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
-      // In scheduler.ts, deepLink is passed under data.deepLink, but the old code checked data.url
-      // We will check both to be safe
-      const data = response.notification.request.content.data;
-      const url = data?.deepLink || data?.url;
-      const safeUrl = validateDeepLink(url as string | undefined);
-      router.push(safeUrl);
+    void getExpoNotifications().then(Notifications => {
+      if (!isMounted || !Notifications) {
+        return;
+      }
+
+      const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+        // In scheduler.ts, deepLink is passed under data.deepLink, but the old code checked data.url
+        // We will check both to be safe
+        const data = response.notification.request.content.data;
+        const url = data?.deepLink || data?.url;
+        const safeUrl = validateDeepLink(url as string | undefined);
+        router.push(safeUrl);
+      });
+
+      removeSubscription = () => subscription.remove();
     });
 
-    return () => subscription.remove();
+    return () => {
+      isMounted = false;
+      removeSubscription?.();
+    };
   }, [router]);
 
   const { data: settings = { enabled: false }, isLoading } = useQuery<NotificationSettings>({

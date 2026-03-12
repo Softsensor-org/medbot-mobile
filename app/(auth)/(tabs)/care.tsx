@@ -11,7 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { formatDistanceToNow } from "date-fns";
 import { MaterialIcons } from "@expo/vector-icons";
-import { colors, typography, spacing } from "../../../src/theme";
+import { colors, typography, spacing, shadows } from "../../../src/theme";
 import { useCreateSession, useSessions } from "../../../src/hooks/useSessions";
 import { SessionMeta } from "../../../src/api/sessionsApi";
 import { colorFor } from "../../../src/status/statusHelpers";
@@ -209,11 +209,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...shadows.md,
   },
   disabledButton: {
     opacity: 0.6,
@@ -238,11 +234,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    ...shadows.sm,
   },
   cardHeader: {
     flexDirection: "row",
