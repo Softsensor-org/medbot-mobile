@@ -9,6 +9,8 @@ import type {
   RoutineAssignmentActionRequest,
   RoutineAssignmentActionEvent,
   DailySummaryResponse,
+  PulseResponse,
+  PulseEntry,
 } from "../types/medical";
 
 export interface MedicalChatRequest {
@@ -100,6 +102,14 @@ class MedicalApiService extends BaseApiService {
     qp.set("days", days.toString());
     if (patientId) qp.set("patient_id", patientId);
     return this.get<DailySummaryResponse>(`/daily-summary?${qp.toString()}`);
+  }
+
+  async submitPulse(severity: number, note?: string): Promise<PulseResponse> {
+    return this.post<PulseResponse>("/pulse", { severity, note });
+  }
+
+  async getRecentPulses(days = 7): Promise<PulseEntry[]> {
+    return this.get<PulseEntry[]>(`/pulse?days=${days}`);
   }
 }
 
