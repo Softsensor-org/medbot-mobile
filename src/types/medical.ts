@@ -192,6 +192,29 @@ export interface IntakeMode {
   updated_at: string;
 }
 
+// IMP-244: Pulse Check-In types
+
+export interface PulseSubmission {
+  severity: number;
+  note?: string;
+}
+
+export interface PulseResponse {
+  pulse_id: string;
+  patient_id: string;
+  severity: number;
+  note?: string;
+  created_at: string;
+  timeline_event_id?: string;
+}
+
+export interface PulseEntry {
+  pulse_id: string;
+  severity: number;
+  note?: string;
+  created_at: string;
+}
+
 // --- WEL-006: Product inventory + ingredient safety ---
 
 export interface Ingredient {

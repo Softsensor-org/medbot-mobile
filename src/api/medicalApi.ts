@@ -8,6 +8,8 @@ import type {
   RoutineAssignmentStatus,
   RoutineAssignmentActionRequest,
   RoutineAssignmentActionEvent,
+  PulseResponse,
+  PulseEntry,
 } from "../types/medical";
 
 export interface MedicalChatRequest {
@@ -93,6 +95,13 @@ class MedicalApiService extends BaseApiService {
       formData,
       { headers: { "Content-Type": "multipart/form-data" } }
     );
+  }
+  async submitPulse(severity: number, note?: string): Promise<PulseResponse> {
+    return this.post<PulseResponse>("/pulse", { severity, note });
+  }
+
+  async getRecentPulses(days = 7): Promise<PulseEntry[]> {
+    return this.get<PulseEntry[]>(`/pulse?days=${days}`);
   }
 }
 
