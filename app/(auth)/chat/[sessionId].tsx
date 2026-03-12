@@ -17,6 +17,8 @@ import EvidenceProgressBar from "../../../src/components/EvidenceProgressBar";
 import EscalationGateModal from "../../../src/components/EscalationGateModal";
 import { useSessionTranscript, useEvidenceSnapshot } from "../../../src/hooks/useSessions";
 import { streamChat } from "../../../src/stream/streamChat";
+import ChatCardInline from "../../../src/components/ChatCardInline";
+import type { ChatCard } from "../../../src/types/ai";
 import { TranscriptMessage } from "../../../src/api/sessionsApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { sessionKeys } from "../../../src/queryKeys";
@@ -30,6 +32,7 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamedContent, setIsStreamedContent] = useState("");
+  const [pendingCards, setPendingCards] = useState<ChatCard[]>([]);
   const [escalation, setEscalation] = useState<{
     visible: boolean;
     category?: string | null;
@@ -67,6 +70,7 @@ export default function ChatScreen() {
     setInput("");
     setIsStreaming(true);
     setIsStreamedContent("");
+    setPendingCards([]);
 
     try {
       await streamChat({
@@ -75,6 +79,8 @@ export default function ChatScreen() {
         onEvent: (event) => {
           if (event.type === "token") {
             setIsStreamedContent((prev) => prev + event.content);
+          } else if (event.type === "card") {
+            setPendingCards((prev) => [...prev, event.card]);
           } else if (event.type === "complete") {
             // Check for escalation gate
             const mo = event.model_output;
@@ -189,15 +195,24 @@ export default function ChatScreen() {
         contentContainerStyle={styles.listContent}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         ListFooterComponent={
-          isStreaming && streamedContent ? (
-            <View style={[styles.messageBubble, styles.assistantBubble]}>
-              <Text testID="streamed-content" style={[styles.messageText, styles.assistantText]}>{streamedContent}</Text>
-            </View>
-          ) : isStreaming ? (
-            <View style={styles.loadingBubble}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          ) : null
+          <>
+            {isStreaming && streamedContent ? (
+              <View style={[styles.messageBubble, styles.assistantBubble]}>
+                <Text testID="streamed-content" style={[styles.messageText, styles.assistantText]}>{streamedContent}</Text>
+              </View>
+            ) : isStreaming ? (
+              <View style={styles.loadingBubble}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : null}
+            {!isStreaming && pendingCards.length > 0 && (
+              <View style={styles.cardsContainer}>
+                {pendingCards.map((card) => (
+                  <ChatCardInline key={card.card_id} card={card} />
+                ))}
+              </View>
+            )}
+          </>
         }
       />
 
@@ -304,6 +319,9 @@ const styles = StyleSheet.create({
   loadingBubble: {
     alignSelf: "flex-start",
     padding: spacing.md,
+  },
+  cardsContainer: {
+    marginBottom: spacing.sm,
   },
   inputContainer: {
     flexDirection: "row",

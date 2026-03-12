@@ -34,6 +34,7 @@ export interface ModelOutput {
   escalation_required?: boolean;
   escalation_category?: string | null;
   escalation_guidance?: string | null;
+  cards?: ChatCard[];
 }
 
 // --- Discriminated union for non-streaming /medical_chat responses ---
@@ -153,11 +154,27 @@ export interface SafetyEvent {
 
 export type TimelineEvent = SymptomEvent | RoutineEvent | ProductEvent | SafetyEvent;
 
+// --- IMP-242: Structured Chat Output Cards ---
+
+export type CardType = "symptom" | "product" | "routine" | "intervention";
+export type CardStatus = "draft" | "confirmed" | "dismissed";
+
+export interface ChatCard {
+  card_id: string;
+  card_type: CardType;
+  status: CardStatus;
+  confidence: number;
+  data: Record<string, unknown>;
+  source_turn: number;
+  editable_fields: string[];
+}
+
 // --- SSE streaming events for /medical_chat_stream ---
 
 export type ModelStreamEvent =
   | { type: "ack"; content?: string }
   | { type: "token"; content: string }
+  | { type: "card"; card: ChatCard }
   | { type: "complete"; model_output?: ModelOutput }
   | { type: "clarification"; content: string; suggestions: string[] }
   | { type: "error"; content?: string }
