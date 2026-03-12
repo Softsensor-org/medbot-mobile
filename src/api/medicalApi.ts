@@ -10,6 +10,8 @@ import type {
   RoutineAssignmentActionEvent,
   DailySummaryResponse,
   SkinHealthScoreResponse,
+  PulseResponse,
+  PulseEntry,
 } from "../types/medical";
 
 export interface MedicalChatRequest {
@@ -107,6 +109,14 @@ class MedicalApiService extends BaseApiService {
     const qp = new URLSearchParams();
     qp.set("days", days.toString());
     return this.get<SkinHealthScoreResponse>(`/skin-score?${qp.toString()}`);
+  }
+
+  async submitPulse(severity: number, note?: string): Promise<PulseResponse> {
+    return this.post<PulseResponse>("/pulse", { severity, note });
+  }
+
+  async getRecentPulses(days = 7): Promise<PulseEntry[]> {
+    return this.get<PulseEntry[]>(`/pulse?days=${days}`);
   }
 }
 

@@ -21,6 +21,7 @@ export default function AuthLayout() {
         <Stack.Screen name="settings" options={{ headerShown: true, title: "Settings" }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="weekly-reveal" options={{ headerShown: false, presentation: "fullScreenModal" }} />
+        <Stack.Screen name="label-scan" options={{ headerShown: true, title: "Scan Product Label" }} />
       </Stack>
     </>
   );
