@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { colors, typography, spacing } from "../../../src/theme";
 import { HeroDashboard } from "../../../src/components/HeroDashboard";
 import { AutopilotCard } from "../../../src/components/AutopilotCard";
+import { TodayPlan } from "../../../src/components/TodayPlan";
 import { MaterialIcons } from "@expo/vector-icons";
 
 export default function DailyScreen() {
@@ -18,6 +19,8 @@ export default function DailyScreen() {
         </View>
         <TouchableOpacity 
           style={styles.statsButton}
+          accessibilityRole="button"
+          testID="daily-progress-button"
           onPress={() => router.push("/(auth)/(tabs)/progress")}
         >
           <MaterialIcons name="trending-up" size={24} color={colors.primary} />
@@ -25,6 +28,8 @@ export default function DailyScreen() {
       </View>
 
       <HeroDashboard />
+
+      <TodayPlan />
 
       <AutopilotCard />
 
