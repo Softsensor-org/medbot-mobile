@@ -2,7 +2,7 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { wellnessApi } from "../api/wellnessApi";
 import { wellnessKeys } from "../queryKeys";
-import type { IntakeModeValue, AppointmentType } from "../types/medical";
+import type { IntakeModeValue, AppointmentType } from "../types/wellness";
 import {
   executeWithOfflineQueue,
   retryOfflineQueueItem,

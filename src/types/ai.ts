@@ -31,6 +31,8 @@ export interface ModelOutput {
   photo_quality?: PhotoQualityAnalysis;
   disclaimers?: string[];
   generated_at?: string;
+  symptom_capture_hint?: SymptomCaptureHint;
+  cards?: ChatCard[];
   escalation_required?: boolean;
   escalation_category?: string | null;
   escalation_guidance?: string | null;
@@ -58,6 +60,7 @@ export interface ModelOutputResponse {
   missing_evidence?: string[];
   is_preliminary?: boolean;
   photo_quality?: PhotoQualityAnalysis;
+  symptom_capture_hint?: SymptomCaptureHint;
   escalation_required?: boolean;
   escalation_category?: string | null;
   escalation_guidance?: string | null;
@@ -105,6 +108,7 @@ export interface EvidenceSnapshot {
 export interface ProviderPacket extends Omit<EvidenceSnapshot, "has_image" | "is_preliminary"> {
   shared_at: string;
   patient_id: string;
+  summary_for_doctor?: string;
 }
 
 // --- Structured Timeline Events (MB-602) ---
@@ -153,10 +157,19 @@ export interface SafetyEvent {
 
 export type TimelineEvent = SymptomEvent | RoutineEvent | ProductEvent | SafetyEvent;
 
-// --- Chat Cards (IMP-242 / IMP-245) ---
+// --- PTN-001: Symptom Capture Hint ---
 
-export type CardType = "symptom" | "product" | "routine" | "intervention" | "summary";
+export interface SymptomCaptureHint {
+  suggest: boolean;
+  symptom_terms: string[];
+  body_parts: string[];
+  severity?: string | null;
+  duration?: string | null;
+}
 
+// --- IMP-242: Structured Chat Output Cards ---
+
+export type CardType = "symptom" | "product" | "routine" | "intervention" | "summary" | "escalation";
 export type CardStatus = "draft" | "confirmed" | "dismissed" | "flagged";
 
 export interface ChatCard {
@@ -167,15 +180,29 @@ export interface ChatCard {
   data: Record<string, unknown>;
   source_turn: number;
   editable_fields: string[];
-  session_id?: string;
 }
 
-export interface SessionSummaryData {
-  topics_discussed: string[];
-  data_captured: string[];
-  recommended_next_step: string | null;
+// --- IMP-249: Provider Brief ---
+
+export interface ProviderBriefAnnotation {
+  author: string;
+  comment: string;
+  created_at: string;
+}
+
+export interface ProviderBrief {
+  session_id: string;
+  chief_complaint: string;
+  symptom_context: string;
+  adherence_snapshot: string;
+  interventions: string[];
+  focus_areas: string[];
+  safety_flags: string[];
+  triage_label?: string | null;
   turn_count: number;
-  triage_label: string | null;
+  generated_at: string;
+  flagged: boolean;
+  annotations: ProviderBriefAnnotation[];
 }
 
 // --- SSE streaming events for /medical_chat_stream ---
@@ -183,8 +210,8 @@ export interface SessionSummaryData {
 export type ModelStreamEvent =
   | { type: "ack"; content?: string }
   | { type: "token"; content: string }
+  | { type: "card"; card: ChatCard }
   | { type: "complete"; model_output?: ModelOutput }
   | { type: "clarification"; content: string; suggestions: string[] }
-  | { type: "card"; card: ChatCard }
   | { type: "error"; content?: string }
   | { type: "debug"; payload: unknown };
