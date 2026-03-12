@@ -8,6 +8,8 @@ import type {
   RoutineAssignmentStatus,
   RoutineAssignmentActionRequest,
   RoutineAssignmentActionEvent,
+  DailySummaryResponse,
+  SkinHealthScoreResponse,
   PulseResponse,
   PulseEntry,
 } from "../types/medical";
@@ -96,6 +98,19 @@ class MedicalApiService extends BaseApiService {
       { headers: { "Content-Type": "multipart/form-data" } }
     );
   }
+  async getDailySummary(days: number = 7, patientId?: string): Promise<DailySummaryResponse> {
+    const qp = new URLSearchParams();
+    qp.set("days", days.toString());
+    if (patientId) qp.set("patient_id", patientId);
+    return this.get<DailySummaryResponse>(`/daily-summary?${qp.toString()}`);
+  }
+
+  async getSkinScore(days: number = 28): Promise<SkinHealthScoreResponse> {
+    const qp = new URLSearchParams();
+    qp.set("days", days.toString());
+    return this.get<SkinHealthScoreResponse>(`/skin-score?${qp.toString()}`);
+  }
+
   async submitPulse(severity: number, note?: string): Promise<PulseResponse> {
     return this.post<PulseResponse>("/pulse", { severity, note });
   }
