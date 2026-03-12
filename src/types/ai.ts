@@ -153,6 +153,31 @@ export interface SafetyEvent {
 
 export type TimelineEvent = SymptomEvent | RoutineEvent | ProductEvent | SafetyEvent;
 
+// --- Chat Cards (IMP-242 / IMP-245) ---
+
+export type CardType = "symptom" | "product" | "routine" | "intervention" | "summary";
+
+export type CardStatus = "draft" | "confirmed" | "dismissed" | "flagged";
+
+export interface ChatCard {
+  card_id: string;
+  card_type: CardType;
+  status: CardStatus;
+  confidence: number;
+  data: Record<string, unknown>;
+  source_turn: number;
+  editable_fields: string[];
+  session_id?: string;
+}
+
+export interface SessionSummaryData {
+  topics_discussed: string[];
+  data_captured: string[];
+  recommended_next_step: string | null;
+  turn_count: number;
+  triage_label: string | null;
+}
+
 // --- SSE streaming events for /medical_chat_stream ---
 
 export type ModelStreamEvent =
@@ -160,5 +185,6 @@ export type ModelStreamEvent =
   | { type: "token"; content: string }
   | { type: "complete"; model_output?: ModelOutput }
   | { type: "clarification"; content: string; suggestions: string[] }
+  | { type: "card"; card: ChatCard }
   | { type: "error"; content?: string }
   | { type: "debug"; payload: unknown };

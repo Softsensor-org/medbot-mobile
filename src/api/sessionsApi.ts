@@ -8,7 +8,7 @@
  */
 
 import { BaseApiService } from "./BaseApiService";
-import type { EvidenceSnapshot } from "../types/ai";
+import type { EvidenceSnapshot, ChatCard } from "../types/ai";
 import type { SessionListParams } from "../queryKeys";
 
 /** Matches backend app.schemas.sessions.SessionNote */
@@ -89,6 +89,22 @@ class SessionsApiService extends BaseApiService {
 
   async getPacket(sessionId: string): Promise<unknown> {
     return this.get<unknown>(`/${sessionId}/packet`);
+  }
+
+  /** IMP-245: Trigger session summarization, returns a summary ChatCard. */
+  async summarizeSession(sessionId: string): Promise<ChatCard> {
+    return this.post<ChatCard>(`/${sessionId}/summarize`);
+  }
+
+  /** IMP-245: Flag a card for provider correction.
+   *  Card endpoints are under /api/v1/medical/cards/, not /sessions/.
+   */
+  async flagCard(cardId: string): Promise<ChatCard> {
+    const { default: client } = await import("./client");
+    const res = await client.post(`/api/v1/medical/cards/${cardId}/flag`);
+    const body = res.data;
+    if (!body.success) throw new Error(body.error ?? "Failed to flag card");
+    return body.data as ChatCard;
   }
 }
 
