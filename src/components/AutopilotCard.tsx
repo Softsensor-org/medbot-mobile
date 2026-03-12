@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -29,11 +29,19 @@ export const AutopilotCard: React.FC = () => {
   } = useAutopilot();
 
   const { safety, isLoading: isLoadingSafety } = useSafetyGate();
+  const lastSafetyGateEvent = useRef<string | null>(null);
 
   useEffect(() => {
     if (!safety.isSafe) {
+      const eventKey = `${safety.reason}:${safety.severity}`;
+      if (lastSafetyGateEvent.current === eventKey) {
+        return;
+      }
+      lastSafetyGateEvent.current = eventKey;
       analytics.track('safety_gate_triggered', { reason: safety.reason, severity: safety.severity });
+      return;
     }
+    lastSafetyGateEvent.current = null;
   }, [safety]);
 
   if (!flags?.autopilot_enabled) return null;

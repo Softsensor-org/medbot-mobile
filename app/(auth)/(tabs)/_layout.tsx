@@ -1,8 +1,10 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Platform } from "react-native";
 import { colors } from "../../../src/theme";
 import { useCapabilities } from "../../../src/hooks/useCapabilities";
+import { WebHeaderBackground } from "../../../src/components/common/WebHeaderBackground";
 
 export default function TabsLayout() {
   const { isLoading, isFeatureEnabled } = useCapabilities();
@@ -15,6 +17,14 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         headerShown: true,
+        headerBackground: Platform.OS === "web" ? () => <WebHeaderBackground /> : undefined,
+        tabBarStyle: Platform.OS === "web"
+          ? {
+              boxShadow: "none",
+              borderTopWidth: 1,
+              borderTopColor: colors.borderLight,
+            }
+          : undefined,
       }}
     >
       <Tabs.Screen
