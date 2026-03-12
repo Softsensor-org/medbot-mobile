@@ -15,11 +15,13 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { colors, typography, spacing } from "../../../src/theme";
 import EvidenceProgressBar from "../../../src/components/EvidenceProgressBar";
 import EscalationGateModal from "../../../src/components/EscalationGateModal";
+import { ChatCardInline } from "../../../src/components/ChatCardInline";
 import { useSessionTranscript, useEvidenceSnapshot } from "../../../src/hooks/useSessions";
 import { streamChat } from "../../../src/stream/streamChat";
-import { TranscriptMessage } from "../../../src/api/sessionsApi";
+import { TranscriptMessage, sessionsApi } from "../../../src/api/sessionsApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { sessionKeys } from "../../../src/queryKeys";
+import type { ChatCard } from "../../../src/types/ai";
 
 export default function ChatScreen() {
   const params = useLocalSearchParams<{ sessionId: string }>();
@@ -35,6 +37,8 @@ export default function ChatScreen() {
     category?: string | null;
     guidance?: string | null;
   }>({ visible: false });
+  const [summaryCard, setSummaryCard] = useState<ChatCard | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const {
@@ -113,6 +117,23 @@ export default function ChatScreen() {
     }
   }, [input, sessionId, isStreaming, queryClient]);
 
+  const handleSummarize = useCallback(async () => {
+    if (!sessionId || isSummarizing) return;
+    setIsSummarizing(true);
+    try {
+      const card = await sessionsApi.summarizeSession(sessionId);
+      setSummaryCard(card);
+    } catch (err) {
+      console.error("Failed to summarize session:", err);
+    } finally {
+      setIsSummarizing(false);
+    }
+  }, [sessionId, isSummarizing]);
+
+  const handleSummaryCardUpdate = useCallback((updated: ChatCard) => {
+    setSummaryCard(updated);
+  }, []);
+
   const renderMessage = ({ item }: { item: TranscriptMessage }) => {
     const isUser = item.role === "user";
     return (
@@ -162,12 +183,25 @@ export default function ChatScreen() {
           <Text style={styles.headerTitle}>Consultation</Text>
           <Text style={styles.headerSubtitle}>ID: {sessionId.slice(0, 8)}...</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.iconButton} 
-          onPress={() => router.push("/(auth)/intake")}
-        >
-          <MaterialIcons name="info-outline" size={24} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={handleSummarize}
+            disabled={isSummarizing}
+          >
+            {isSummarizing ? (
+              <ActivityIndicator size="small" color={colors.info} />
+            ) : (
+              <MaterialIcons name="article" size={24} color={colors.info} />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push("/(auth)/intake")}
+          >
+            <MaterialIcons name="info-outline" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {snapshot && (
@@ -189,15 +223,20 @@ export default function ChatScreen() {
         contentContainerStyle={styles.listContent}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         ListFooterComponent={
-          isStreaming && streamedContent ? (
-            <View style={[styles.messageBubble, styles.assistantBubble]}>
-              <Text testID="streamed-content" style={[styles.messageText, styles.assistantText]}>{streamedContent}</Text>
-            </View>
-          ) : isStreaming ? (
-            <View style={styles.loadingBubble}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          ) : null
+          <>
+            {isStreaming && streamedContent ? (
+              <View style={[styles.messageBubble, styles.assistantBubble]}>
+                <Text testID="streamed-content" style={[styles.messageText, styles.assistantText]}>{streamedContent}</Text>
+              </View>
+            ) : isStreaming ? (
+              <View style={styles.loadingBubble}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : null}
+            {summaryCard && (
+              <ChatCardInline card={summaryCard} onCardUpdate={handleSummaryCardUpdate} />
+            )}
+          </>
         }
       />
 
@@ -263,6 +302,10 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   iconButton: {
     padding: spacing.xs,
