@@ -1,26 +1,47 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRoutineAssignments } from "../../../src/hooks/useRoutineAssignments";
 import { useCompleteAssignment, useDeferAssignment } from "../../../src/hooks/useRoutineActions";
-import type { RescheduleIntentType, RoutineAssignment } from "../../../src/types/medical";
-import { colors, typography, spacing } from "../../../src/theme";
-import { NativeDateTimePicker } from "../../../src/components/common/NativeDateTimePicker";
-import { parseISO, isValid } from "date-fns";
-import { ChipSelect } from "../../../src/components/common/ChipSelect";
+import { useRoutines } from "../../../src/hooks/useRoutines";
+import type { RescheduleIntentType, RoutineAssignment, Routine } from "../../../src/types/medical";
+import { colors, spacing, typography } from "../../../src/theme";
 import { hapticService } from "../../../src/api/HapticService";
 import { useSafetyGate } from "../../../src/hooks/useSafetyGate";
 import { SafetyGateOverlay } from "../../../src/components/SafetyGateOverlay";
+import { CommitBoxSheet } from "../../../src/components/routines/CommitBoxSheet";
+import { RoutineAssignmentCard } from "../../../src/components/routines/RoutineAssignmentCard";
+import { EmptyStateCard } from "../../../src/components/common/EmptyStateCard";
+import { ScreenShell } from "../../../src/components/common/ScreenShell";
+import { SectionHeader } from "../../../src/components/common/SectionHeader";
+import { SoftCard } from "../../../src/components/common/SoftCard";
+
+interface EnrichedAssignment {
+  assignment: RoutineAssignment;
+  routine?: Routine;
+}
+
+function getSyncMessage(
+  completeStatus?: string,
+  deferStatus?: string,
+) {
+  if (completeStatus === "queued" || deferStatus === "queued") {
+    return "A routine action is queued for sync.";
+  }
+  if (completeStatus === "syncing" || deferStatus === "syncing") {
+    return "Syncing routine actions...";
+  }
+  if (completeStatus === "synced" || deferStatus === "synced") {
+    return "Routine sync complete.";
+  }
+  if (completeStatus === "failed" || deferStatus === "failed") {
+    return "Routine sync failed. Retry.";
+  }
+  return null;
+}
 
 export default function RoutinesScreen() {
-  const { data: assignments = [], isLoading, error: queryError } = useRoutineAssignments();
+  const { data: assignments = [], isLoading, error: assignmentError } = useRoutineAssignments();
+  const { data: routines = [], error: routinesError } = useRoutines();
   const completeMutation = useCompleteAssignment();
   const deferMutation = useDeferAssignment();
   const { safety, isLoading: isLoadingSafety } = useSafetyGate();
@@ -34,10 +55,41 @@ export default function RoutinesScreen() {
   const [comment, setComment] = useState("");
 
   const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
-
   const isSubmitting = completeMutation.isPending || deferMutation.isPending;
 
-  const loadError = queryError instanceof Error ? queryError.message : queryError ? "Failed to load routines" : null;
+  const loadError =
+    assignmentError instanceof Error
+      ? assignmentError.message
+      : assignmentError
+        ? "Failed to load routines"
+        : null;
+  const routineDetailWarning =
+    routinesError instanceof Error
+      ? routinesError.message
+      : routinesError
+        ? "Routine detail is temporarily unavailable."
+        : null;
+  const syncMessage = getSyncMessage(completeMutation.syncStatus, deferMutation.syncStatus);
+
+  const assignmentMap = useMemo(() => {
+    return new Map(routines.map((routine) => [routine.id ?? -1, routine]));
+  }, [routines]);
+
+  const enrichedAssignments = useMemo<EnrichedAssignment[]>(() => {
+    return assignments.map((assignment) => ({
+      assignment,
+      routine: assignmentMap.get(assignment.routine_id),
+    }));
+  }, [assignments, assignmentMap]);
+
+  const activeAssignments = enrichedAssignments.filter((item) => item.assignment.status === "active");
+  const recentAssignments = enrichedAssignments.filter((item) => item.assignment.status !== "active");
+  const featuredAssignment = activeAssignments[0] ?? recentAssignments[0] ?? null;
+  const featuredId = featuredAssignment?.assignment.id ?? null;
+  const queuedActiveAssignments = activeAssignments.filter((item) => item.assignment.id !== featuredId);
+  const secondaryRecentAssignments = recentAssignments.filter((item) => item.assignment.id !== featuredId);
+
+  const isSafetyBlocked = !isLoadingSafety && !safety.isSafe && safety.reason !== "low_confidence";
 
   const handleComplete = useCallback(
     (assignmentId: number) => {
@@ -88,7 +140,6 @@ export default function RoutinesScreen() {
     setTargetAt("");
     setComment("");
     setError(null);
-    setInfo(null);
   }, [isSubmitting]);
 
   const handleSubmitDefer = useCallback(() => {
@@ -129,177 +180,191 @@ export default function RoutinesScreen() {
     );
   }, [comment, deferMutation, deferReasonCode, rescheduleType, selectedAssignment, targetAt]);
 
-  const activeAssignments = assignments.filter((item) => item.status === "active");
-
-  const deferOptions = [
-    { value: "too_busy", label: "Too busy" },
-    { value: "waiting_for_product", label: "Waiting for product" },
-    { value: "skin_irritated", label: "Skin irritated" },
-    { value: "travel", label: "Travel" },
-  ];
-
-  const rescheduleOptions = [
-    { value: "later_today", label: "Later today" },
-    { value: "tomorrow", label: "Tomorrow" },
-    { value: "skip_for_now", label: "Skip for now" },
-    { value: "specific_time", label: "Specific time" },
-  ];
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Routines</Text>
-      
-      {!safety.isSafe && safety.reason !== 'low_confidence' ? (
-        <SafetyGateOverlay safety={safety} />
-      ) : (
-        <>
-          <Text style={styles.placeholder}>
-            Right action completes the assignment. Left action opens the Commit Box for structured defer + reschedule.
-          </Text>
-
-          {(isLoading || isLoadingSafety) ? <Text style={styles.metaText}>Loading assignments...</Text> : null}
-          {(error || loadError) ? <Text style={[styles.metaText, styles.error]}>{error || loadError}</Text> : null}
-          {info ? <Text style={[styles.metaText, styles.info]}>{info}</Text> : null}
-
-          {((completeMutation.syncStatus && completeMutation.syncStatus !== "idle") ||
-            (deferMutation.syncStatus && deferMutation.syncStatus !== "idle")) ? (
-            <View style={styles.syncBanner} testID="routine-sync-status">
-              <Text style={styles.metaText}>
-                {completeMutation.syncStatus === "queued" || deferMutation.syncStatus === "queued"
-                  ? "A routine action is queued for sync."
-                  : null}
-                {completeMutation.syncStatus === "syncing" || deferMutation.syncStatus === "syncing"
-                  ? "Syncing routine actions..."
-                  : null}
-                {completeMutation.syncStatus === "synced" || deferMutation.syncStatus === "synced"
-                  ? "Routine sync complete."
-                  : null}
-                {completeMutation.syncStatus === "failed" || deferMutation.syncStatus === "failed"
-                  ? "Routine sync failed. Retry."
-                  : null}
+    <>
+      <ScreenShell
+        title="Routines"
+        subtitle="Keep the next ritual clear, complete it in one tap, or capture a structured defer without losing context."
+        testID="routines-screen"
+      >
+        {isSafetyBlocked ? (
+          <SafetyGateOverlay safety={safety} />
+        ) : (
+          <>
+            <SoftCard tone="muted" style={styles.introCard}>
+              <Text style={styles.introEyebrow}>Ritual flow</Text>
+              <Text style={styles.introTitle}>One calm place for current assignments, cadence, and defer decisions.</Text>
+              <Text style={styles.introBody}>
+                Complete the current ritual from the hero card or open the Commit Box to document a structured reschedule.
               </Text>
-              {completeMutation.syncStatus === "failed" && (
-                <Pressable onPress={() => void completeMutation.retrySync()} testID="routine-complete-sync-retry-button">
-                  <Text style={styles.retryText}>Retry complete sync</Text>
-                </Pressable>
-              )}
-              {deferMutation.syncStatus === "failed" && (
-                <Pressable onPress={() => void deferMutation.retrySync()} testID="routine-defer-sync-retry-button">
-                  <Text style={styles.retryText}>Retry defer sync</Text>
-                </Pressable>
-              )}
-              {completeMutation.syncError ? <Text style={[styles.metaText, styles.error]}>{completeMutation.syncError}</Text> : null}
-              {deferMutation.syncError ? <Text style={[styles.metaText, styles.error]}>{deferMutation.syncError}</Text> : null}
-            </View>
-          ) : null}
+            </SoftCard>
 
-          {!isLoading && activeAssignments.length === 0 ? (
-            <Text style={styles.metaText}>No active routine assignments.</Text>
-          ) : null}
+            {isLoading || isLoadingSafety ? (
+              <SoftCard tone="muted">
+                <Text style={styles.metaText}>Loading assignments...</Text>
+              </SoftCard>
+            ) : null}
 
-          {activeAssignments.map((assignment) => (
-            <View key={assignment.id} style={styles.card}>
-              <Text style={styles.cardTitle}>{assignment.routine_name || `Routine #${assignment.routine_id}`}</Text>
-              {assignment.routine_description ? (
-                <Text style={styles.cardSubtitle}>{assignment.routine_description}</Text>
-              ) : null}
-              <View style={styles.actionsRow}>
-                <Pressable
-                  style={[styles.button, styles.completeButton, isSubmitting && styles.buttonDisabled]}
-                  disabled={isSubmitting}
-                  onPress={() => handleComplete(assignment.id)}
-                  testID="routine-complete-button"
-                >
-                  <Text style={styles.buttonText}>Complete</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.button, styles.deferButton, isSubmitting && styles.buttonDisabled]}
-                  disabled={isSubmitting}
-                  onPress={() => openCommitBox(assignment)}
-                  testID="routine-defer-button"
-                >
-                  <Text style={styles.buttonText}>Defer (Commit Box)</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
-        </>
-      )}
+            {loadError ? (
+              <SoftCard tone="warning">
+                <Text style={[styles.metaText, styles.errorText]}>{loadError}</Text>
+              </SoftCard>
+            ) : null}
 
-      <Modal visible={selectedAssignment !== null} animationType="slide" transparent onRequestClose={closeCommitBox}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Commit Box</Text>
-            <Text style={styles.modalHint}>Capture a structured defer reason and reschedule intent.</Text>
+            {routineDetailWarning ? (
+              <SoftCard tone="warning">
+                <Text style={styles.metaText}>
+                  Routine details are temporarily unavailable. Assignment actions still work.
+                </Text>
+                <Text style={[styles.metaText, styles.errorText]}>{routineDetailWarning}</Text>
+              </SoftCard>
+            ) : null}
 
-            <ChipSelect
-              label="Defer reason"
-              options={deferOptions}
-              selectedValue={deferReasonCode}
-              onSelect={(val) => setDeferReasonCode(val)}
-              horizontal={false}
-            />
+            {info ? (
+              <SoftCard tone="success">
+                <Text style={[styles.metaText, styles.infoText]}>{info}</Text>
+              </SoftCard>
+            ) : null}
 
-            <ChipSelect
-              label="Reschedule intent"
-              options={rescheduleOptions}
-              selectedValue={rescheduleType}
-              onSelect={(val) => setRescheduleType(val)}
-              horizontal={false}
-            />
+            {(error || syncMessage || completeMutation.syncError || deferMutation.syncError) ? (
+              <SoftCard tone={error || completeMutation.syncError || deferMutation.syncError ? "warning" : "muted"} testID="routine-sync-status">
+                {error ? <Text style={[styles.metaText, styles.errorText]}>{error}</Text> : null}
+                {syncMessage ? <Text style={styles.metaText}>{syncMessage}</Text> : null}
+                {completeMutation.syncError ? (
+                  <Text style={[styles.metaText, styles.errorText]}>{completeMutation.syncError}</Text>
+                ) : null}
+                {deferMutation.syncError ? (
+                  <Text style={[styles.metaText, styles.errorText]}>{deferMutation.syncError}</Text>
+                ) : null}
+                <View style={styles.retryRow}>
+                  {completeMutation.syncStatus === "failed" ? (
+                    <Pressable onPress={() => void completeMutation.retrySync()} testID="routine-complete-sync-retry-button">
+                      <Text style={styles.retryText}>Retry complete sync</Text>
+                    </Pressable>
+                  ) : null}
+                  {deferMutation.syncStatus === "failed" ? (
+                    <Pressable onPress={() => void deferMutation.retrySync()} testID="routine-defer-sync-retry-button">
+                      <Text style={styles.retryText}>Retry defer sync</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </SoftCard>
+            ) : null}
 
-            {rescheduleType === "specific_time" ? (
-              <NativeDateTimePicker
-                label="Target time"
-                mode="datetime"
-                value={isValid(parseISO(targetAt)) ? parseISO(targetAt) : new Date()}
-                onChange={(date) => setTargetAt(date.toISOString())}
-                testID="routine-target-time-picker"
+            {!isLoading && !loadError && !featuredAssignment ? (
+              <EmptyStateCard
+                title="No rituals are ready right now"
+                description="Your care team has not assigned an active routine yet. When one is ready, it will appear here with the full completion and defer workflow."
+                testID="routine-empty-state"
               />
             ) : null}
 
-            <Text style={styles.label}>Comment (optional)</Text>
-            <TextInput
-              value={comment}
-              onChangeText={setComment}
-              placeholder="Add context for your provider"
-              placeholderTextColor={colors.textSecondary}
-              style={[styles.input, styles.textArea]}
-              multiline
-              testID="routine-comment-input"
-            />
+            {featuredAssignment ? (
+              <View style={styles.section}>
+                <SectionHeader
+                  eyebrow={featuredAssignment.assignment.status === "active" ? "Current focus" : "Latest state"}
+                  title={
+                    featuredAssignment.assignment.status === "active"
+                      ? "Ready to act"
+                      : "No active ritual is waiting right now"
+                  }
+                  subtitle={
+                    featuredAssignment.assignment.status === "active"
+                      ? "The hero card keeps the next assignment, cadence, and authored steps in one place."
+                      : "The latest assignment state stays visible until the next active ritual is available."
+                  }
+                />
+                <RoutineAssignmentCard
+                  assignment={featuredAssignment.assignment}
+                  routine={featuredAssignment.routine}
+                  variant="featured"
+                  disabled={isSubmitting}
+                  onComplete={handleComplete}
+                  onDefer={openCommitBox}
+                />
+              </View>
+            ) : null}
 
-            <View style={styles.actionsRow}>
-              <Pressable style={[styles.button, styles.cancelButton]} onPress={closeCommitBox} disabled={isSubmitting} testID="routine-cancel-button">
-                <Text style={styles.buttonText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.button, styles.deferButton, isSubmitting && styles.buttonDisabled]}
-                onPress={handleSubmitDefer}
-                disabled={isSubmitting}
-                testID="routine-submit-defer-button"
-              >
-                <Text style={styles.buttonText}>Submit defer</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </ScrollView>
+            {queuedActiveAssignments.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader
+                  eyebrow="More active routines"
+                  title="Queued assignments"
+                  subtitle="The same workflow, with lighter framing for secondary routines."
+                />
+                <View style={styles.stack}>
+                  {queuedActiveAssignments.map((item) => (
+                    <RoutineAssignmentCard
+                      key={item.assignment.id}
+                      assignment={item.assignment}
+                      routine={item.routine}
+                      disabled={isSubmitting}
+                      onComplete={handleComplete}
+                      onDefer={openCommitBox}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {secondaryRecentAssignments.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader
+                  eyebrow="Recent states"
+                  title="Completed and deferred rituals"
+                  subtitle="Visual confirmation of the latest assignment state without changing the current routine workflow."
+                />
+                <View style={styles.stack}>
+                  {secondaryRecentAssignments.map((item) => (
+                    <RoutineAssignmentCard
+                      key={item.assignment.id}
+                      assignment={item.assignment}
+                      routine={item.routine}
+                      disabled
+                      onComplete={handleComplete}
+                      onDefer={openCommitBox}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </>
+        )}
+      </ScreenShell>
+
+      <CommitBoxSheet
+        visible={selectedAssignment !== null}
+        assignmentName={selectedAssignment?.routine_name || undefined}
+        deferReasonCode={deferReasonCode}
+        onDeferReasonChange={setDeferReasonCode}
+        rescheduleType={rescheduleType}
+        onRescheduleTypeChange={setRescheduleType}
+        targetAt={targetAt}
+        onTargetAtChange={setTargetAt}
+        comment={comment}
+        onCommentChange={setComment}
+        error={error}
+        isSubmitting={isSubmitting}
+        onClose={closeCommitBox}
+        onSubmit={handleSubmitDefer}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: spacing.lg,
-    backgroundColor: colors.background,
-    gap: spacing.md,
+  introCard: {
+    gap: spacing.sm,
   },
-  title: {
-    ...typography.h2,
+  introEyebrow: {
+    ...typography.eyebrow,
+    color: colors.textSecondary,
+  },
+  introTitle: {
+    ...typography.h3,
     color: colors.textPrimary,
   },
-  placeholder: {
+  introBody: {
     ...typography.body,
     color: colors.textSecondary,
   },
@@ -307,103 +372,25 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
   },
-  error: {
+  errorText: {
     color: colors.errorDark,
   },
-  info: {
-    color: colors.teal,
+  infoText: {
+    color: colors.success,
   },
-  syncBanner: {
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    padding: spacing.sm,
-    gap: spacing.xs,
+  retryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
   },
   retryText: {
     ...typography.label,
     color: colors.primary,
   },
-  card: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    gap: spacing.sm,
+  section: {
+    gap: spacing.md,
   },
-  cardTitle: {
-    ...typography.label,
-    color: colors.textPrimary,
-  },
-  cardSubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  actionsRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  button: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    minWidth: 120,
-    alignItems: "center",
-  },
-  completeButton: {
-    backgroundColor: colors.teal,
-  },
-  deferButton: {
-    backgroundColor: colors.amber,
-  },
-  cancelButton: {
-    backgroundColor: colors.slate,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: colors.surface,
-    ...typography.button,
-  },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: colors.overlay,
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  modalTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-  },
-  modalHint: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  label: {
-    ...typography.label,
-    color: colors.textPrimary,
-    marginTop: spacing.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.borderMuted,
-    borderRadius: 8,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    color: colors.textPrimary,
-    ...typography.body,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: "top",
+  stack: {
+    gap: spacing.md,
   },
 });
