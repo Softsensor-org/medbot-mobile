@@ -1,16 +1,19 @@
-import React from 'react';
+import React from "react";
 import {
+  Image,
   StyleSheet,
   Text,
   View,
-  TouchableOpacity,
-  Image,
-} from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { colors, typography, spacing, shadows } from '../theme';
-import { usePatientProgress } from '../hooks/useProgress';
-import { safeFormat } from '../utils/dateHelpers';
+} from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { colors, spacing, typography } from "../theme";
+import { usePatientProgress } from "../hooks/useProgress";
+import { safeFormat } from "../utils/dateHelpers";
+import { HeroSurface } from "./common/HeroSurface";
+import { MetricChip } from "./common/MetricChip";
+import { PrimaryButton } from "./common/PrimaryButton";
+import { SecondaryButton } from "./common/SecondaryButton";
 
 export const HeroDashboard = () => {
   const router = useRouter();
@@ -23,158 +26,147 @@ export const HeroDashboard = () => {
   const lastSymptom = symptoms?.[0];
   const prevSymptom = symptoms?.[1];
 
-  const trend = (lastSymptom && prevSymptom) 
-    ? (lastSymptom.severity < prevSymptom.severity ? 'improving' : 'stable')
-    : 'stable';
+  const trend =
+    lastSymptom && prevSymptom
+      ? lastSymptom.severity < prevSymptom.severity
+        ? "improving"
+        : "stable"
+      : "stable";
+
+  const heroTitle = latestPhoto
+    ? "Your routine is building visible momentum."
+    : "Capture today's baseline to anchor your progress.";
+  const heroSubtitle = latestPhoto
+    ? `Latest photo from ${safeFormat(latestPhoto.timestamp, "MMMM do, yyyy")}.`
+    : "Start with one photo and one check-in so tomorrow has something to compare against.";
 
   return (
-    <View style={styles.container}>
-      <View style={styles.summaryRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{Math.round(summary.adherence_rate * 100)}%</Text>
-          <Text style={styles.statLabel}>Adherence</Text>
-        </View>
-        <View style={[styles.statBox, styles.centerStat]}>
-          <MaterialIcons 
-            name={trend === 'improving' ? "trending-down" : "trending-flat"} 
-            size={24} 
-            color={trend === 'improving' ? colors.success : colors.amber} 
+    <HeroSurface
+      eyebrow="Daily snapshot"
+      title={heroTitle}
+      subtitle={heroSubtitle}
+      metrics={
+        <>
+          <MetricChip
+            tone="primary"
+            label="Adherence"
+            value={`${Math.round(summary.adherence_rate * 100)}%`}
+            icon={<MaterialIcons name="favorite-border" size={16} color={colors.primary} />}
           />
-          <Text style={styles.statLabel}>{trend === 'improving' ? 'Improving' : 'Stable'}</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{summary.photo_count}</Text>
-          <Text style={styles.statLabel}>Photos</Text>
-        </View>
-      </View>
-
-      <View style={styles.mainCard}>
-        <View style={styles.latestPhotoContainer}>
+          <MetricChip
+            tone={trend === "improving" ? "success" : "info"}
+            label="Trend"
+            value={trend === "improving" ? "Improving" : "Stable"}
+            icon={
+              <MaterialIcons
+                name={trend === "improving" ? "trending-down" : "trending-flat"}
+                size={16}
+                color={trend === "improving" ? colors.success : colors.info}
+              />
+            }
+          />
+          <MetricChip
+            tone="default"
+            label="Photos"
+            value={`${summary.photo_count}`}
+            icon={<MaterialIcons name="photo-library" size={16} color={colors.textSecondary} />}
+          />
+        </>
+      }
+      media={
+        <View style={styles.media}>
           {latestPhoto ? (
-            <Image source={{ uri: latestPhoto.url }} style={styles.latestPhoto} />
+            <>
+              <Image source={{ uri: latestPhoto.url }} style={styles.latestPhoto} />
+              <View style={styles.photoOverlay}>
+                <Text style={styles.photoDate}>
+                  {safeFormat(latestPhoto.timestamp, "MMMM do, yyyy")}
+                </Text>
+              </View>
+            </>
           ) : (
-            <View style={styles.photoPlaceholder}>
-              <MaterialIcons name="add-a-photo" size={48} color={colors.borderLight} />
+            <View style={styles.placeholder}>
+              <MaterialIcons name="add-a-photo" size={44} color={colors.borderMuted} />
+              <Text style={styles.placeholderText}>No progress photo yet</Text>
             </View>
           )}
-          <View style={styles.photoOverlay}>
-             <Text style={styles.photoDate}>
-               {latestPhoto ? safeFormat(latestPhoto.timestamp, 'MMMM do, yyyy') : 'No photos yet'}
-             </Text>
-          </View>
         </View>
-
-        <View style={styles.quickActions}>
-          <TouchableOpacity 
-            style={styles.actionBtn}
-            onPress={() => router.push('/(auth)/intake/symptom-log')}
-          >
-            <MaterialIcons name="report-problem" size={24} color={colors.primary} />
-            <Text style={styles.actionText}>Symptom</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionBtn}
-            onPress={() => router.push('/(auth)/intake/camera')}
-          >
-            <MaterialIcons name="photo-camera" size={24} color={colors.primary} />
-            <Text style={styles.actionText}>Photo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionBtn}
-            onPress={() => router.push('/(auth)/(tabs)/routines')}
-          >
-            <MaterialIcons name="check-circle" size={24} color={colors.primary} />
-            <Text style={styles.actionText}>Routines</Text>
-          </TouchableOpacity>
+      }
+      actions={
+        <View style={styles.actions}>
+          <PrimaryButton
+            label="Symptom"
+            onPress={() => router.push("/(auth)/intake/symptom-log")}
+            icon={<MaterialIcons name="report-problem" size={18} color={colors.textInverse} />}
+            style={styles.primaryAction}
+          />
+          <SecondaryButton
+            label="Photo"
+            onPress={() => router.push("/(auth)/intake/camera")}
+            icon={<MaterialIcons name="photo-camera" size={18} color={colors.textPrimary} />}
+            style={styles.secondaryAction}
+          />
+          <SecondaryButton
+            label="Routines"
+            onPress={() => router.push("/(auth)/(tabs)/routines")}
+            icon={<MaterialIcons name="check-circle" size={18} color={colors.textPrimary} />}
+            style={styles.secondaryAction}
+          />
         </View>
-      </View>
-    </View>
+      }
+    />
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.xl,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-    padding: spacing.sm,
+  media: {
+    position: "relative",
+    height: 232,
+    borderRadius: 24,
+    overflow: "hidden",
     backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  centerStat: {
-    marginHorizontal: spacing.sm,
-    justifyContent: 'center',
-    gap: 4,
-  },
-  statValue: {
-    ...typography.h2,
-    color: colors.primary,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    fontWeight: '700',
-  },
-  mainCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    overflow: 'hidden',
-    ...shadows.md,
-  },
-  latestPhotoContainer: {
-    height: 240,
-    backgroundColor: colors.borderLight,
-    position: 'relative',
   },
   latestPhoto: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
-  photoPlaceholder: {
+  placeholder: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceLight,
+  },
+  placeholderText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   photoOverlay: {
-    position: 'absolute',
-    bottom: 0,
+    position: "absolute",
     left: 0,
     right: 0,
-    padding: spacing.md,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    bottom: 0,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: "rgba(44, 34, 28, 0.34)",
   },
   photoDate: {
     ...typography.caption,
-    color: colors.surface,
-    fontWeight: '700',
+    color: colors.textInverse,
+    fontWeight: "700",
   },
-  quickActions: {
-    flexDirection: 'row',
-    padding: spacing.md,
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+  actions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
   },
-  actionBtn: {
-    alignItems: 'center',
-    gap: 4,
+  primaryAction: {
+    flex: 1,
+    minWidth: 160,
   },
-  actionText: {
-    ...typography.caption,
-    color: colors.textPrimary,
-    fontWeight: '700',
+  secondaryAction: {
+    flex: 1,
+    minWidth: 136,
   },
 });

@@ -1,18 +1,22 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
-} from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
-import type { CarePlanAction } from '../types/medical';
-import type { DailyCarePlanWithAdaptation } from '../types/wellness';
-import { API_BASE_URL } from '../api/config';
-import { triggerEngagementHaptic } from '../engagement/haptics';
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_BASE_URL } from "../api/config";
+import { triggerEngagementHaptic } from "../engagement/haptics";
+import type { CarePlanAction } from "../types/medical";
+import type { DailyCarePlanWithAdaptation } from "../types/wellness";
+import { colors, spacing, typography } from "../theme";
+import { MetricChip } from "./common/MetricChip";
+import { SecondaryButton } from "./common/SecondaryButton";
+import { SectionHeader } from "./common/SectionHeader";
+import { SoftCard } from "./common/SoftCard";
 
 interface TriageSummary {
   triage_label?: string | null;
@@ -29,10 +33,10 @@ export const TodayPlan: React.FC = () => {
   const [safetyAcknowledged, setSafetyAcknowledged] = useState(false);
 
   const { data: plan, isLoading, isError } = useQuery<DailyCarePlanWithAdaptation>({
-    queryKey: ['care-plan', 'today'],
+    queryKey: ["care-plan", "today"],
     queryFn: async () => {
       const res = await fetch(`${API_BASE_URL}/api/v1/care-plan/today`);
-      if (!res.ok) throw new Error('Failed to fetch care plan');
+      if (!res.ok) throw new Error("Failed to fetch care plan");
       const json = await res.json();
       return json.data;
     },
@@ -40,7 +44,7 @@ export const TodayPlan: React.FC = () => {
   });
 
   const { data: careGraph } = useQuery<CareGraphData | null>({
-    queryKey: ['care-graph', 'today'],
+    queryKey: ["care-graph", "today"],
     queryFn: async () => {
       const res = await fetch(`${API_BASE_URL}/api/v1/care-graph`);
       if (!res.ok) return null;
@@ -52,27 +56,28 @@ export const TodayPlan: React.FC = () => {
   });
 
   const logMutation = useMutation({
-    mutationFn: async ({ routineId, status }: { routineId: number, status: string }) => {
+    mutationFn: async ({ routineId, status }: { routineId: number; status: string }) => {
       const res = await fetch(`${API_BASE_URL}/api/v1/routines/${routineId}/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
       });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['care-plan', 'today'] });
-      queryClient.invalidateQueries({ queryKey: ['care-graph'] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["care-plan", "today"] });
+      queryClient.invalidateQueries({ queryKey: ["care-graph"] });
+    },
   });
 
-  const handleToggle = useCallback((routineId: number | undefined, currentDone: boolean) => {
-    if (!routineId || currentDone || logMutation.isPending) return;
-    void triggerEngagementHaptic("routine_complete");
-    logMutation.mutate(
-      { routineId, status: 'completed' },
-    );
-  }, [logMutation]);
+  const handleToggle = useCallback(
+    (routineId: number | undefined, currentDone: boolean) => {
+      if (!routineId || currentDone || logMutation.isPending) return;
+      void triggerEngagementHaptic("routine_complete");
+      logMutation.mutate({ routineId, status: "completed" });
+    },
+    [logMutation],
+  );
 
   const handleAcknowledgeSafety = useCallback(() => {
     setSafetyAcknowledged(true);
@@ -88,69 +93,86 @@ export const TodayPlan: React.FC = () => {
   }
 
   const latestTriage = careGraph?.triage_sessions?.[0];
+  const symptomEvents = careGraph?.event_counts?.symptom_event || 0;
   const safetyEvents = careGraph?.event_counts?.safety_event || 0;
-  const isElevatedRisk = latestTriage?.triage_label === 'urgent' || safetyEvents > 0;
+  const isElevatedRisk = latestTriage?.triage_label === "urgent" || safetyEvents > 0;
   const adaptation = plan.adaptation;
 
-  const renderActionList = (actions: CarePlanAction[]) => (
+  const renderActionList = (actions: CarePlanAction[]) =>
     actions.map((item, idx) => (
-      <TouchableOpacity 
+      <TouchableOpacity
         key={`${item.action}-${idx}`}
         style={styles.actionRow}
         onPress={() => handleToggle(item.id, item.done)}
         disabled={!item.id || item.done || logMutation.isPending}
       >
-        <Ionicons 
-          name={item.done ? "checkbox" : "square-outline"} 
-          size={22} 
-          color={item.done ? colors.success : colors.primary} 
+        <Ionicons
+          name={item.done ? "checkbox" : "square-outline"}
+          size={22}
+          color={item.done ? colors.success : colors.primary}
         />
-        <Text style={[
-          styles.actionText,
-          item.done && styles.actionDoneText
-        ]}>
-          {item.action}
-        </Text>
+        <Text style={[styles.actionText, item.done && styles.actionDoneText]}>{item.action}</Text>
       </TouchableOpacity>
-    ))
-  );
+    ));
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Today's Plan</Text>
-      <Text style={styles.contextText}>{plan.confidence_context}</Text>
+    <SoftCard style={styles.card}>
+      <SectionHeader
+        eyebrow="Today"
+        title="Today's Plan"
+        subtitle={plan.confidence_context}
+      />
 
-      {isElevatedRisk && (
-        <View style={styles.alert}>
-          <MaterialIcons name="warning" size={20} color={colors.warning} />
-          <View style={styles.alertBody}>
-            <Text style={styles.alertText}>
-              Elevated risk detected. Prioritize your routine and monitor symptoms.
-            </Text>
-            <TouchableOpacity
+      <View style={styles.metrics}>
+        <MetricChip
+          tone={isElevatedRisk ? "warning" : "default"}
+          label="Latest triage"
+          value={latestTriage?.triage_label ?? "routine"}
+          icon={<MaterialIcons name="monitor-heart" size={16} color={colors.primary} />}
+        />
+        <MetricChip
+          tone="info"
+          label="Symptoms"
+          value={`${symptomEvents}`}
+          icon={<MaterialIcons name="timeline" size={16} color={colors.info} />}
+        />
+        <MetricChip
+          tone={safetyEvents > 0 ? "warning" : "default"}
+          label="Safety"
+          value={`${safetyEvents}`}
+          icon={<MaterialIcons name="shield" size={16} color={colors.warning} />}
+        />
+      </View>
+
+      {isElevatedRisk ? (
+        <SoftCard tone="warning" style={styles.alert}>
+          <View style={styles.alertCopy}>
+            <SectionHeader
+              eyebrow="Safety note"
+              title="Elevated risk detected"
+              subtitle="Prioritize your routine and monitor symptoms."
+            />
+            <SecondaryButton
+              label={safetyAcknowledged ? "Acknowledged" : "Acknowledge Safety Note"}
               onPress={handleAcknowledgeSafety}
-              style={styles.alertButton}
               testID="todayplan-safety-ack-button"
-            >
-              <Text style={styles.alertButtonText}>
-                {safetyAcknowledged ? "Acknowledged" : "Acknowledge Safety Note"}
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
-        </View>
-      )}
+        </SoftCard>
+      ) : null}
 
-      {adaptation && (
-        <View style={styles.adaptationContainer}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
-            <Text style={styles.sectionTitle}>Tomorrow's adjustments</Text>
-          </View>
+      {adaptation ? (
+        <SoftCard tone="muted" style={styles.adaptationCard}>
+          <SectionHeader
+            eyebrow="Tomorrow"
+            title="Tomorrow's adjustments"
+            subtitle="Adaptive suggestions based on your recent routine rhythm."
+          />
           {adaptation.suppressed ? (
             <View style={styles.suppressedRow}>
               <MaterialIcons name="health-and-safety" size={18} color={colors.error} />
               <Text style={styles.suppressedText}>
-                {adaptation.fallback_message || 'Adaptive changes are paused while safety checks are active.'}
+                {adaptation.fallback_message || "Adaptive changes are paused while safety checks are active."}
               </Text>
             </View>
           ) : (
@@ -161,29 +183,23 @@ export const TodayPlan: React.FC = () => {
                   <Text style={styles.adjustmentDetail}>{item.detail}</Text>
                 </View>
               ))}
-              {adaptation.status === 'fallback' && adaptation.fallback_message && (
+              {adaptation.status === "fallback" && adaptation.fallback_message ? (
                 <Text style={styles.fallbackText}>{adaptation.fallback_message}</Text>
-              )}
+              ) : null}
             </>
           )}
-        </View>
-      )}
+        </SoftCard>
+      ) : null}
 
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="sunny-outline" size={18} color={colors.warning} />
-          <Text style={styles.sectionTitle}>Morning</Text>
-        </View>
+        <SectionHeader title="Morning" eyebrow="AM" />
         {renderActionList(plan.am_actions)}
       </View>
 
       <View style={styles.divider} />
 
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="moon-outline" size={18} color={colors.primary} />
-          <Text style={styles.sectionTitle}>Evening</Text>
-        </View>
+        <SectionHeader title="Evening" eyebrow="PM" />
         {renderActionList(plan.pm_actions)}
       </View>
 
@@ -191,166 +207,109 @@ export const TodayPlan: React.FC = () => {
 
       <View style={styles.footerRow}>
         <View style={styles.footerCol}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="close-circle-outline" size={18} color={colors.error} />
-            <Text style={styles.sectionTitle}>Avoid</Text>
-          </View>
-          {plan.avoid_today.map((item, i) => (
-            <Text key={i} style={styles.footerText}>• {item}</Text>
+          <SectionHeader title="Avoid" eyebrow="Protect" />
+          {plan.avoid_today.map((item, index) => (
+            <Text key={`${item}-${index}`} style={styles.footerText}>
+              • {item}
+            </Text>
           ))}
         </View>
         <View style={styles.footerCol}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="eye-outline" size={18} color={colors.info} />
-            <Text style={styles.sectionTitle}>Watch</Text>
-          </View>
-          {plan.watch_for.map((item, i) => (
-            <Text key={i} style={styles.footerText}>• {item}</Text>
+          <SectionHeader title="Watch" eyebrow="Monitor" />
+          {plan.watch_for.map((item, index) => (
+            <Text key={`${item}-${index}`} style={styles.footerText}>
+              • {item}
+            </Text>
           ))}
         </View>
       </View>
-    </View>
+    </SoftCard>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
+    gap: spacing.md,
     marginVertical: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...shadows.md,
   },
-  cardTitle: {
-    ...typography.h2,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  contextText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
+  metrics: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
   },
   alert: {
-    flexDirection: 'row',
-    backgroundColor: colors.warningLight,
     padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.warning,
   },
-  alertBody: {
-    marginLeft: spacing.sm,
-    flex: 1,
-    gap: spacing.xs,
+  alertCopy: {
+    gap: spacing.md,
   },
-  alertText: {
-    ...typography.bodySmall,
-    color: colors.textPrimary,
-  },
-  alertButton: {
-    alignSelf: "flex-start",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.warning,
-    backgroundColor: colors.surface,
-  },
-  alertButtonText: {
-    ...typography.caption,
-    color: colors.warning,
-    fontWeight: "700",
-  },
-  adaptationContainer: {
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    ...typography.label,
-    fontWeight: '700',
-    marginLeft: spacing.xs,
-    color: colors.textPrimary,
-  },
-  adjustmentRow: {
-    marginBottom: spacing.sm,
-  },
-  adjustmentTitle: {
-    ...typography.bodySmall,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  adjustmentDetail: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
+  adaptationCard: {
+    gap: spacing.sm,
   },
   suppressedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "flex-start",
   },
   suppressedText: {
     ...typography.bodySmall,
-    color: colors.error,
-    marginLeft: spacing.xs,
+    color: colors.textPrimary,
     flex: 1,
   },
-  fallbackText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-    marginTop: spacing.xs,
-  },
   section: {
-    marginVertical: spacing.sm,
+    gap: spacing.sm,
   },
   actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   actionText: {
     ...typography.body,
     color: colors.textPrimary,
+    flex: 1,
   },
   actionDoneText: {
-    textDecorationLine: 'line-through',
-    color: colors.textDisabled,
+    color: colors.textSecondary,
+    textDecorationLine: "line-through",
   },
   divider: {
     height: 1,
     backgroundColor: colors.divider,
-    marginVertical: spacing.md,
   },
   footerRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.md,
   },
   footerCol: {
     flex: 1,
+    gap: spacing.sm,
   },
   footerText: {
     ...typography.bodySmall,
+    color: colors.textPrimary,
+  },
+  adjustmentRow: {
+    gap: spacing.xxs,
+    paddingVertical: spacing.xs,
+  },
+  adjustmentTitle: {
+    ...typography.bodyStrong,
+    color: colors.textPrimary,
+  },
+  adjustmentDetail: {
+    ...typography.bodySmall,
     color: colors.textSecondary,
-    marginBottom: 4,
+  },
+  fallbackText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   errorText: {
-    ...typography.bodySmall,
-    color: colors.error,
-    textAlign: 'center',
-    margin: spacing.md,
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
 });

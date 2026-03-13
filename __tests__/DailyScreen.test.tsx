@@ -1,11 +1,8 @@
 import React from "react";
 import { fireEvent, render } from "@testing-library/react-native";
-import { useRouter } from "expo-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import DailyScreen from "../app/(auth)/(tabs)/index";
-
-jest.mock("@expo/vector-icons", () => ({
-  MaterialIcons: "MaterialIcons",
-}));
+import { useRouter } from "expo-router";
 
 jest.mock("expo-router", () => ({
   useRouter: jest.fn(),
@@ -32,28 +29,42 @@ jest.mock("../src/components/AutopilotCard", () => ({
   },
 }));
 
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+);
+
 describe("DailyScreen", () => {
-  const push = jest.fn();
+  const mockRouter = { push: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue({ push });
+    (useRouter as jest.Mock).mockReturnValue(mockRouter);
   });
 
-  it("renders the connected daily plan modules", () => {
-    const { getByText } = render(<DailyScreen />);
+  it("renders the premium daily shell copy", () => {
+    const { getByText } = render(<DailyScreen />, { wrapper });
 
     expect(getByText("Daily Plan")).toBeTruthy();
+    expect(getByText("A softer, steadier rhythm for today.")).toBeTruthy();
     expect(getByText("HeroDashboard")).toBeTruthy();
     expect(getByText("TodayPlan")).toBeTruthy();
     expect(getByText("AutopilotCard")).toBeTruthy();
+    expect(
+      getByText(
+        "Consistency is key to skin health. Complete your morning and evening routines to see progress.",
+      ),
+    ).toBeTruthy();
   });
 
-  it("opens progress when the stats button is pressed", () => {
-    const { getByTestId } = render(<DailyScreen />);
+  it("navigates to progress from the header shortcut", () => {
+    const { getByTestId } = render(<DailyScreen />, { wrapper });
 
     fireEvent.press(getByTestId("daily-progress-button"));
 
-    expect(push).toHaveBeenCalledWith("/(auth)/(tabs)/progress");
+    expect(mockRouter.push).toHaveBeenCalledWith("/(auth)/(tabs)/progress");
   });
 });

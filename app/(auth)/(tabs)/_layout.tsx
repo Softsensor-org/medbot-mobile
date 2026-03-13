@@ -1,8 +1,8 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform } from "react-native";
-import { colors } from "../../../src/theme";
+import { Platform, StyleSheet } from "react-native";
+import { borderRadius, colors, spacing, typography } from "../../../src/theme";
 import { useCapabilities } from "../../../src/hooks/useCapabilities";
 import { WebHeaderBackground } from "../../../src/components/common/WebHeaderBackground";
 
@@ -18,13 +18,19 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textSecondary,
         headerShown: true,
         headerBackground: Platform.OS === "web" ? () => <WebHeaderBackground /> : undefined,
+        headerStyle: styles.header,
+        headerShadowVisible: false,
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: styles.headerTitle,
+        sceneStyle: styles.scene,
         tabBarStyle: Platform.OS === "web"
           ? {
+              ...StyleSheet.flatten(styles.tabBar),
               boxShadow: "none",
-              borderTopWidth: 1,
-              borderTopColor: colors.borderLight,
             }
-          : undefined,
+          : styles.tabBar,
+        tabBarItemStyle: styles.tabBarItem,
+        tabBarLabelStyle: styles.tabBarLabel,
       }}
     >
       <Tabs.Screen
@@ -77,3 +83,37 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    backgroundColor: colors.surfaceLight,
+  },
+  headerTitle: {
+    color: colors.textPrimary,
+    fontFamily: typography.h3.fontFamily,
+    fontSize: typography.h3.fontSize,
+    fontWeight: "700",
+  },
+  scene: {
+    backgroundColor: colors.background,
+  },
+  tabBar: {
+    height: 76,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.tabBar,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    position: "absolute",
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.xl,
+  },
+  tabBarItem: {
+    borderRadius: borderRadius.lg,
+  },
+  tabBarLabel: {
+    ...typography.caption,
+    fontWeight: "700",
+  },
+});

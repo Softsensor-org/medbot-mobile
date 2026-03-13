@@ -8,6 +8,7 @@ import { AuthProvider } from "../src/auth/AuthProvider";
 import { QueryProvider } from "../src/providers/QueryProvider";
 import { ToastProvider } from "../src/providers/ToastProvider";
 import { ErrorBoundary } from "../src/components/common/ErrorBoundary";
+import { colors } from "../src/theme";
 
 export default function RootLayout() {
   return (
@@ -17,7 +18,7 @@ export default function RootLayout() {
           <AuthProvider>
             <QueryProvider>
               <ToastProvider>
-                <StatusBar style="auto" />
+                <StatusBar style="dark" />
                 <Slot />
               </ToastProvider>
             </QueryProvider>
@@ -29,5 +30,8 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
 });

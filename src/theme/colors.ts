@@ -1,47 +1,51 @@
 export const colors = {
   // Brand
-  primary: "#0F172A", // Sophisticated Deep Navy
-  primaryLight: "#1E293B",
-  primaryDark: "#020617",
-  secondary: "#6366F1", // Indigo
+  primary: "#7E4F36",
+  primaryLight: "#B17A58",
+  primaryDark: "#4C2D1F",
+  secondary: "#CC8A62",
 
   // Neutrals
-  background: "#F8FAFC",
-  surface: "#FFFFFF",
-  surfaceVariant: "#F1F5F9",
-  surfaceLight: "#F8FAFC",
+  background: "#F6EFE7",
+  surface: "#FFFDF9",
+  surfaceVariant: "#F0E3D7",
+  surfaceLight: "#FBF6F0",
+  surfaceElevated: "#FFFFFF",
+  surfaceStrong: "#F2E2D0",
   
   // Text
-  textPrimary: "#0F172A",
-  textSecondary: "#475569",
+  textPrimary: "#2C221C",
+  textSecondary: "#6A5A4D",
   textDisabled: "#94A3B8",
-  textInverse: "#FFFFFF",
+  textInverse: "#FFF8F2",
 
   // Status
-  success: "#10B981",
-  successLight: "#D1FAE5",
-  warning: "#F59E0B",
-  warningLight: "#FEF3C7",
-  error: "#EF4444",
-  errorLight: "#FEE2E2",
-  errorDark: "#991B1B",
-  info: "#3B82F6",
-  infoLight: "#DBEAFE",
+  success: "#2F7D59",
+  successLight: "#DDEEE3",
+  warning: "#B97B36",
+  warningLight: "#F8E8D1",
+  error: "#B2544B",
+  errorLight: "#F5DFDB",
+  errorDark: "#7C322A",
+  info: "#5A7FA1",
+  infoLight: "#DDE8F2",
 
   // Medical/Action specific
-  teal: "#0D9488",
-  tealLight: "#F0FDFA",
-  amber: "#D97706",
-  amberLight: "#FFFBEB",
-  slate: "#64748B",
-  slateLight: "#F1F5F9",
+  teal: "#3F8A81",
+  tealLight: "#DDF0ED",
+  amber: "#B97B36",
+  amberLight: "#F8E8D1",
+  slate: "#7B6A5D",
+  slateLight: "#F2E7DC",
 
   // Borders & Dividers
-  border: "#E2E8F0",
-  borderLight: "#F1F5F9",
-  borderMuted: "#CBD5E1",
-  divider: "#F1F5F9",
-  overlay: "rgba(15, 23, 42, 0.5)",
+  border: "#E3D4C7",
+  borderLight: "#EFE2D6",
+  borderMuted: "#CCB8A6",
+  divider: "#EADFD3",
+  overlay: "rgba(44, 34, 28, 0.42)",
+  glow: "rgba(204, 138, 98, 0.18)",
+  tabBar: "rgba(255, 251, 245, 0.96)",
 
   // Triage-specific
   triageSelfCare: "#10B981",
