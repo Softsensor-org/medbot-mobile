@@ -3,6 +3,7 @@ import { render, fireEvent, act } from '@testing-library/react-native';
 import RoutinesScreen from '../app/(auth)/(tabs)/routines';
 import { useRoutineAssignments } from '../src/hooks/useRoutineAssignments';
 import { useCompleteAssignment, useDeferAssignment } from '../src/hooks/useRoutineActions';
+import { useRoutines } from '../src/hooks/useRoutines';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSafetyGate } from '../src/hooks/useSafetyGate';
 
@@ -16,6 +17,10 @@ jest.mock('../src/hooks/useRoutineActions', () => ({
   useDeferAssignment: jest.fn(),
 }));
 
+jest.mock('../src/hooks/useRoutines', () => ({
+  useRoutines: jest.fn(),
+}));
+
 jest.mock('../src/hooks/useSafetyGate', () => ({
   useSafetyGate: jest.fn(),
 }));
@@ -23,9 +28,13 @@ jest.mock('../src/hooks/useSafetyGate', () => ({
 jest.mock('../src/components/common/NativeDateTimePicker', () => {
   const _ReactNode = require('react');
   const { View, Text, TextInput } = require('react-native');
+  type MockPickerProps = {
+    label: string;
+    onChange: (value: Date) => void;
+    testID?: string;
+  };
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    NativeDateTimePicker: ({ label, onChange, testID }: any) => (
+    NativeDateTimePicker: ({ label, onChange, testID }: MockPickerProps) => (
       <View>
         <Text>{label}</Text>
         <TextInput
@@ -55,15 +64,34 @@ describe('RoutinesScreen', () => {
       ],
       isLoading: false,
     });
+    (useRoutines as jest.Mock).mockReturnValue({
+      data: [
+        {
+          id: 10,
+          name: 'Morning Routine',
+          description: 'Daily skin care',
+          active: true,
+          day_part: 'morning',
+          recurrence: { frequency: 'daily' },
+          steps: [
+            { id: 1, routine_id: 10, name: 'Cleanser', description: 'Wash and pat dry', step_order: 1 },
+            { id: 2, routine_id: 10, name: 'Moisturizer', description: 'Seal in hydration', step_order: 2 },
+          ],
+        },
+      ],
+      error: null,
+    });
     (useCompleteAssignment as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
     (useDeferAssignment as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
     (useSafetyGate as jest.Mock).mockReturnValue({ safety: { isSafe: true }, isLoading: false });
   });
 
   it('renders active assignments', () => {
-    const { getByText } = render(<RoutinesScreen />, { wrapper });
+    const { getByText, getAllByText } = render(<RoutinesScreen />, { wrapper });
     expect(getByText('Morning Routine')).toBeTruthy();
     expect(getByText('Daily skin care')).toBeTruthy();
+    expect(getByText('Cleanser')).toBeTruthy();
+    expect(getAllByText('Every day').length).toBeGreaterThan(0);
   });
 
   it('opens commit box on defer', () => {
@@ -110,5 +138,20 @@ describe('RoutinesScreen', () => {
       }),
       expect.anything()
     );
+  });
+
+  it('renders the empty state when no assignments are available', () => {
+    (useRoutineAssignments as jest.Mock).mockReturnValue({
+      data: [],
+      isLoading: false,
+    });
+    (useRoutines as jest.Mock).mockReturnValue({
+      data: [],
+      error: null,
+    });
+
+    const { getByText } = render(<RoutinesScreen />, { wrapper });
+
+    expect(getByText('No rituals are ready right now')).toBeTruthy();
   });
 });

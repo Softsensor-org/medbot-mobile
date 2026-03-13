@@ -43,6 +43,7 @@ export const capabilityKeys = {
 
 export const routineKeys = {
   all: ["routines"] as const,
+  catalog: () => [...routineKeys.all, "catalog"] as const,
   assignments: (params?: Record<string, unknown>) => [...routineKeys.all, "assignments", params] as const,
 };
 
