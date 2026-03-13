@@ -1,24 +1,16 @@
-import React from 'react';
-import { StyleSheet, ScrollView } from 'react-native';
-import { ProgressBoard } from '../../../src/components/ProgressBoard';
-import { TrajectoryBoard } from '../../../src/components/TrajectoryBoard';
-import { colors, spacing } from '../../../src/theme';
+import React from "react";
+import { ProgressBoard } from "../../../src/components/ProgressBoard";
+import { TrajectoryBoard } from "../../../src/components/TrajectoryBoard";
+import { ScreenShell } from "../../../src/components/common/ScreenShell";
 
 export default function ProgressScreen() {
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScreenShell
+      title="Progress Story"
+      subtitle="A warmer view of your momentum, patterns, and proof."
+    >
       <TrajectoryBoard />
       <ProgressBoard days={30} />
-    </ScrollView>
+    </ScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.md,
-  },
-});

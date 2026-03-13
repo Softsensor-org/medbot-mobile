@@ -1,20 +1,25 @@
 import { Platform, type ViewStyle } from "react-native";
 
 export const spacing = {
+  xxs: 2,
   xs: 4,
   sm: 8,
+  smd: 12,
   md: 16,
   lg: 24,
   xl: 32,
   xxl: 48,
+  xxxl: 64,
 } as const;
 
 export const borderRadius = {
+  xxs: 2,
   xs: 4,
   sm: 8,
   md: 12,
-  lg: 16,
-  xl: 24,
+  lg: 18,
+  xl: 26,
+  xxl: 34,
   full: 9999,
 } as const;
 
@@ -24,7 +29,7 @@ const shadow = (elevation: number, y: number, blur: number, opacity: number): Vi
       boxShadow: `0px ${y}px ${blur}px rgba(0, 0, 0, ${opacity})`,
     },
     default: {
-      shadowColor: "#000",
+      shadowColor: "#7E4F36",
       shadowOffset: { width: 0, height: y },
       shadowOpacity: opacity,
       shadowRadius: blur,
@@ -33,7 +38,8 @@ const shadow = (elevation: number, y: number, blur: number, opacity: number): Vi
   }) ?? {};
 
 export const shadows = {
-  sm: shadow(1, 1, 2, 0.05),
-  md: shadow(3, 2, 4, 0.1),
-  lg: shadow(6, 4, 8, 0.15),
+  sm: shadow(1, 1, 6, 0.08),
+  md: shadow(3, 8, 16, 0.12),
+  lg: shadow(6, 14, 22, 0.16),
+  hero: shadow(8, 18, 28, 0.18),
 } as const;

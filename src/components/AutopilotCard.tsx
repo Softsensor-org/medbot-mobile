@@ -1,33 +1,35 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
-} from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
-import { useAutopilot } from '../hooks/useAutopilot';
-import { useSafetyGate } from '../hooks/useSafetyGate';
-import { useFeatureFlags } from '../hooks/useFeatureFlags';
-import { SafetyGateOverlay } from './SafetyGateOverlay';
-import { analytics } from '../api/AnalyticsService';
-import { useRouter } from 'expo-router';
+  StyleSheet,
+  View,
+} from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { analytics } from "../api/AnalyticsService";
+import { colors, spacing } from "../theme";
+import { useAutopilot } from "../hooks/useAutopilot";
+import { useFeatureFlags } from "../hooks/useFeatureFlags";
+import { useSafetyGate } from "../hooks/useSafetyGate";
+import { SafetyGateOverlay } from "./SafetyGateOverlay";
+import { MetricChip } from "./common/MetricChip";
+import { PrimaryButton } from "./common/PrimaryButton";
+import { SecondaryButton } from "./common/SecondaryButton";
+import { SectionHeader } from "./common/SectionHeader";
+import { SoftCard } from "./common/SoftCard";
 
 export const AutopilotCard: React.FC = () => {
   const router = useRouter();
   const { data: flags } = useFeatureFlags();
-  const { 
-    currentStep, 
-    remainingRoutines, 
-    isLoading: isLoadingAutopilot, 
-    handleDone, 
-    handleSnooze, 
+  const {
+    currentStep,
+    remainingRoutines,
+    isLoading: isLoadingAutopilot,
+    handleDone,
+    handleSnooze,
     handleSkip,
-    isProcessing 
+    isProcessing,
   } = useAutopilot();
-
   const { safety, isLoading: isLoadingSafety } = useSafetyGate();
   const lastSafetyGateEvent = useRef<string | null>(null);
 
@@ -38,7 +40,7 @@ export const AutopilotCard: React.FC = () => {
         return;
       }
       lastSafetyGateEvent.current = eventKey;
-      analytics.track('safety_gate_triggered', { reason: safety.reason, severity: safety.severity });
+      analytics.track("safety_gate_triggered", { reason: safety.reason, severity: safety.severity });
       return;
     }
     lastSafetyGateEvent.current = null;
@@ -48,218 +50,156 @@ export const AutopilotCard: React.FC = () => {
 
   if (isLoadingAutopilot || isLoadingSafety) {
     return (
-      <View style={styles.container}>
+      <SoftCard style={styles.loadingCard}>
         <ActivityIndicator color={colors.primary} />
-      </View>
+      </SoftCard>
     );
   }
 
-  if (!safety.isSafe && safety.reason !== 'low_confidence') {
+  if (!safety.isSafe && safety.reason !== "low_confidence") {
     return <SafetyGateOverlay safety={safety} />;
   }
 
   const onDone = async () => {
-    analytics.track('autopilot_step_done', { type: currentStep.type, id: currentStep.id });
+    analytics.track("autopilot_step_done", { type: currentStep.type, id: currentStep.id });
     await handleDone();
   };
 
   const onSnooze = async () => {
-    analytics.track('autopilot_step_snooze', { id: currentStep.id });
+    analytics.track("autopilot_step_snooze", { id: currentStep.id });
     await handleSnooze();
   };
 
   const onSkip = async () => {
-    analytics.track('autopilot_step_skip', { id: currentStep.id });
+    analytics.track("autopilot_step_skip", { id: currentStep.id });
     await handleSkip();
   };
 
-  const renderContent = () => {
-    if (currentStep.type === 'complete') {
-      return (
-        <View style={styles.completeContent}>
-          <MaterialIcons name="stars" size={48} color={colors.success} />
-          <Text style={styles.title}>{currentStep.title}</Text>
-          <Text style={styles.subtitle}>{currentStep.subtitle}</Text>
-          <TouchableOpacity 
-            style={styles.statsButton}
-            onPress={() => router.push("/weekly-reveal")}
-          >
-            <Text style={styles.statsButtonText}>View Weekly Progress</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
+  if (currentStep.type === "complete") {
     return (
-      <>
-        <View style={styles.header}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {currentStep.type === 'routine' ? 'Next Routine' : 'Daily Check-in'}
-            </Text>
-          </View>
-          {remainingRoutines > 1 && (
-            <Text style={styles.countText}>+{remainingRoutines - 1} more</Text>
-          )}
+      <SoftCard tone="success" style={styles.card}>
+        <View style={styles.completeHero}>
+          <MaterialIcons name="stars" size={44} color={colors.success} />
+          <SectionHeader
+            eyebrow="Complete"
+            title={currentStep.title}
+            subtitle={currentStep.subtitle}
+          />
+          <SecondaryButton
+            label="View Weekly Progress"
+            onPress={() => router.push("/weekly-reveal")}
+          />
         </View>
-
-        <Text style={styles.title}>{currentStep.title}</Text>
-        <Text style={styles.subtitle} numberOfLines={2}>{currentStep.subtitle}</Text>
-
-        <View style={styles.actions}>
-          <TouchableOpacity 
-            style={[styles.actionBtn, styles.snoozeBtn]} 
-            onPress={onSnooze}
-            disabled={isProcessing}
-          >
-            <MaterialIcons name="snooze" size={20} color={colors.amber} />
-            <Text style={styles.actionBtnText}>Snooze</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.actionBtn, styles.mainBtn, isProcessing && styles.disabled]} 
-            onPress={currentStep.type === 'photo' ? () => {
-                analytics.track('autopilot_step_done', { type: 'photo' });
-                router.push("/(auth)/intake/camera");
-            } : onDone}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator color={colors.surface} size="small" />
-            ) : (
-              <>
-                <MaterialIcons 
-                  name={currentStep.type === 'photo' ? "photo-camera" : "check-circle"} 
-                  size={24} 
-                  color={colors.surface} 
-                />
-                <Text style={styles.mainBtnText}>
-                  {currentStep.type === 'photo' ? 'Open Camera' : 'Done'}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.actionBtn, styles.skipBtn]} 
-            onPress={onSkip}
-            disabled={isProcessing}
-          >
-            <MaterialIcons name="fast-forward" size={20} color={colors.textSecondary} />
-            <Text style={styles.actionBtnText}>Skip</Text>
-          </TouchableOpacity>
-        </View>
-      </>
+      </SoftCard>
     );
-  };
+  }
+
+  const isPhotoStep = currentStep.type === "photo";
 
   return (
-    <View style={[styles.container, currentStep.type === 'complete' && styles.completeContainer]}>
-      {renderContent()}
-    </View>
+    <SoftCard tone="highlight" style={styles.card}>
+      <SectionHeader
+        eyebrow="Autopilot"
+        title={currentStep.title}
+        subtitle={currentStep.subtitle}
+      />
+
+      <View style={styles.metaRow}>
+        <MetricChip
+          tone="primary"
+          label={currentStep.type === "routine" ? "Next routine" : "Daily check-in"}
+          value={currentStep.type === "photo" ? "Photo step" : "Active"}
+          icon={<MaterialIcons name="auto-awesome" size={16} color={colors.primary} />}
+          style={styles.metaChip}
+        />
+        {remainingRoutines > 1 ? (
+          <MetricChip
+            tone="default"
+            label="Queue"
+            value={`+${remainingRoutines - 1} more`}
+            icon={<MaterialIcons name="schedule" size={16} color={colors.textSecondary} />}
+            style={styles.metaChip}
+          />
+        ) : null}
+      </View>
+
+      <View style={styles.actions}>
+        <SecondaryButton
+          label="Snooze"
+          onPress={onSnooze}
+          disabled={isProcessing}
+          icon={<MaterialIcons name="snooze" size={18} color={colors.textPrimary} />}
+          style={styles.sideAction}
+        />
+        <PrimaryButton
+          label={isProcessing ? "Working..." : isPhotoStep ? "Open Camera" : "Done"}
+          onPress={
+            isPhotoStep
+              ? () => {
+                  analytics.track("autopilot_step_done", { type: "photo" });
+                  router.push("/(auth)/intake/camera");
+                }
+              : onDone
+          }
+          disabled={isProcessing}
+          icon={
+            isProcessing ? (
+              <ActivityIndicator size="small" color={colors.textInverse} />
+            ) : (
+              <MaterialIcons
+                name={isPhotoStep ? "photo-camera" : "check-circle"}
+                size={20}
+                color={colors.textInverse}
+              />
+            )
+          }
+          style={styles.primaryAction}
+        />
+        <SecondaryButton
+          label="Skip"
+          onPress={onSkip}
+          disabled={isProcessing}
+          icon={<MaterialIcons name="fast-forward" size={18} color={colors.textPrimary} />}
+          style={styles.sideAction}
+        />
+      </View>
+    </SoftCard>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
+  card: {
     marginVertical: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...shadows.md,
+    gap: spacing.md,
   },
-  completeContainer: {
-    backgroundColor: colors.successLight,
-    borderColor: colors.success,
-    borderStyle: 'dashed',
+  loadingCard: {
+    minHeight: 120,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  completeContent: {
-    alignItems: 'center',
+  completeHero: {
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  metaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  badge: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.full,
-  },
-  badgeText: {
-    ...typography.caption,
-    color: colors.surface,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  countText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.xl,
+  metaChip: {
+    flex: 1,
+    minWidth: 150,
   },
   actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
     gap: spacing.sm,
+    alignItems: "stretch",
   },
-  actionBtn: {
+  sideAction: {
     flex: 1,
-    height: 48,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4,
+    minWidth: 94,
   },
-  mainBtn: {
-    flex: 2,
-    backgroundColor: colors.primary,
-    ...shadows.sm,
+  primaryAction: {
+    flex: 1.3,
   },
-  snoozeBtn: {
-    backgroundColor: colors.amberLight,
-  },
-  skipBtn: {
-    backgroundColor: colors.surfaceVariant,
-  },
-  actionBtnText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  mainBtnText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-  statsButton: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  statsButtonText: {
-    ...typography.button,
-    color: colors.success,
-    fontSize: 14,
-  },
-  disabled: {
-    opacity: 0.7,
-  }
 });
