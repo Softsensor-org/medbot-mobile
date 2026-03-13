@@ -24,6 +24,7 @@ export default function InterventionLedgerScreen() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [name, setName] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [type, setType] = useState<any>("medication");
   const [dosage, setDosage] = useState("");
   const [frequency, setFrequency] = useState("");

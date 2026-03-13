@@ -57,6 +57,7 @@ describe("FIX-014: Mobile Route Alignment", () => {
 
   it("medicalApi.getRoutineAssignments calls /api/v1/routines/assignments", async () => {
     // We mock the underlying get call of BaseApiService
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockGet = jest.spyOn(medicalApi as any, 'get').mockResolvedValue([]);
     
     await medicalApi.getRoutineAssignments();

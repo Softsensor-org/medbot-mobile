@@ -53,6 +53,7 @@ export default function SymptomLogScreen() {
     };
 
     logSymptom(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       payload as any,
       {
         onSuccess: (result) => {
@@ -63,6 +64,7 @@ export default function SymptomLogScreen() {
             showToast("success", "Success", "Symptom logged successfully");
           }
           if (sessionId) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             router.push({ pathname: "/(auth)/chat/[sessionId]", params: { sessionId } } as any);
           } else {
             router.back();

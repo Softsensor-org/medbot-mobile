@@ -12,6 +12,7 @@ export interface AutopilotStep {
   type: AutopilotStepType;
   title: string;
   subtitle: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
 }
 

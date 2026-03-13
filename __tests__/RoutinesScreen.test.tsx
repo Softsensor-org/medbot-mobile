@@ -24,6 +24,7 @@ jest.mock('../src/components/common/NativeDateTimePicker', () => {
   const _ReactNode = require('react');
   const { View, Text, TextInput } = require('react-native');
   return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     NativeDateTimePicker: ({ label, onChange, testID }: any) => (
       <View>
         <Text>{label}</Text>

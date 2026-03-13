@@ -13,6 +13,7 @@ class AnalyticsService {
    * Track an event with optional properties.
    * All data must be non-PHI.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   track(_event: AnalyticsEvent, _properties?: Record<string, any>) {
     // We can also send to a generic backend endpoint if available
     // api.post('/analytics/event', { event, properties, timestamp: new Date().toISOString() }).catch(() => {});
