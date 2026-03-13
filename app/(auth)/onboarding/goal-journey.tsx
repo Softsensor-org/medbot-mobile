@@ -64,6 +64,7 @@ export default function GoalJourneyScreen() {
     const constraintsMap = constraints.reduce((acc, curr) => {
       acc[curr] = true;
       return acc;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }, {} as any);
 
     upsertJourney(

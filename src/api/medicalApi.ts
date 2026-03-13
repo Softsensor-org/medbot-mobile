@@ -90,6 +90,7 @@ class MedicalApiService extends BaseApiService {
       uri: base64,
       name: filename,
       type: 'image/jpeg',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     return this.post<{ url: string; filename: string }>(

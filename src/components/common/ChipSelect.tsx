@@ -18,6 +18,7 @@ interface Option {
 interface ChipSelectProps {
   options: Option[];
   selectedValue: string | number | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSelect: (value: any) => void;
   label?: string;
   horizontal?: boolean;
@@ -34,11 +35,13 @@ export const ChipSelect: React.FC<ChipSelectProps> = ({
   multiSelect = false,
   selectedValues = [],
 }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlePress = (value: any) => {
     hapticService.triggerSelection();
     onSelect(value);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isSelected = (value: any) => {
     if (multiSelect) {
       return selectedValues.includes(value);

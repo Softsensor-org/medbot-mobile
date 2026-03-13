@@ -5,6 +5,7 @@ export interface OnboardingBrief {
   goals: string[];
   baseline?: string | null;
   climate_lifestyle?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constraints: Record<string, any>;
   updated_at?: string;
 }
@@ -26,6 +27,7 @@ export interface PreferenceProfile {
   user_id?: string;
   version?: number;
   essential: EssentialPreferences;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   progressive: Record<string, any>;
   updated_at?: string;
 }
@@ -43,6 +45,7 @@ export interface GoalJourney {
   patient_id: string;
   target_outcome: string;
   target_date: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constraints: Record<string, any>;
   status: "active" | "completed" | "abandoned";
   created_at: string;
@@ -52,5 +55,6 @@ export interface GoalJourney {
 export interface GoalJourneyCreate {
   target_outcome: string;
   target_date: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constraints?: Record<string, any>;
 }

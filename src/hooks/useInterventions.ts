@@ -17,7 +17,9 @@ export interface Intervention {
 export interface HandoffSummary {
   patient_id: string;
   active_interventions: Intervention[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   recent_symptoms: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   habit_performance: any[];
   generated_at: string;
 }
