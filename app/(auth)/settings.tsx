@@ -1,26 +1,19 @@
-import React, { useContext } from "react";
-import {
-  Alert,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React from "react";
+import { Alert, StyleSheet, Switch, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useAuth } from "../../src/auth/useAuth";
 import { colors, spacing, typography } from "../../src/theme";
-import { AuthContext } from "../../src/auth/AuthProvider";
-import { HandoffSummaryCard } from "../../src/components/HandoffSummaryCard";
 import { ScreenShell } from "../../src/components/common/ScreenShell";
-import { SecondaryButton } from "../../src/components/common/SecondaryButton";
-import { SectionHeader } from "../../src/components/common/SectionHeader";
 import { SoftCard } from "../../src/components/common/SoftCard";
+import { SectionHeader } from "../../src/components/common/SectionHeader";
+import { SecondaryButton } from "../../src/components/common/SecondaryButton";
 import { useEngagementSettings } from "../../src/hooks/useEngagementSettings";
+import { ProfileMenuCard } from "../../src/components/profile/ProfileMenuCard";
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const auth = useContext(AuthContext);
+  const { user, logout } = useAuth();
   const { hapticsEnabled, setHapticsEnabled } = useEngagementSettings();
 
   const handleLogout = () => {
@@ -30,7 +23,7 @@ export default function SettingsScreen() {
         text: "Logout",
         style: "destructive",
         onPress: async () => {
-          await auth?.logout();
+          await logout();
           router.replace("/sign-in");
         },
       },
@@ -40,27 +33,32 @@ export default function SettingsScreen() {
   return (
     <ScreenShell
       title="Settings"
-      subtitle="Fine-tune feedback, privacy, and daily preferences."
+      subtitle="Focused detail controls for feedback, personalization, privacy, and account support."
       contentContainerStyle={styles.content}
     >
-      <SoftCard style={styles.profileSection} tone="highlight">
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {auth?.user?.name?.[0] || auth?.user?.email?.[0] || "?"}
-          </Text>
-        </View>
-        <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{auth?.user?.name || "Patient"}</Text>
-          <Text style={styles.profileEmail}>{auth?.user?.email || "No email"}</Text>
-        </View>
+      <SoftCard tone="muted" style={styles.profileHubCard}>
+        <SectionHeader
+          eyebrow="Profile hub"
+          title={user?.name || "Patient"}
+          subtitle={user?.email || "Open your profile tab for the full identity overview."}
+        />
+        <SecondaryButton
+          label="Back to Profile Hub"
+          onPress={() => router.push("/(auth)/(tabs)/profile")}
+          icon={<MaterialIcons name="person-outline" size={18} color={colors.textPrimary} />}
+        />
       </SoftCard>
 
-      <SoftCard style={styles.section} padded={false}>
-        <SectionHeader title="Feedback" eyebrow="Preferences" style={styles.sectionHeaderWrap} />
-        <View style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <MaterialIcons name="vibration" size={24} color={colors.primary} />
-            <Text style={styles.menuItemText}>Haptic Feedback</Text>
+      <SoftCard style={styles.section}>
+        <SectionHeader
+          eyebrow="Feedback"
+          title="Session feel"
+          subtitle="Keep one tactile control here while the broader identity view lives on Profile."
+        />
+        <View style={styles.settingRow}>
+          <View style={styles.settingCopy}>
+            <Text style={styles.settingTitle}>Haptic Feedback</Text>
+            <Text style={styles.settingDescription}>Keep touch feedback on for taps, confirmations, and routine actions.</Text>
           </View>
           <Switch
             value={hapticsEnabled}
@@ -72,71 +70,67 @@ export default function SettingsScreen() {
         </View>
       </SoftCard>
 
-      <SoftCard style={styles.section} padded={false}>
-        <SectionHeader title="Personalization" eyebrow="Daily setup" style={styles.sectionHeaderWrap} />
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/onboarding/skin-brief")}>
-          <View style={styles.menuItemLeft}>
-            <MaterialIcons name="face" size={24} color={colors.primary} />
-            <Text style={styles.menuItemText}>Edit Skin Brief</Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
+      <View style={styles.section}>
+        <SectionHeader
+          eyebrow="Personalization"
+          title="Edit the current setup"
+          subtitle="These routes keep the same data domains and forms you already use."
+        />
+        <View style={styles.stack}>
+          <ProfileMenuCard
+            title="Edit Skin Brief"
+            description="Refresh the brief summary that anchors your current skin context."
+            icon="face"
+            onPress={() => router.push("/onboarding/skin-brief")}
+          />
+          <ProfileMenuCard
+            title="Treatment Preferences"
+            description="Adjust budget, routine depth, treatment comfort, and avoid-list preferences."
+            icon="tune"
+            onPress={() => router.push("/onboarding/preferences")}
+          />
+          <ProfileMenuCard
+            title="Define Skin Goal"
+            description="Review the goal journey target already used to shape future care direction."
+            icon="flag"
+            onPress={() => router.push("/onboarding/goal-journey")}
+          />
+        </View>
+      </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/onboarding/preferences")}>
-          <View style={styles.menuItemLeft}>
-            <MaterialIcons name="tune" size={24} color={colors.primary} />
-            <Text style={styles.menuItemText}>Treatment Preferences</Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/onboarding/goal-journey")}>
-          <View style={styles.menuItemLeft}>
-            <MaterialIcons name="flag" size={24} color={colors.primary} />
-            <Text style={styles.menuItemText}>Define Skin Goal</Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/interventions")}>
-          <View style={styles.menuItemLeft}>
-            <MaterialIcons name="medication" size={24} color={colors.primary} />
-            <Text style={styles.menuItemText}>Intervention Ledger</Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </SoftCard>
-
-      <SoftCard style={styles.section} padded={false}>
-        <SectionHeader title="Trust & Privacy" eyebrow="Safety" style={styles.sectionHeaderWrap} />
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/consent")}>
-          <View style={styles.menuItemLeft}>
-            <MaterialIcons name="gavel" size={24} color={colors.primary} />
-            <Text style={styles.menuItemText}>Consents & Legal</Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/notifications")}>
-          <View style={styles.menuItemLeft}>
-            <MaterialIcons name="notifications" size={24} color={colors.primary} />
-            <Text style={styles.menuItemText}>Notification Settings</Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </SoftCard>
+      <View style={styles.section}>
+        <SectionHeader
+          eyebrow="Trust & account"
+          title="Privacy, notifications, and support detail"
+          subtitle="These remain the same screens, now framed as focused drill-downs."
+        />
+        <View style={styles.stack}>
+          <ProfileMenuCard
+            title="Consents & Legal"
+            description="Review privacy agreements and legal acknowledgements."
+            icon="gavel"
+            onPress={() => router.push("/(auth)/consent")}
+          />
+          <ProfileMenuCard
+            title="Notification Settings"
+            description="Control reminders, weekly summaries, and quiet-hour behavior."
+            icon="notifications"
+            onPress={() => router.push("/(auth)/notifications")}
+          />
+          <ProfileMenuCard
+            title="Intervention Ledger"
+            description="Open the existing intervention history and related support context."
+            icon="medication"
+            onPress={() => router.push("/interventions")}
+          />
+        </View>
+      </View>
 
       <SecondaryButton
         label="Log Out"
         onPress={handleLogout}
         icon={<MaterialIcons name="logout" size={18} color={colors.textPrimary} />}
       />
-
-      <HandoffSummaryCard />
-
-      <View style={styles.footer}>
-        <Text style={styles.versionText}>Medbot Mobile v0.1.0</Text>
-      </View>
     </ScreenShell>
   );
 }
@@ -145,67 +139,31 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.md,
   },
-  profileSection: {
-    flexDirection: "row",
-    alignItems: "center",
+  profileHubCard: {
     gap: spacing.md,
   },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primaryLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    ...typography.h3,
-    color: colors.textInverse,
-    textTransform: "uppercase",
-  },
-  profileInfo: {
-    flex: 1,
-    gap: spacing.xxs,
-  },
-  profileName: {
-    ...typography.h3,
-    color: colors.textPrimary,
-  },
-  profileEmail: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
   section: {
-    marginTop: spacing.xs,
+    gap: spacing.md,
   },
-  sectionHeaderWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  menuItem: {
+  settingRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  menuItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: spacing.md,
   },
-  menuItemText: {
-    ...typography.body,
+  settingCopy: {
+    flex: 1,
+    gap: spacing.xxs,
+  },
+  settingTitle: {
+    ...typography.h3,
     color: colors.textPrimary,
   },
-  footer: {
-    paddingVertical: spacing.md,
-    alignItems: "center",
+  settingDescription: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
-  versionText: {
-    ...typography.caption,
-    color: colors.textDisabled,
+  stack: {
+    gap: spacing.md,
   },
 });
