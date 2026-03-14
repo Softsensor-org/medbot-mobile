@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { medicalApi } from '../api/medicalApi';
+import { sessionKeys } from '../queryKeys';
 
 /**
  * Stub hook for evidence sessions. Will be fleshed out when the evidence API is integrated.
@@ -17,11 +19,14 @@ export function useEvidenceSessions() {
 export function useUploadPhoto() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (_payload: { sessionId: string; base64: string }) => {
-      // Placeholder — will call evidence API when ready
+    mutationFn: async ({ sessionId, base64 }: { sessionId: string; base64: string }) => {
+      return medicalApi.uploadPhoto(sessionId, base64);
     },
-    onSuccess: () => {
+    onSuccess: (_, { sessionId }) => {
       queryClient.invalidateQueries({ queryKey: ['evidence_sessions'] });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.transcript(sessionId) });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.evidenceSnapshot(sessionId) });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
     },
   });
 }
