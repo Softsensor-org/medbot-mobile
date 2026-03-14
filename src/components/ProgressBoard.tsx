@@ -226,13 +226,13 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
         {symptoms.length > 0 ? (
           <View style={styles.chartContainer}>
             <View style={styles.chartArea}>
-              {symptoms.map((point: SymptomTrendPoint, index: number) => (
-                <TouchableOpacity 
-                  key={index} 
-                  testID={`symptom-bar-${index}`}
-                  style={styles.barWrapper}
-                  onPress={() => navigateToTimeline(point.date)}
-                >
+                {symptoms.map((point: SymptomTrendPoint, index: number) => (
+                  <TouchableOpacity 
+                    key={index} 
+                    testID={`symptom-bar-${index}`}
+                    style={styles.barWrapper}
+                    onPress={() => navigateToTimeline(point.date)}
+                  >
                   <View 
                     style={[
                       styles.bar, 
@@ -257,13 +257,13 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
         {adherence.length > 0 ? (
           <View style={styles.chartContainer}>
             <View style={styles.chartArea}>
-              {adherence.map((point: AdherenceTrendPoint, index: number) => (
-                <TouchableOpacity 
-                  key={index} 
-                  testID={`adherence-bar-${index}`}
-                  style={styles.barWrapper}
-                  onPress={() => navigateToTimeline(point.date)}
-                >
+                {adherence.map((point: AdherenceTrendPoint, index: number) => (
+                  <TouchableOpacity 
+                    key={index} 
+                    testID={`adherence-bar-${index}`}
+                    style={styles.barWrapper}
+                    onPress={() => navigateToTimeline(point.date)}
+                  >
                   <View 
                     style={[
                       styles.bar, 
@@ -347,7 +347,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
               <TouchableOpacity
                 key={day.date}
                 style={styles.ritualDayCard}
-                onPress={() => router.push({ pathname: "/timeline", params: { date: day.date } })}
+                onPress={() => router.push({ pathname: "/(auth)/timeline", params: { date: day.date } })}
               >
                 <View style={styles.ritualDayHeader}>
                   <Text style={styles.ritualDayDate}>{safeFormat(day.date, 'EEE, MMM d')}</Text>
@@ -365,12 +365,12 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
         )}
       </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Progress Photos</Text>
-          <TouchableOpacity onPress={() => navigateToTimeline()}>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Progress Photos</Text>
+            <TouchableOpacity onPress={() => navigateToTimeline()}>
+              <Text style={styles.viewAll}>View All</Text>
+            </TouchableOpacity>
         </View>
         {photos.length > 0 ? (
           <View style={styles.photoListContainer}>

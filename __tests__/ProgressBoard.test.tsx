@@ -15,10 +15,6 @@ jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
 }));
 
-jest.mock('../src/components/WeeklyReveal', () => ({
-  WeeklyReveal: () => null,
-}));
-
 jest.mock('../src/hooks/useEngagementSettings', () => ({
   useEngagementSettings: () => ({
     hapticsEnabled: true,
