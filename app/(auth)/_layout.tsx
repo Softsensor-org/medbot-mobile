@@ -1,7 +1,8 @@
 import React from "react";
-import { Redirect, Stack } from "expo-router";
+import { Redirect, Stack, usePathname } from "expo-router";
 import { Platform } from "react-native";
 import { useAuth } from "../../src/auth/useAuth";
+import { useConsentStatus } from "../../src/hooks/useConsent";
 import { LoadingSpinner } from "../../src/components/common/LoadingSpinner";
 import { SyncStatus } from "../../src/components/common/SyncStatus";
 import { WebHeaderBackground } from "../../src/components/common/WebHeaderBackground";
@@ -15,9 +16,19 @@ const webHeaderOptions =
 
 export default function AuthLayout() {
   const { isAuthenticated, isLoading } = useAuth();
+  const pathname = usePathname();
+  const { data: consentStatus, isLoading: isConsentLoading } = useConsentStatus();
+  const isDataSharingRoute =
+    pathname.includes("/chat/") ||
+    pathname.includes("/intake/symptom-log") ||
+    pathname.includes("/intake/camera");
 
   if (isLoading) return <LoadingSpinner />;
   if (!isAuthenticated) return <Redirect href="/sign-in" />;
+  if (isDataSharingRoute && isConsentLoading) return <LoadingSpinner />;
+  if (isDataSharingRoute && consentStatus?.requires_action) {
+    return <Redirect href="/(auth)/consent" />;
+  }
 
   return (
     <>
