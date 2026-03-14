@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { colors, typography, spacing, borderRadius } from "../theme";
 import type { ChatCard } from "../types/ai";
 import type { SessionSummaryData } from "../types/wellness";
@@ -15,10 +16,12 @@ import { sessionsApi } from "../api/sessionsApi";
 interface ChatCardInlineProps {
   card: ChatCard;
   onCardUpdate?: (updated: ChatCard) => void;
+  escalationActive?: boolean;
 }
 
-export const ChatCardInline: React.FC<ChatCardInlineProps> = ({ card, onCardUpdate }) => {
+export const ChatCardInline: React.FC<ChatCardInlineProps> = ({ card, onCardUpdate, escalationActive }) => {
   const [isFlagging, setIsFlagging] = useState(false);
+  const router = useRouter();
 
   const handleFlag = async () => {
     setIsFlagging(true);
@@ -32,6 +35,11 @@ export const ChatCardInline: React.FC<ChatCardInlineProps> = ({ card, onCardUpda
     }
   };
 
+  const showRoutineHandoff =
+    card.card_type === "routine" &&
+    card.status === "confirmed" &&
+    !escalationActive;
+
   if (card.card_type === "summary") {
     return <SummaryCardView card={card} isFlagging={isFlagging} onFlag={handleFlag} />;
   }
@@ -44,6 +52,23 @@ export const ChatCardInline: React.FC<ChatCardInlineProps> = ({ card, onCardUpda
         <Text style={styles.title}>{card.card_type}</Text>
       </View>
       <Text style={styles.bodyText}>{JSON.stringify(card.data)}</Text>
+      {showRoutineHandoff && (
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={styles.routineHandoffButton}
+            testID="routine-handoff-button"
+            onPress={() =>
+              router.push({
+                pathname: "/(auth)/(tabs)/routines",
+                params: { from_chat: "true" },
+              })
+            }
+          >
+            <MaterialIcons name="arrow-forward" size={16} color={colors.primary} />
+            <Text style={styles.routineHandoffText}>Go to Routine</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
@@ -255,5 +280,20 @@ const styles = StyleSheet.create({
     color: colors.warning,
     fontSize: 10,
     fontWeight: "700",
+  },
+  routineHandoffButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  routineHandoffText: {
+    ...typography.caption,
+    color: colors.primary,
+    marginLeft: spacing.xs,
+    fontWeight: "600",
   },
 });
