@@ -231,13 +231,13 @@ export default function SettingsScreen() {
             title="Edit Skin Brief"
             description="Refresh the brief summary that anchors your current skin context."
             icon="face"
-            onPress={() => router.push("/onboarding/skin-brief")}
+            onPress={() => router.push("/(auth)/onboarding/skin-brief")}
           />
           <ProfileMenuCard
             title="Treatment Preferences"
             description="Adjust budget, routine depth, treatment comfort, and avoid-list preferences."
             icon="tune"
-            onPress={() => router.push("/onboarding/preferences")}
+            onPress={() => router.push("/(auth)/onboarding/preferences")}
           />
           <ProfileMenuCard
             title="Define Skin Goal"
@@ -271,7 +271,7 @@ export default function SettingsScreen() {
             title="Intervention Ledger"
             description="Open the existing intervention history and related support context."
             icon="medication"
-            onPress={() => router.push("/interventions")}
+            onPress={() => router.push("/(auth)/interventions")}
           />
         </View>
       </View>

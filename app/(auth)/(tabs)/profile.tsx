@@ -132,8 +132,8 @@ export default function ProfileScreen() {
 
       <ProfilePreferenceSummary
         preferenceProfile={preferenceProfile}
-        onEditPreferences={() => router.push("/onboarding/preferences")}
-        onEditBrief={() => router.push("/onboarding/skin-brief")}
+        onEditPreferences={() => router.push("/(auth)/onboarding/preferences")}
+        onEditBrief={() => router.push("/(auth)/onboarding/skin-brief")}
         onEditGoal={() => router.push("/onboarding/goal-journey")}
       />
 
@@ -171,7 +171,7 @@ export default function ProfileScreen() {
             title="Intervention ledger"
             description="Review the current intervention history and bring the same context into provider handoff."
             icon="medication"
-            onPress={() => router.push("/interventions")}
+            onPress={() => router.push("/(auth)/interventions")}
           />
         </View>
       </View>

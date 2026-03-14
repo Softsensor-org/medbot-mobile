@@ -221,7 +221,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
                 <TouchableOpacity 
                   key={index} 
                   style={styles.barWrapper}
-                  onPress={() => router.push({ pathname: "/timeline", params: { date: point.date } })}
+                  onPress={() => router.push({ pathname: "/(auth)/timeline", params: { date: point.date } })}
                 >
                   <View 
                     style={[
@@ -251,7 +251,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
                 <TouchableOpacity 
                   key={index} 
                   style={styles.barWrapper}
-                  onPress={() => router.push({ pathname: "/timeline", params: { date: point.date } })}
+                  onPress={() => router.push({ pathname: "/(auth)/timeline", params: { date: point.date } })}
                 >
                   <View 
                     style={[
@@ -336,7 +336,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
               <TouchableOpacity
                 key={day.date}
                 style={styles.ritualDayCard}
-                onPress={() => router.push({ pathname: "/timeline", params: { date: day.date } })}
+                onPress={() => router.push({ pathname: "/(auth)/timeline", params: { date: day.date } })}
               >
                 <View style={styles.ritualDayHeader}>
                   <Text style={styles.ritualDayDate}>{safeFormat(day.date, 'EEE, MMM d')}</Text>
@@ -357,7 +357,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Progress Photos</Text>
-          <TouchableOpacity onPress={() => router.push("/timeline")}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/timeline")}>
             <Text style={styles.viewAll}>View All</Text>
           </TouchableOpacity>
         </View>
@@ -368,7 +368,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
                 <TouchableOpacity
                   key={photo.id}
                   style={styles.photoWrapper}
-                  onPress={() => router.push("/timeline")}
+                  onPress={() => router.push("/(auth)/timeline")}
                 >
                   <Image source={{ uri: photo.url }} style={styles.photo} />
                   <Text style={styles.photoDate}>{safeFormat(photo.timestamp, 'MMM dd')}</Text>

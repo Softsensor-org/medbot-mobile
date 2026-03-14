@@ -5,9 +5,17 @@ import { usePatientProgress } from '../src/hooks/useProgress';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Share } from 'react-native';
 
+const mockRouter = {
+  push: jest.fn(),
+};
+
 // Mock the hook
 jest.mock('../src/hooks/useProgress', () => ({
   usePatientProgress: jest.fn(),
+}));
+
+jest.mock('expo-router', () => ({
+  useRouter: () => mockRouter,
 }));
 
 jest.mock('../src/hooks/useEngagementSettings', () => ({
@@ -194,5 +202,21 @@ describe('ProgressBoard', () => {
       expect(getByTestId('phi-safe-share-status')).toBeTruthy();
     });
     expect(getByText('Shared safely.')).toBeTruthy();
+  });
+
+  it('routes symptom bars through the grouped auth timeline path', () => {
+    (usePatientProgress as jest.Mock).mockReturnValue({
+      data: mockData,
+      isLoading: false,
+    });
+
+    const { getAllByText } = render(<ProgressBoard />, { wrapper });
+
+    fireEvent.press(getAllByText('03/01')[0]);
+
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/(auth)/timeline',
+      params: { date: '2026-03-01' },
+    });
   });
 });
