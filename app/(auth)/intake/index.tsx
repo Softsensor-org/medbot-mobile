@@ -90,6 +90,26 @@ export default function IntakeModeSelector() {
 
       {sessionId && (
         <TouchableOpacity
+          testID="review-packet-card"
+          style={styles.card}
+          onPress={() =>
+            router.push({
+              pathname: "/(auth)/intake/review",
+              params: { sessionId },
+            } as import("expo-router").Href)
+          }
+        >
+          <View style={styles.cardContent}>
+            <View>
+              <Text style={styles.cardTitle}>Review Packet</Text>
+              <Text style={styles.cardDesc}>Preview what will be shared with your provider.</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {sessionId && (
+        <TouchableOpacity
           style={styles.backToChat}
           onPress={() => router.push({ pathname: "/(auth)/chat/[sessionId]", params: { sessionId } } as import('expo-router').Href)}
         >
