@@ -40,6 +40,7 @@ export default function ChatScreen() {
   const [summaryCard, setSummaryCard] = useState<ChatCard | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const streamedContentRef = useRef("");
 
   const {
     data: transcriptData,
@@ -70,6 +71,7 @@ export default function ChatScreen() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsStreaming(true);
+    streamedContentRef.current = "";
     setIsStreamedContent("");
 
     try {
@@ -78,7 +80,8 @@ export default function ChatScreen() {
         query: userMessage.content,
         onEvent: (event) => {
           if (event.type === "token") {
-            setIsStreamedContent((prev) => prev + event.content);
+            streamedContentRef.current += event.content;
+            setIsStreamedContent(streamedContentRef.current);
           } else if (event.type === "complete") {
             // Check for escalation gate
             const mo = event.model_output;
@@ -89,12 +92,26 @@ export default function ChatScreen() {
                 guidance: mo.escalation_guidance,
               });
             }
-            // Re-fetch everything to ensure sync with backend
-            queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
+
+            const finalAssistantContent = streamedContentRef.current.trim();
+            if (finalAssistantContent) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: finalAssistantContent,
+                  timestamp: new Date().toISOString(),
+                },
+              ]);
+            }
+
+            queryClient.invalidateQueries({ queryKey: sessionKeys.transcript(sessionId) });
             setIsStreaming(false);
+            streamedContentRef.current = "";
             setIsStreamedContent("");
           } else if (event.type === "error") {
             setIsStreaming(false);
+            streamedContentRef.current = "";
             // Show error message
             setMessages((prev) => [
               ...prev,
@@ -109,6 +126,7 @@ export default function ChatScreen() {
         onError: (err) => {
           console.error("Stream error:", err);
           setIsStreaming(false);
+          streamedContentRef.current = "";
         },
       });
     } catch (err) {
