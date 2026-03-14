@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,13 @@ import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { usePatientProgress } from '../hooks/useProgress';
 import { useRouter } from 'expo-router';
 import { safeFormat } from '../utils/dateHelpers';
-import { SymptomTrendPoint, AdherenceTrendPoint, ProgressPhoto } from '../api/analyticsApi';
+import {
+  SymptomTrendPoint,
+  AdherenceTrendPoint,
+  ProgressPhoto,
+  RitualHistorySummary,
+  InsightModuleTone,
+} from '../api/analyticsApi';
 import { WeeklyReveal } from './WeeklyReveal';
 import { deriveStreakRescueState } from '../engagement/streakRescue';
 import { buildPhiSafeShareMessage, buildPhiSafeShareSummary } from '../engagement/shareScaffold';
@@ -29,6 +35,46 @@ interface ProgressBoardProps {
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - spacing.lg * 2 - spacing.md) / 2;
 
+const EMPTY_RITUAL_HISTORY: RitualHistorySummary = {
+  total_logs: 0,
+  active_days: 0,
+  current_streak: 0,
+  best_streak: 0,
+  recent_days: [],
+};
+
+const getInsightToneMeta = (tone: InsightModuleTone) => {
+  switch (tone) {
+    case "positive":
+      return {
+        badgeLabel: "Positive",
+        iconName: "trending-up" as const,
+        accentColor: colors.success,
+        backgroundColor: colors.successLight,
+      };
+    case "attention":
+      return {
+        badgeLabel: "Attention",
+        iconName: "priority-high" as const,
+        accentColor: colors.warning,
+        backgroundColor: colors.warningLight,
+      };
+    case "neutral":
+    default:
+      return {
+        badgeLabel: "Neutral",
+        iconName: "info-outline" as const,
+        accentColor: colors.slate,
+        backgroundColor: colors.slateLight,
+      };
+  }
+};
+
+const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
+
+const formatRoutineNames = (routineNames: string[]) =>
+  routineNames.length > 0 ? routineNames.join(', ') : 'No routine names captured.';
+
 export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
   const router = useRouter();
   const { data, isLoading, isError, refetch } = usePatientProgress(days);
@@ -37,6 +83,15 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
   const [rescueCompleted, setRescueCompleted] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "failed">("idle");
   const [milestoneCelebrated, setMilestoneCelebrated] = useState(false);
+  const summary = data?.summary;
+  const symptoms = data?.symptoms ?? [];
+  const adherence = data?.adherence ?? [];
+  const photos = data?.photos ?? [];
+  const ritualHistory = data?.ritual_history ?? EMPTY_RITUAL_HISTORY;
+  const insightModules = data?.insight_modules ?? [];
+  const rescue = useMemo(() => deriveStreakRescueState(adherence), [adherence]);
+  const phiSafeShare = useMemo(() => (data ? buildPhiSafeShareSummary(data) : null), [data]);
+  const milestoneEligible = summary ? summary.adherence_rate >= 0.8 && summary.symptom_count <= 5 : false;
 
   if (isLoading) {
     return (
@@ -46,7 +101,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
     );
   }
 
-  if (isError || !data) {
+  if (isError || !data || !summary || !phiSafeShare) {
     return (
       <View style={styles.center}>
         <MaterialIcons name="error-outline" size={48} color={colors.error} />
@@ -58,34 +113,32 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
     );
   }
 
-  const { summary, symptoms, adherence, photos } = data;
-  const rescue = useMemo(() => deriveStreakRescueState(adherence), [adherence]);
-  const phiSafeShare = useMemo(() => buildPhiSafeShareSummary(data), [data]);
-  const milestoneEligible = summary.adherence_rate >= 0.8 && summary.symptom_count <= 5;
-
-  const handleStartRescue = useCallback(() => {
+  const handleStartRescue = () => {
     setRescueActivated(true);
     setRescueCompleted(false);
-  }, []);
+  };
 
-  const handleCompleteRescueStep = useCallback(() => {
+  const handleCompleteRescueStep = () => {
     setRescueCompleted(true);
     hapticService.triggerSuccess();
-  }, []);
+  };
 
-  const handleCelebrateMilestone = useCallback(() => {
+  const handleCelebrateMilestone = () => {
     setMilestoneCelebrated(true);
     hapticService.triggerSuccess();
-  }, []);
+  };
 
-  const handleShare = useCallback(async () => {
+  const handleShare = async () => {
+    if (!phiSafeShare) {
+      return;
+    }
     try {
       await Share.share({ message: buildPhiSafeShareMessage(phiSafeShare) });
       setShareStatus("shared");
     } catch {
       setShareStatus("failed");
     }
-  }, [phiSafeShare]);
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -213,6 +266,91 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
           </View>
         ) : (
           <Text style={styles.emptyText}>No routine activity logged.</Text>
+        )}
+      </View>
+
+      <View style={styles.section} testID="insight-pack-section">
+        <Text style={styles.sectionTitle}>Insight Pack</Text>
+        {insightModules.length > 0 ? (
+          <View style={styles.insightStack}>
+            {insightModules.map((module) => {
+              const toneMeta = getInsightToneMeta(module.tone);
+
+              return (
+                <View
+                  key={module.key}
+                  style={[
+                    styles.insightCard,
+                    {
+                      backgroundColor: toneMeta.backgroundColor,
+                      borderColor: toneMeta.accentColor,
+                    },
+                  ]}
+                  testID={`insight-module-${module.key}`}
+                >
+                  <View style={styles.insightHeader}>
+                    <View style={styles.insightTitleRow}>
+                      <MaterialIcons name={toneMeta.iconName} size={18} color={toneMeta.accentColor} />
+                      <Text style={styles.insightTitle}>{module.title}</Text>
+                    </View>
+                    <View style={[styles.insightToneBadge, { backgroundColor: colors.surface }]}>
+                      <Text style={[styles.insightToneText, { color: toneMeta.accentColor }]}>
+                        {toneMeta.badgeLabel}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.insightValue}>{module.value}</Text>
+                  <Text style={styles.insightDetail}>{module.detail}</Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={styles.emptyText}>No insights available yet.</Text>
+        )}
+      </View>
+
+      <View style={styles.section} testID="ritual-history-section">
+        <Text style={styles.sectionTitle}>Ritual History</Text>
+        <View style={styles.ritualSummaryGrid}>
+          <View style={styles.ritualMetricCard}>
+            <Text style={styles.ritualMetricValue}>{ritualHistory.total_logs}</Text>
+            <Text style={styles.ritualMetricLabel}>Total Logs</Text>
+          </View>
+          <View style={styles.ritualMetricCard}>
+            <Text style={styles.ritualMetricValue}>{ritualHistory.active_days}</Text>
+            <Text style={styles.ritualMetricLabel}>Active Days</Text>
+          </View>
+          <View style={styles.ritualMetricCard}>
+            <Text style={styles.ritualMetricValue}>{ritualHistory.current_streak}</Text>
+            <Text style={styles.ritualMetricLabel}>Current Streak</Text>
+          </View>
+          <View style={styles.ritualMetricCard}>
+            <Text style={styles.ritualMetricValue}>{ritualHistory.best_streak}</Text>
+            <Text style={styles.ritualMetricLabel}>Best Streak</Text>
+          </View>
+        </View>
+        {ritualHistory.recent_days.length > 0 ? (
+          <View style={styles.ritualDaysList}>
+            {ritualHistory.recent_days.map((day) => (
+              <TouchableOpacity
+                key={day.date}
+                style={styles.ritualDayCard}
+                onPress={() => router.push({ pathname: "/timeline", params: { date: day.date } })}
+              >
+                <View style={styles.ritualDayHeader}>
+                  <Text style={styles.ritualDayDate}>{safeFormat(day.date, 'EEE, MMM d')}</Text>
+                  <Text style={styles.ritualDayRate}>{formatPercent(day.avg_completion_rate)}</Text>
+                </View>
+                <Text style={styles.ritualDayMeta}>
+                  {day.completed_count} completions logged
+                </Text>
+                <Text style={styles.ritualDayRoutines}>{formatRoutineNames(day.routine_names)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.emptyText}>No ritual history captured yet.</Text>
         )}
       </View>
 
@@ -395,6 +533,51 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.textPrimary,
   },
+  insightStack: {
+    gap: spacing.md,
+  },
+  insightCard: {
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    padding: spacing.md,
+    gap: spacing.sm,
+    ...shadows.sm,
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  insightTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flex: 1,
+  },
+  insightTitle: {
+    ...typography.label,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    flex: 1,
+  },
+  insightToneBadge: {
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  insightToneText: {
+    ...typography.caption,
+    fontWeight: '700',
+  },
+  insightValue: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  insightDetail: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
   chartContainer: {
     backgroundColor: colors.surface,
     padding: spacing.md,
@@ -426,6 +609,66 @@ const styles = StyleSheet.create({
     fontSize: typography.caption.fontSize,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  ritualSummaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  ritualMetricCard: {
+    width: CARD_WIDTH,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  ritualMetricValue: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
+  ritualMetricLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  ritualDaysList: {
+    gap: spacing.sm,
+  },
+  ritualDayCard: {
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  ritualDayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  ritualDayDate: {
+    ...typography.label,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    flex: 1,
+  },
+  ritualDayRate: {
+    ...typography.label,
+    color: colors.success,
+    fontWeight: '700',
+  },
+  ritualDayMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  ritualDayRoutines: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
   },
   photoListContainer: {
     backgroundColor: colors.surfaceVariant,
