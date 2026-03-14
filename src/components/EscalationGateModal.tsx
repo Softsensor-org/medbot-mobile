@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   View,
   Linking,
-  Platform,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { colors, typography, spacing } from "../theme";
@@ -18,42 +17,56 @@ export interface EscalationGateProps {
   onAcknowledge: () => void;
 }
 
+interface EscalationContactConfig {
+  title: string;
+  icon: keyof typeof MaterialIcons.glyphMap;
+  callLabel: string;
+  phoneNumber: string | null;
+  fallbackMessage: string;
+}
+
 const CATEGORY_CONFIG: Record<
   string,
-  { title: string; icon: keyof typeof MaterialIcons.glyphMap; callLabel: string }
+  EscalationContactConfig
 > = {
   life_threatening_derm: {
     title: "Urgent Medical Attention Needed",
     icon: "local-hospital",
     callLabel: "Call 911",
+    phoneNumber: "911",
+    fallbackMessage: "Unable to open your phone app. Please dial 911 manually.",
   },
   general_emergency: {
     title: "Seek Emergency Care",
     icon: "warning",
     callLabel: "Call 911",
+    phoneNumber: "911",
+    fallbackMessage: "Unable to open your phone app. Please dial 911 manually.",
   },
   mental_health_crisis: {
     title: "Crisis Support Available",
     icon: "support",
     callLabel: "Call 988",
+    phoneNumber: "988",
+    fallbackMessage: "Unable to open your phone app. Please dial 988 manually.",
   },
   red_flag_escalation: {
     title: "Clinical Review Required",
     icon: "medical-services",
     callLabel: "Call your doctor",
+    phoneNumber: null,
+    fallbackMessage:
+      "Please call your doctor using the clinic or care-team number you already have on file.",
   },
 };
 
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG: EscalationContactConfig = {
   title: "Important Health Notice",
   icon: "warning" as keyof typeof MaterialIcons.glyphMap,
   callLabel: "Call 911",
+  phoneNumber: "911",
+  fallbackMessage: "Unable to open your phone app. Please dial 911 manually.",
 };
-
-function getPhoneNumber(category: string | null | undefined): string {
-  if (category === "mental_health_crisis") return "988";
-  return "911";
-}
 
 export default function EscalationGateModal({
   visible,
@@ -62,13 +75,28 @@ export default function EscalationGateModal({
   onAcknowledge,
 }: EscalationGateProps) {
   const config = (category && CATEGORY_CONFIG[category]) || DEFAULT_CONFIG;
+  const [callFallback, setCallFallback] = React.useState<string | null>(null);
 
-  const handleCall = () => {
-    const number = getPhoneNumber(category);
-    const url = Platform.OS === "web" ? `tel:${number}` : `tel:${number}`;
-    Linking.openURL(url).catch(() => {
-      // Fallback: user sees the number in the button
-    });
+  const handleCall = async () => {
+    setCallFallback(null);
+
+    if (!config.phoneNumber) {
+      setCallFallback(config.fallbackMessage);
+      return;
+    }
+
+    const url = `tel:${config.phoneNumber}`;
+
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        setCallFallback(config.fallbackMessage);
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      setCallFallback(config.fallbackMessage);
+    }
   };
 
   return (
@@ -105,6 +133,16 @@ export default function EscalationGateModal({
             <MaterialIcons name="phone" size={20} color={colors.surface} />
             <Text style={styles.callButtonText}>{config.callLabel}</Text>
           </TouchableOpacity>
+
+          {callFallback ? (
+            <Text
+              testID="escalation-call-fallback"
+              accessibilityRole="alert"
+              style={styles.callFallback}
+            >
+              {callFallback}
+            </Text>
+          ) : null}
 
           <TouchableOpacity
             testID="escalation-acknowledge-button"
@@ -179,6 +217,12 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: colors.surface,
     fontWeight: "700",
+  },
+  callFallback: {
+    ...typography.body,
+    color: colors.error,
+    textAlign: "center",
+    marginBottom: spacing.md,
   },
   acknowledgeButton: {
     paddingVertical: spacing.md,

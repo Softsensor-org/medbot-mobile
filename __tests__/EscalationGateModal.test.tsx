@@ -1,5 +1,6 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Linking } from "react-native";
 import EscalationGateModal from "../src/components/EscalationGateModal";
 
 jest.mock("@expo/vector-icons", () => ({
@@ -12,6 +13,12 @@ describe("EscalationGateModal", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
+
+  const mockDialerSupport = (supported: boolean) =>
+    jest.spyOn(Linking, "canOpenURL").mockResolvedValue(supported);
+
+  const mockOpenDialer = () =>
+    jest.spyOn(Linking, "openURL").mockResolvedValue(true);
 
   it("renders when visible", () => {
     const { getByText } = render(
@@ -95,6 +102,90 @@ describe("EscalationGateModal", () => {
 
     expect(getByText("Clinical Review Required")).toBeTruthy();
     expect(getByText("Call your doctor")).toBeTruthy();
+  });
+
+  it("maps emergency categories to the expected dial target", async () => {
+    const canOpenURL = mockDialerSupport(true);
+    const openURL = mockOpenDialer();
+    const { getByTestId, rerender } = render(
+      <EscalationGateModal
+        visible={true}
+        category="general_emergency"
+        guidance="Please call 911 immediately."
+        onAcknowledge={onAcknowledge}
+      />
+    );
+
+    fireEvent.press(getByTestId("escalation-call-button"));
+
+    await waitFor(() => {
+      expect(canOpenURL).toHaveBeenCalledWith("tel:911");
+      expect(openURL).toHaveBeenCalledWith("tel:911");
+    });
+
+    rerender(
+      <EscalationGateModal
+        visible={true}
+        category="mental_health_crisis"
+        guidance="Contact the 988 Lifeline."
+        onAcknowledge={onAcknowledge}
+      />
+    );
+
+    fireEvent.press(getByTestId("escalation-call-button"));
+
+    await waitFor(() => {
+      expect(canOpenURL).toHaveBeenCalledWith("tel:988");
+      expect(openURL).toHaveBeenCalledWith("tel:988");
+    });
+  });
+
+  it("does not dial 911 for red flag escalation and shows a manual fallback", async () => {
+    const canOpenURL = mockDialerSupport(true);
+    const openURL = mockOpenDialer();
+    const { getByTestId, getByText } = render(
+      <EscalationGateModal
+        visible={true}
+        category="red_flag_escalation"
+        guidance="Please follow up with your doctor."
+        onAcknowledge={onAcknowledge}
+      />
+    );
+
+    fireEvent.press(getByTestId("escalation-call-button"));
+
+    await waitFor(() => {
+      expect(
+        getByText(
+          "Please call your doctor using the clinic or care-team number you already have on file."
+        )
+      ).toBeTruthy();
+    });
+    expect(canOpenURL).not.toHaveBeenCalled();
+    expect(openURL).not.toHaveBeenCalled();
+  });
+
+  it("shows a user-visible fallback when the dialer is unsupported", async () => {
+    const canOpenURL = mockDialerSupport(false);
+    const openURL = mockOpenDialer();
+    const { getByTestId, getByText } = render(
+      <EscalationGateModal
+        visible={true}
+        category="general_emergency"
+        guidance="Please call 911 immediately."
+        onAcknowledge={onAcknowledge}
+      />
+    );
+
+    fireEvent.press(getByTestId("escalation-call-button"));
+
+    await waitFor(() => {
+      expect(canOpenURL).toHaveBeenCalledWith("tel:911");
+      expect(
+        getByText("Unable to open your phone app. Please dial 911 manually.")
+      ).toBeTruthy();
+    });
+    expect(openURL).not.toHaveBeenCalled();
   });
 
   it("uses default config for unknown category", () => {
