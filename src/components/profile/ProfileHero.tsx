@@ -9,6 +9,8 @@ import { SecondaryButton } from "../common/SecondaryButton";
 interface ProfileHeroProps {
   name?: string | null;
   email?: string | null;
+  membershipLabel: string;
+  programLabel: string;
   privacyLabel: string;
   hapticsEnabled: boolean;
   onOpenSettings: () => void;
@@ -18,6 +20,8 @@ interface ProfileHeroProps {
 export function ProfileHero({
   name,
   email,
+  membershipLabel,
+  programLabel,
   privacyLabel,
   hapticsEnabled,
   onOpenSettings,
@@ -39,7 +43,11 @@ export function ProfileHero({
         <>
           <View style={styles.metric}>
             <Text style={styles.metricLabel}>Membership</Text>
-            <Text style={styles.metricValue}>Patient account</Text>
+            <Text style={styles.metricValue}>{membershipLabel}</Text>
+          </View>
+          <View style={styles.metric}>
+            <Text style={styles.metricLabel}>Program</Text>
+            <Text style={styles.metricValue}>{programLabel}</Text>
           </View>
           <View style={styles.metric}>
             <Text style={styles.metricLabel}>Privacy</Text>

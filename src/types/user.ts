@@ -18,6 +18,42 @@ export type TreatmentModalityPreference = "clinical-only" | "home-only" | "hybri
 export type TexturePreference = "gel" | "cream" | "serum" | "balm" | "mist";
 export type ReminderCadence = "gentle" | "standard" | "structured";
 export type ShoppingPreference = "otc" | "mixed" | "clinical";
+export type MembershipStatus = "inactive" | "trial" | "active" | "paused" | "ended";
+export type ProgramStatus = "not_started" | "active" | "paused" | "completed";
+export type TreatmentPlanStatus = "inactive" | "active" | "maintenance" | "on-hold" | "completed";
+export type ProgramContextSource = "manual" | "goal-journey-derived";
+
+export interface MembershipContext {
+  status: MembershipStatus;
+  name?: string | null;
+  cadence_label?: string | null;
+  renewal_at?: string | null;
+}
+
+export interface ProgramTrackContext {
+  status: ProgramStatus;
+  name?: string | null;
+  focus?: string | null;
+  summary?: string | null;
+  target_date?: string | null;
+  source: ProgramContextSource;
+}
+
+export interface TreatmentPlanContext {
+  status: TreatmentPlanStatus;
+  name?: string | null;
+  summary?: string | null;
+  next_review_at?: string | null;
+}
+
+export interface ProgramContextSnapshot {
+  id?: number;
+  version: number;
+  updated_at?: string;
+  membership: MembershipContext;
+  program: ProgramTrackContext;
+  treatment_plan: TreatmentPlanContext;
+}
 
 export interface PatientProfilePayload {
   preferred_name?: string | null;
@@ -34,6 +70,7 @@ export interface PatientProfile extends PatientProfilePayload {
   user_id?: string;
   version?: number;
   updated_at?: string;
+  program_context?: ProgramContextSnapshot;
 }
 
 export interface EssentialPreferences {
