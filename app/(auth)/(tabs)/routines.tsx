@@ -10,6 +10,7 @@ import type {
   Routine,
   RoutineAssignmentActionRequest,
   RoutineStepCompletion,
+  RoutineCategory,
 } from "../../../src/types/medical";
 import { colors, spacing, typography } from "../../../src/theme";
 import { hapticService } from "../../../src/api/HapticService";
@@ -140,19 +141,69 @@ export default function RoutinesScreen() {
     }));
   }, [assignments, assignmentMap]);
 
-  const activeAssignments = enrichedAssignments.filter((item) => item.assignment.status === "active");
-  const recentAssignments = enrichedAssignments.filter((item) => item.assignment.status !== "active");
+  const getCategory = (item: EnrichedAssignment): RoutineCategory => {
+    if (item.routine?.category) return item.routine.category;
+    if (item.assignment.status === "active") return "active";
+    if (item.assignment.status === "completed" || item.assignment.status === "deferred" || item.assignment.status === "cancelled") return "history";
+    return "active";
+  };
+
+  const categorized = useMemo(() => {
+    const active: EnrichedAssignment[] = [];
+    const template: EnrichedAssignment[] = [];
+    const history: EnrichedAssignment[] = [];
+    for (const item of enrichedAssignments) {
+      const cat = getCategory(item);
+      if (cat === "template") template.push(item);
+      else if (cat === "history") history.push(item);
+      else active.push(item);
+    }
+    return { active, template, history };
+  }, [enrichedAssignments]);
+
+  const DAY_PART_ORDER = ["morning", "evening", "afternoon", undefined] as const;
+  const DAY_PART_LABELS: Record<string, string> = {
+    morning: "Morning",
+    evening: "Evening",
+    afternoon: "Afternoon",
+  };
+
+  const activeByDayPart = useMemo(() => {
+    const groups: { dayPart: string | undefined; label: string; items: EnrichedAssignment[] }[] = [];
+    for (const dp of DAY_PART_ORDER) {
+      const items = categorized.active.filter((item) => (item.routine?.day_part ?? undefined) === dp);
+      if (items.length > 0) {
+        groups.push({
+          dayPart: dp,
+          label: dp ? DAY_PART_LABELS[dp] ?? dp : "Other",
+          items,
+        });
+      }
+    }
+    // Include weekly routines in their groups
+    const frequency = (item: EnrichedAssignment) =>
+      typeof item.routine?.recurrence?.frequency === "string"
+        ? item.routine.recurrence.frequency.toLowerCase()
+        : null;
+    // Tag weekly items within each group
+    return groups.map((g) => ({
+      ...g,
+      items: g.items.sort((a, b) => {
+        const aWeekly = frequency(a) === "weekly" ? 1 : 0;
+        const bWeekly = frequency(b) === "weekly" ? 1 : 0;
+        return aWeekly - bWeekly;
+      }),
+    }));
+  }, [categorized.active]);
+
   const focusedAssignmentId = routineIntelligence?.focus.assignment_id ?? null;
   const featuredAssignment =
     (focusedAssignmentId != null
-      ? activeAssignments.find((item) => item.assignment.id === focusedAssignmentId) ?? null
+      ? categorized.active.find((item) => item.assignment.id === focusedAssignmentId) ?? null
       : null) ??
-    activeAssignments[0] ??
-    recentAssignments[0] ??
+    categorized.active[0] ??
     null;
   const featuredId = featuredAssignment?.assignment.id ?? null;
-  const queuedActiveAssignments = activeAssignments.filter((item) => item.assignment.id !== featuredId);
-  const secondaryRecentAssignments = recentAssignments.filter((item) => item.assignment.id !== featuredId);
   const focusTitle =
     routineIntelligence?.focus.routine_name ??
     featuredAssignment?.assignment.routine_name ??
@@ -398,7 +449,7 @@ export default function RoutinesScreen() {
               </SoftCard>
             ) : null}
 
-            {!isLoading && !loadError && !featuredAssignment ? (
+            {!isLoading && !loadError && enrichedAssignments.length === 0 ? (
               <EmptyStateCard
                 title="No rituals are ready right now"
                 description="Your care team has not assigned an active routine yet. When one is ready, it will appear here with the full completion and defer workflow."
@@ -406,50 +457,71 @@ export default function RoutinesScreen() {
               />
             ) : null}
 
-            {featuredAssignment ? (
-              <View style={styles.section}>
-                <SectionHeader
-                  eyebrow={featuredAssignment.assignment.status === "active" ? "Current focus" : "Latest state"}
-                  title={
-                    featuredAssignment.assignment.status === "active"
-                      ? "Ready to act"
-                      : "No active ritual is waiting right now"
-                  }
-                  subtitle={
-                    featuredAssignment.assignment.status === "active"
-                      ? "The hero card keeps the next assignment, cadence, and authored steps in one place."
-                      : "The latest assignment state stays visible until the next active ritual is available."
-                  }
-                />
-                <RoutineAssignmentCard
-                  assignment={featuredAssignment.assignment}
-                  routine={featuredAssignment.routine}
-                  variant="featured"
-                  disabled={isSubmitting}
-                  stepCompletions={getStepCompletionsForAssignment(featuredAssignment.assignment.id)}
-                  onStepToggle={handleStepToggle(featuredAssignment.assignment.id, featuredAssignment.routine)}
-                  onComplete={handleComplete}
-                  onDefer={openCommitBox}
-                />
-              </View>
+            {/* Active Routines */}
+            {categorized.active.length > 0 ? (
+              <>
+                <View style={styles.section}>
+                  <SectionHeader
+                    eyebrow="Active Routines"
+                    title="Ready to act"
+                    subtitle="The hero card keeps the next assignment, cadence, and authored steps in one place."
+                  />
+                  {featuredAssignment ? (
+                    <RoutineAssignmentCard
+                      assignment={featuredAssignment.assignment}
+                      routine={featuredAssignment.routine}
+                      variant="featured"
+                      disabled={isSubmitting}
+                      stepCompletions={getStepCompletionsForAssignment(featuredAssignment.assignment.id)}
+                      onStepToggle={handleStepToggle(featuredAssignment.assignment.id, featuredAssignment.routine)}
+                      onComplete={handleComplete}
+                      onDefer={openCommitBox}
+                    />
+                  ) : null}
+                </View>
+
+                {activeByDayPart.map((group) => {
+                  const remaining = group.items.filter((item) => item.assignment.id !== featuredId);
+                  if (remaining.length === 0) return null;
+                  return (
+                    <View key={group.label} style={styles.section}>
+                      <Text style={styles.subGroupLabel}>{group.label}</Text>
+                      <View style={styles.stack}>
+                        {remaining.map((item) => (
+                          <RoutineAssignmentCard
+                            key={item.assignment.id}
+                            assignment={item.assignment}
+                            routine={item.routine}
+                            disabled={isSubmitting}
+                            stepCompletions={getStepCompletionsForAssignment(item.assignment.id)}
+                            onStepToggle={handleStepToggle(item.assignment.id, item.routine)}
+                            onComplete={handleComplete}
+                            onDefer={openCommitBox}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
+              </>
             ) : null}
 
-            {queuedActiveAssignments.length > 0 ? (
+            {/* Available Templates */}
+            {categorized.template.length > 0 ? (
               <View style={styles.section}>
                 <SectionHeader
-                  eyebrow="More active routines"
-                  title="Queued assignments"
-                  subtitle="The same workflow, with lighter framing for secondary routines."
+                  eyebrow="Available Templates"
+                  title="Browse routines"
+                  subtitle="Templates from your care team. These are not assigned yet."
                 />
                 <View style={styles.stack}>
-                  {queuedActiveAssignments.map((item) => (
+                  {categorized.template.map((item) => (
                     <RoutineAssignmentCard
                       key={item.assignment.id}
                       assignment={item.assignment}
                       routine={item.routine}
-                      disabled={isSubmitting}
-                      stepCompletions={getStepCompletionsForAssignment(item.assignment.id)}
-                      onStepToggle={handleStepToggle(item.assignment.id, item.routine)}
+                      browseOnly
+                      disabled
                       onComplete={handleComplete}
                       onDefer={openCommitBox}
                     />
@@ -458,19 +530,21 @@ export default function RoutinesScreen() {
               </View>
             ) : null}
 
-            {secondaryRecentAssignments.length > 0 ? (
+            {/* History */}
+            {categorized.history.length > 0 ? (
               <View style={styles.section}>
                 <SectionHeader
-                  eyebrow="Recent states"
-                  title="Completed and deferred rituals"
-                  subtitle="Visual confirmation of the latest assignment state without changing the current routine workflow."
+                  eyebrow="History"
+                  title="Past routines"
+                  subtitle="Completed and deferred rituals for reference."
                 />
                 <View style={styles.stack}>
-                  {secondaryRecentAssignments.map((item) => (
+                  {categorized.history.map((item) => (
                     <RoutineAssignmentCard
                       key={item.assignment.id}
                       assignment={item.assignment}
                       routine={item.routine}
+                      muted
                       disabled
                       onComplete={handleComplete}
                       onDefer={openCommitBox}
@@ -545,6 +619,11 @@ const styles = StyleSheet.create({
   retryText: {
     ...typography.label,
     color: colors.primary,
+  },
+  subGroupLabel: {
+    ...typography.eyebrow,
+    color: colors.textSecondary,
+    paddingLeft: spacing.xs,
   },
   section: {
     gap: spacing.md,
