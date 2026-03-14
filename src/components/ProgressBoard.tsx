@@ -92,30 +92,30 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
       <WeeklyReveal />
 
       <View style={styles.grid}>
-        <View style={styles.statCard}>
-          <MaterialIcons name="analytics" size={24} color={colors.primary} />
+        <View style={[styles.statCard, { backgroundColor: colors.success + '10' }]}>
+          <MaterialIcons name="analytics" size={24} color={colors.success} />
           <Text testID="adherence-value" style={styles.statValue}>{Math.round(summary.adherence_rate * 100)}%</Text>
           <Text style={styles.statLabel}>Adherence</Text>
         </View>
-        <View style={styles.statCard}>
+        <View style={[styles.statCard, { backgroundColor: colors.warning + '10' }]}>
           <MaterialIcons name="bug-report" size={24} color={colors.warning} />
           <Text testID="symptom-value" style={styles.statValue}>{summary.symptom_count}</Text>
           <Text style={styles.statLabel}>Symptoms</Text>
         </View>
-        <View style={styles.statCard}>
-          <MaterialIcons name="photo-library" size={24} color={colors.success} />
+        <View style={[styles.statCard, { backgroundColor: colors.info + '10' }]}>
+          <MaterialIcons name="photo-library" size={24} color={colors.info} />
           <Text testID="photo-value" style={styles.statValue}>{summary.photo_count}</Text>
           <Text style={styles.statLabel}>Photos</Text>
         </View>
-        <View style={styles.statCard}>
-          <MaterialIcons name="event-note" size={24} color={colors.secondary} />
+        <View style={[styles.statCard, { backgroundColor: colors.teal + '10' }]}>
+          <MaterialIcons name="event-note" size={24} color={colors.teal} />
           <Text testID="routine-value" style={styles.statValue}>{summary.active_routines}</Text>
           <Text style={styles.statLabel}>Active Routines</Text>
         </View>
       </View>
 
       {rescue.rescueEligible && (
-        <View style={styles.rescueCard} testID="streak-rescue-card">
+        <View style={[styles.rescueCard, rescueActivated && { backgroundColor: colors.warning + '10', borderLeftWidth: 3, borderLeftColor: colors.warning }]} testID="streak-rescue-card">
           <View style={styles.rescueHeader}>
             <MaterialIcons name="restart-alt" size={20} color={colors.primary} />
             <Text style={styles.rescueTitle}>Streak Rescue</Text>
@@ -141,7 +141,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
       )}
 
       {milestoneEligible && (
-        <View style={styles.milestoneCard}>
+        <View style={[styles.milestoneCard, { backgroundColor: colors.success + '10' }, milestoneCelebrated && { borderLeftWidth: 3, borderLeftColor: colors.success }]}>
           <View style={styles.rescueHeader}>
             <MaterialIcons name="emoji-events" size={20} color={colors.success} />
             <Text style={styles.milestoneTitle}>Milestone Reached</Text>
@@ -224,23 +224,26 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
           </TouchableOpacity>
         </View>
         {photos.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
-            {photos.map((photo: ProgressPhoto) => (
-              <TouchableOpacity 
-                key={photo.id} 
-                style={styles.photoWrapper}
-                onPress={() => router.push("/timeline")}
-              >
-                <Image source={{ uri: photo.url }} style={styles.photo} />
-                <Text style={styles.photoDate}>{safeFormat(photo.timestamp, 'MMM dd')}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <View style={styles.photoListContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
+              {photos.map((photo: ProgressPhoto) => (
+                <TouchableOpacity
+                  key={photo.id}
+                  style={styles.photoWrapper}
+                  onPress={() => router.push("/timeline")}
+                >
+                  <Image source={{ uri: photo.url }} style={styles.photo} />
+                  <Text style={styles.photoDate}>{safeFormat(photo.timestamp, 'MMM dd')}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         ) : (
           <Text style={styles.emptyText}>No photos captured yet.</Text>
         )}
       </View>
 
+      <View style={styles.shareDivider} />
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>PHI-Safe Share Card</Text>
         <View style={styles.shareCard} testID="phi-safe-share-card">
@@ -313,7 +316,7 @@ const styles = StyleSheet.create({
   },
   rescueCard: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     padding: spacing.md,
@@ -346,7 +349,7 @@ const styles = StyleSheet.create({
   rescueButton: {
     alignSelf: "flex-start",
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginTop: spacing.xs,
@@ -354,7 +357,7 @@ const styles = StyleSheet.create({
   milestoneButton: {
     alignSelf: "flex-start",
     backgroundColor: colors.success,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginTop: spacing.xs,
@@ -372,7 +375,7 @@ const styles = StyleSheet.create({
   },
   milestoneCard: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.success,
     padding: spacing.md,
@@ -407,6 +410,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-around',
     paddingTop: spacing.md,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: borderRadius.sm,
   },
   barWrapper: {
     alignItems: 'center',
@@ -415,12 +420,17 @@ const styles = StyleSheet.create({
   bar: {
     width: 12,
     borderRadius: borderRadius.xs,
-    minHeight: 4,
+    minHeight: spacing.xs,
   },
   barLabel: {
-    fontSize: 8,
+    fontSize: typography.caption.fontSize,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  photoListContainer: {
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: borderRadius.md,
+    padding: spacing.sm,
   },
   photoList: {
     flexDirection: 'row',
@@ -468,9 +478,14 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontWeight: '600',
   },
+  shareDivider: {
+    height: 1,
+    backgroundColor: colors.divider,
+    marginBottom: spacing.xl,
+  },
   shareCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     padding: spacing.md,
@@ -492,7 +507,7 @@ const styles = StyleSheet.create({
   shareButton: {
     alignSelf: "flex-start",
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginTop: spacing.xs,

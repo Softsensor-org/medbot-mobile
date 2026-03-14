@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { colors, typography, spacing } from '../../src/theme';
+import { colors, typography, spacing, borderRadius, shadows } from '../../src/theme';
 import { useTimeline } from '../../src/hooks/useTimeline';
 import { safeFormat } from '../../src/utils/dateHelpers';
 import { usePatientProgress } from '../../src/hooks/useProgress';
@@ -55,11 +55,11 @@ export default function TimelineScreen() {
         ) : (
           events.map((event: { id: string; type: string; timestamp: string; title: string; description: string }) => (
             <View key={event.id} style={styles.eventCard}>
-              <View style={styles.eventIcon}>
-                <MaterialIcons 
-                  name={getEventIcon(event.type) as React.ComponentProps<typeof MaterialIcons>['name']} 
-                  size={20} 
-                  color={colors.primary} 
+              <View style={[styles.eventIcon, { backgroundColor: getEventIconColor(event.type) + '1A' }]}>
+                <MaterialIcons
+                  name={getEventIcon(event.type) as React.ComponentProps<typeof MaterialIcons>['name']}
+                  size={16}
+                  color={getEventIconColor(event.type)}
                 />
               </View>
               <View style={styles.eventContent}>
@@ -96,6 +96,16 @@ function getEventIcon(type: string) {
   }
 }
 
+function getEventIconColor(type: string) {
+  switch (type) {
+    case 'symptom': return colors.warning;
+    case 'routine': return colors.success;
+    case 'photo': return colors.info;
+    case 'intervention': return colors.error;
+    default: return colors.primary;
+  }
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -125,17 +135,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
+    ...typography.label,
+    color: colors.secondary,
     marginBottom: spacing.md,
   },
   comparisonWrapper: {
     height: 300,
-    borderRadius: 16,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderWidth: 2,
+    borderColor: colors.primary + '20',
+    ...shadows.md,
   },
   eventList: {
     marginBottom: spacing.xl,
@@ -143,27 +154,29 @@ const styles = StyleSheet.create({
   eventCard: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    ...shadows.sm,
   },
   eventIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primaryLight + '20',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   eventContent: {
     flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    paddingBottom: spacing.sm,
   },
   eventHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   eventTitle: {
     ...typography.label,
@@ -186,6 +199,10 @@ const styles = StyleSheet.create({
   backBtn: {
     alignItems: 'center',
     padding: spacing.md,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.sm,
   },
   backBtnText: {
     ...typography.button,

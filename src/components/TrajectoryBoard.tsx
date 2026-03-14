@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)',
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
     borderRadius: borderRadius.md,
   },
   countdownValue: {
@@ -116,18 +116,22 @@ const styles = StyleSheet.create({
   countdownLabel: {
     ...typography.caption,
     color: colors.surface,
-    fontSize: 10,
+    fontSize: typography.caption.fontSize,
     textTransform: 'uppercase',
   },
   goalBox: {
     marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: borderRadius.sm,
+    padding: spacing.md,
   },
   goalTitle: {
     ...typography.caption,
     color: 'rgba(255,255,255,0.7)',
     fontWeight: '700',
     textTransform: 'uppercase',
-    marginBottom: 2,
+    marginBottom: spacing.xs,
   },
   goalText: {
     ...typography.body,
@@ -156,18 +160,22 @@ const styles = StyleSheet.create({
   progressBarBg: {
     height: 8,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 4,
+    borderRadius: borderRadius.full,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: colors.success,
+    borderRadius: borderRadius.full,
   },
   velocityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
-    gap: 4,
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: borderRadius.sm,
+    padding: spacing.xs,
   },
   velocityText: {
     ...typography.caption,
@@ -180,6 +188,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   statBox: {
     flex: 1,
@@ -187,7 +197,7 @@ const styles = StyleSheet.create({
   statLabel: {
     ...typography.caption,
     color: 'rgba(255,255,255,0.6)',
-    marginBottom: 2,
+    marginBottom: spacing.xs,
   },
   statValue: {
     ...typography.bodySmall,
@@ -195,24 +205,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   divider: {
-    width: 1,
+    width: 2,
     backgroundColor: 'rgba(255,255,255,0.1)',
     marginHorizontal: spacing.md,
   },
   confidenceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   confidenceTrack: {
     flex: 1,
     height: 4,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 2,
+    borderRadius: borderRadius.full,
     overflow: 'hidden',
   },
   confidenceFill: {
     height: '100%',
     backgroundColor: colors.success,
+    borderRadius: borderRadius.full,
   }
 });
