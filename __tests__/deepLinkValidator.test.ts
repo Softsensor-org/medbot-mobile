@@ -6,12 +6,16 @@ describe('validateDeepLink', () => {
       '/(auth)/(tabs)',
       '/(auth)/(tabs)/routines',
       '/(auth)/(tabs)/progress',
+      '/(auth)/timeline',
       '/(auth)/intake',
       '/(auth)/intake/camera',
       '/(auth)/intake/symptom-log',
       '/(auth)/settings',
       '/(auth)/notifications',
       '/(auth)/consent',
+      '/(auth)/onboarding/skin-brief',
+      '/(auth)/onboarding/preferences',
+      '/(auth)/interventions',
       '/weekly-reveal',
     ])('allows exact route: %s', (route) => {
       expect(validateDeepLink(route)).toBe(route);

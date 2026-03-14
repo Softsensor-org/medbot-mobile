@@ -12,12 +12,16 @@ const ALLOWED_ROUTES: readonly string[] = [
   '/(auth)/(tabs)',
   '/(auth)/(tabs)/routines',
   '/(auth)/(tabs)/progress',
+  '/(auth)/timeline',
   '/(auth)/intake',
   '/(auth)/intake/camera',
   '/(auth)/intake/symptom-log',
   '/(auth)/settings',
   '/(auth)/notifications',
   '/(auth)/consent',
+  '/(auth)/onboarding/skin-brief',
+  '/(auth)/onboarding/preferences',
+  '/(auth)/interventions',
 ];
 
 const SAFE_FALLBACK: Href = '/(auth)/(tabs)' as Href;

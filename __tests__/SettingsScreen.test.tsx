@@ -190,7 +190,7 @@ describe("SettingsScreen", () => {
 
     await waitFor(() => {
       fireEvent.press(getByText('Edit Skin Brief'));
-      expect(mockRouter.push).toHaveBeenCalledWith('/onboarding/skin-brief');
+      expect(mockRouter.push).toHaveBeenCalledWith('/(auth)/onboarding/skin-brief');
     });
   });
 
@@ -204,7 +204,7 @@ describe("SettingsScreen", () => {
 
     await waitFor(() => {
       fireEvent.press(getByText('Treatment Preferences'));
-      expect(mockRouter.push).toHaveBeenCalledWith('/onboarding/preferences');
+      expect(mockRouter.push).toHaveBeenCalledWith('/(auth)/onboarding/preferences');
     });
   });
 });
