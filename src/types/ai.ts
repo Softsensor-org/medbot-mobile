@@ -172,6 +172,11 @@ export interface SymptomCaptureHint {
 export type CardType = "symptom" | "product" | "routine" | "intervention" | "summary" | "escalation";
 export type CardStatus = "draft" | "confirmed" | "dismissed" | "flagged";
 
+export interface HandoffTarget {
+  screen: string;
+  params?: Record<string, unknown>;
+}
+
 export interface ChatCard {
   card_id: string;
   card_type: CardType;
@@ -180,6 +185,8 @@ export interface ChatCard {
   data: Record<string, unknown>;
   source_turn: number;
   editable_fields: string[];
+  session_id?: string;
+  handoff_target?: HandoffTarget;
 }
 
 // --- IMP-249: Provider Brief ---

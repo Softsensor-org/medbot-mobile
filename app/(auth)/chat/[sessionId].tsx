@@ -234,7 +234,7 @@ export default function ChatScreen() {
               </View>
             ) : null}
             {summaryCard && (
-              <ChatCardInline card={summaryCard} onCardUpdate={handleSummaryCardUpdate} />
+              <ChatCardInline card={summaryCard} onCardUpdate={handleSummaryCardUpdate} escalationActive={escalation.visible} />
             )}
           </>
         }

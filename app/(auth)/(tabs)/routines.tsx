@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { useRoutineAssignments } from "../../../src/hooks/useRoutineAssignments";
 import { useCompleteAssignment, useDeferAssignment } from "../../../src/hooks/useRoutineActions";
 import { useRoutines } from "../../../src/hooks/useRoutines";
@@ -40,14 +41,24 @@ function getSyncMessage(
 }
 
 export default function RoutinesScreen() {
+  const { from_chat } = useLocalSearchParams<{ from_chat?: string }>();
   const { data: assignments = [], isLoading, error: assignmentError } = useRoutineAssignments();
   const { data: routines = [], error: routinesError } = useRoutines();
   const completeMutation = useCompleteAssignment();
   const deferMutation = useDeferAssignment();
   const { safety, isLoading: isLoadingSafety } = useSafetyGate();
 
+  const [chatBanner, setChatBanner] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (from_chat === "true") {
+      setChatBanner(true);
+      const timer = setTimeout(() => setChatBanner(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [from_chat]);
   const [selectedAssignment, setSelectedAssignment] = useState<RoutineAssignment | null>(null);
   const [deferReasonCode, setDeferReasonCode] = useState("too_busy");
   const [rescheduleType, setRescheduleType] = useState<RescheduleIntentType>("later_today");
@@ -187,6 +198,12 @@ export default function RoutinesScreen() {
         subtitle="Keep the next ritual clear, complete it in one tap, or capture a structured defer without losing context."
         testID="routines-screen"
       >
+        {chatBanner && (
+          <SoftCard tone="muted" testID="routine-chat-banner">
+            <Text style={styles.chatBannerText}>Routine suggested from your chat</Text>
+          </SoftCard>
+        )}
+
         {isSafetyBlocked ? (
           <SafetyGateOverlay safety={safety} />
         ) : (
@@ -363,6 +380,11 @@ const styles = StyleSheet.create({
   introTitle: {
     ...typography.h3,
     color: colors.textPrimary,
+  },
+  chatBannerText: {
+    ...typography.body,
+    color: colors.info,
+    textAlign: "center",
   },
   introBody: {
     ...typography.body,
