@@ -7,6 +7,7 @@ import { useRoutineIntelligence } from '../src/hooks/useRoutineIntelligence';
 import { useRoutines } from '../src/hooks/useRoutines';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSafetyGate } from '../src/hooks/useSafetyGate';
+import { hapticService } from '../src/api/HapticService';
 
 // Mocks
 jest.mock('../src/hooks/useRoutineAssignments', () => ({
@@ -28,6 +29,15 @@ jest.mock('../src/hooks/useRoutineIntelligence', () => ({
 
 jest.mock('../src/hooks/useSafetyGate', () => ({
   useSafetyGate: jest.fn(),
+}));
+
+jest.mock('../src/api/HapticService', () => ({
+  hapticService: {
+    triggerSuccess: jest.fn(),
+    triggerWarning: jest.fn(),
+    triggerError: jest.fn(),
+    triggerSelection: jest.fn(),
+  },
 }));
 
 jest.mock('../src/components/common/NativeDateTimePicker', () => {
@@ -203,5 +213,25 @@ describe('RoutinesScreen', () => {
     const { getByText } = render(<RoutinesScreen />, { wrapper });
 
     expect(getByText('No rituals are ready right now')).toBeTruthy();
+  });
+
+  it('uses the success haptic after routine completion instead of warning', async () => {
+    const mockMutate = jest.fn((_variables, callbacks) => callbacks?.onSuccess?.({ mode: 'synced' }));
+    (useCompleteAssignment as jest.Mock).mockReturnValue({
+      mutate: mockMutate,
+      isPending: false,
+      syncStatus: undefined,
+      syncError: null,
+      retrySync: jest.fn(),
+    });
+
+    const { getByText } = render(<RoutinesScreen />, { wrapper });
+
+    await act(async () => {
+      fireEvent.press(getByText('Complete'));
+    });
+
+    expect(hapticService.triggerWarning).not.toHaveBeenCalled();
+    expect(hapticService.triggerSuccess).toHaveBeenCalled();
   });
 });

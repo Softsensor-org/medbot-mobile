@@ -233,8 +233,6 @@ export default function RoutinesScreen() {
     (assignmentId: number) => {
       setError(null);
       setInfo(null);
-      hapticService.triggerWarning();
-
       // Collect step-level completions for this assignment
       const assignmentSteps = stepCompletions.get(assignmentId);
       const stepsArray: RoutineStepCompletion[] = assignmentSteps
@@ -248,7 +246,6 @@ export default function RoutinesScreen() {
         completion_rate: 1.0,
         steps: stepsArray.length > 0 ? stepsArray : undefined,
       };
-
       completeMutation.mutate(
         {
           assignmentId,

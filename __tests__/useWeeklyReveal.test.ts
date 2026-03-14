@@ -51,4 +51,16 @@ describe('useWeeklyReveal', () => {
     expect(result.current.insight?.comparison.before?.id).toBe('before');
     expect(result.current.insight?.comparison.after?.id).toBe('after');
   });
+
+  it('does not duplicate a single photo into both comparison slots', () => {
+    (usePatientProgress as jest.Mock).mockReturnValue({
+      data: { ...mockData, photos: [{ id: 'solo', timestamp: '2026-03-07T10:00:00Z', url: 'solo.jpg' }] },
+      isLoading: false,
+    });
+
+    const { result } = renderHook(() => useWeeklyReveal());
+
+    expect(result.current.insight?.comparison.before).toBeUndefined();
+    expect(result.current.insight?.comparison.after?.id).toBe('solo');
+  });
 });

@@ -6,6 +6,11 @@ import {
   WEEKLY_SUMMARY_DEEP_LINK,
 } from "../src/notifications/types";
 import { loadPreferences, savePreferences } from "../src/notifications/preferenceStorage";
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  notificationService,
+} from "../src/api/NotificationService";
+import { storage } from "../src/api/PersistenceService";
 
 // Mock expo-notifications
 jest.mock("expo-notifications", () => ({
@@ -18,6 +23,15 @@ jest.mock("expo-notifications", () => ({
   getAllScheduledNotificationsAsync: jest.fn().mockResolvedValue([]),
   AndroidImportance: { DEFAULT: 3 },
   SchedulableTriggerInputTypes: { WEEKLY: "weekly", DAILY: "daily" },
+}));
+
+jest.mock("expo-device", () => ({
+  isDevice: true,
+}));
+
+jest.mock("expo-constants", () => ({
+  expoConfig: { extra: { eas: { projectId: "test-project-id" } } },
+  easConfig: { projectId: "test-project-id" },
 }));
 
 // Mock react-native Platform
@@ -187,5 +201,28 @@ describe("scheduler", () => {
     const { syncSchedule } = require("../src/notifications/scheduler");
     await syncSchedule({ ...DEFAULT_PREFERENCES, pushEnabled: false });
     expect(Notifications.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
+  });
+});
+
+describe("notificationService", () => {
+  it("falls back to default quiet-hours values when stored settings omit them", async () => {
+    const Notifications = require("expo-notifications");
+    storage.set(
+      "notification-settings",
+      JSON.stringify({
+        ...DEFAULT_NOTIFICATION_SETTINGS,
+        enabled: true,
+        routineReminders: true,
+        quietHoursEnabled: true,
+        quietHoursStart: undefined,
+        quietHoursEnd: undefined,
+      }),
+    );
+
+    await expect(
+      notificationService.scheduleRoutineReminder("Morning Routine", new Date("2026-01-01T12:00:00")),
+    ).resolves.toBeUndefined();
+
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalled();
   });
 });
