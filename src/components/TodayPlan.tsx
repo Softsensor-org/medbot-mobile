@@ -12,7 +12,7 @@ import { API_BASE_URL } from "../api/config";
 import { triggerEngagementHaptic } from "../engagement/haptics";
 import type { CarePlanAction } from "../types/medical";
 import type { DailyCarePlanWithAdaptation } from "../types/wellness";
-import { colors, spacing, typography } from "../theme";
+import { borderRadius, colors, spacing, typography } from "../theme";
 import { MetricChip } from "./common/MetricChip";
 import { SecondaryButton } from "./common/SecondaryButton";
 import { SectionHeader } from "./common/SectionHeader";
@@ -93,27 +93,38 @@ export const TodayPlan: React.FC = () => {
   }
 
   const latestTriage = careGraph?.triage_sessions?.[0];
-  const symptomEvents = careGraph?.event_counts?.symptom_event || 0;
   const safetyEvents = careGraph?.event_counts?.safety_event || 0;
   const isElevatedRisk = latestTriage?.triage_label === "urgent" || safetyEvents > 0;
   const adaptation = plan.adaptation;
+  const morningRemaining = plan.am_actions.filter((item) => !item.done).length;
+  const eveningRemaining = plan.pm_actions.filter((item) => !item.done).length;
 
-  const renderActionList = (actions: CarePlanAction[]) =>
-    actions.map((item, idx) => (
+  const renderActionList = (actions: CarePlanAction[], emptyCopy: string) => {
+    if (actions.length === 0) {
+      return <Text style={styles.emptyText}>{emptyCopy}</Text>;
+    }
+
+    return actions.map((item, idx) => (
       <TouchableOpacity
         key={`${item.action}-${idx}`}
-        style={styles.actionRow}
+        style={[styles.actionRow, item.done && styles.actionRowDone]}
         onPress={() => handleToggle(item.id, item.done)}
         disabled={!item.id || item.done || logMutation.isPending}
       >
-        <Ionicons
-          name={item.done ? "checkbox" : "square-outline"}
-          size={22}
-          color={item.done ? colors.success : colors.primary}
-        />
-        <Text style={[styles.actionText, item.done && styles.actionDoneText]}>{item.action}</Text>
+        <View style={styles.actionMain}>
+          <Ionicons
+            name={item.done ? "checkbox" : "square-outline"}
+            size={22}
+            color={item.done ? colors.success : colors.primary}
+          />
+          <Text style={[styles.actionText, item.done && styles.actionDoneText]}>{item.action}</Text>
+        </View>
+        <Text style={[styles.actionMeta, item.done && styles.actionMetaDone]}>
+          {item.done ? "Done" : "Tap to complete"}
+        </Text>
       </TouchableOpacity>
     ));
+  };
 
   return (
     <SoftCard style={styles.card}>
@@ -125,21 +136,21 @@ export const TodayPlan: React.FC = () => {
 
       <View style={styles.metrics}>
         <MetricChip
-          tone={isElevatedRisk ? "warning" : "default"}
-          label="Latest triage"
-          value={latestTriage?.triage_label ?? "routine"}
-          icon={<MaterialIcons name="monitor-heart" size={16} color={colors.primary} />}
+          tone={morningRemaining > 0 ? "primary" : "success"}
+          label="Morning"
+          value={morningRemaining > 0 ? `${morningRemaining} left` : "Done"}
+          icon={<MaterialIcons name="wb-sunny" size={16} color={colors.primary} />}
         />
         <MetricChip
-          tone="info"
-          label="Symptoms"
-          value={`${symptomEvents}`}
-          icon={<MaterialIcons name="timeline" size={16} color={colors.info} />}
+          tone={eveningRemaining > 0 ? "info" : "success"}
+          label="Evening"
+          value={eveningRemaining > 0 ? `${eveningRemaining} left` : "Done"}
+          icon={<MaterialIcons name="dark-mode" size={16} color={colors.info} />}
         />
         <MetricChip
           tone={safetyEvents > 0 ? "warning" : "default"}
           label="Safety"
-          value={`${safetyEvents}`}
+          value={isElevatedRisk ? (latestTriage?.triage_label ?? "elevated") : "steady"}
           icon={<MaterialIcons name="shield" size={16} color={colors.warning} />}
         />
       </View>
@@ -191,45 +202,61 @@ export const TodayPlan: React.FC = () => {
         </SoftCard>
       ) : null}
 
-      <View style={styles.section}>
-        <SectionHeader title="Morning" eyebrow="AM" />
-        {renderActionList(plan.am_actions)}
-      </View>
+      <SoftCard tone="muted" padded={false} style={styles.planSection}>
+        <View style={styles.planSectionBody}>
+          <SectionHeader
+            title="Morning"
+            eyebrow="AM"
+            subtitle={morningRemaining > 0 ? `${morningRemaining} step${morningRemaining === 1 ? "" : "s"} left` : "Everything logged for this window."}
+          />
+          {renderActionList(plan.am_actions, "No morning steps are queued right now.")}
+        </View>
+      </SoftCard>
 
       <View style={styles.divider} />
 
-      <View style={styles.section}>
-        <SectionHeader title="Evening" eyebrow="PM" />
-        {renderActionList(plan.pm_actions)}
-      </View>
+      <SoftCard tone="muted" padded={false} style={styles.planSection}>
+        <View style={styles.planSectionBody}>
+          <SectionHeader
+            title="Evening"
+            eyebrow="PM"
+            subtitle={eveningRemaining > 0 ? `${eveningRemaining} step${eveningRemaining === 1 ? "" : "s"} left` : "Everything logged for tonight."}
+          />
+          {renderActionList(plan.pm_actions, "No evening steps are queued right now.")}
+        </View>
+      </SoftCard>
 
       <View style={styles.divider} />
 
-      <View style={styles.footerRow}>
-        <View style={styles.footerCol}>
-          <SectionHeader title="Avoid" eyebrow="Protect" />
-          {plan.avoid_today.map((item, index) => (
-            <Text key={`${item}-${index}`} style={styles.footerText}>
-              • {item}
-            </Text>
-          ))}
+      <SoftCard tone="muted" padded={false} style={styles.guidanceCard}>
+        <View style={styles.guidanceBody}>
+          <View style={styles.footerRow}>
+            <View style={styles.footerCol}>
+              <SectionHeader title="Avoid" eyebrow="Protect" />
+              {plan.avoid_today.map((item, index) => (
+                <Text key={`${item}-${index}`} style={styles.footerText}>
+                  • {item}
+                </Text>
+              ))}
+            </View>
+            <View style={styles.footerCol}>
+              <SectionHeader title="Watch" eyebrow="Monitor" />
+              {plan.watch_for.map((item, index) => (
+                <Text key={`${item}-${index}`} style={styles.footerText}>
+                  • {item}
+                </Text>
+              ))}
+            </View>
+          </View>
         </View>
-        <View style={styles.footerCol}>
-          <SectionHeader title="Watch" eyebrow="Monitor" />
-          {plan.watch_for.map((item, index) => (
-            <Text key={`${item}-${index}`} style={styles.footerText}>
-              • {item}
-            </Text>
-          ))}
-        </View>
-      </View>
+      </SoftCard>
     </SoftCard>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    gap: spacing.md,
+    gap: spacing.lg,
     marginVertical: spacing.md,
   },
   metrics: {
@@ -246,6 +273,13 @@ const styles = StyleSheet.create({
   adaptationCard: {
     gap: spacing.sm,
   },
+  planSection: {
+    overflow: "visible",
+  },
+  planSectionBody: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
   suppressedRow: {
     flexDirection: "row",
     gap: spacing.sm,
@@ -256,14 +290,27 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
   },
-  section: {
-    gap: spacing.sm,
-  },
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.smd,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: borderRadius.lg,
+  },
+  actionRowDone: {
+    backgroundColor: colors.surfaceLight,
+    borderColor: colors.divider,
+  },
+  actionMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
-    paddingVertical: spacing.xs,
   },
   actionText: {
     ...typography.body,
@@ -274,9 +321,23 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textDecorationLine: "line-through",
   },
+  actionMeta: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: "700",
+  },
+  actionMetaDone: {
+    color: colors.success,
+  },
   divider: {
     height: 1,
     backgroundColor: colors.divider,
+  },
+  guidanceCard: {
+    overflow: "visible",
+  },
+  guidanceBody: {
+    padding: spacing.md,
   },
   footerRow: {
     flexDirection: "row",
@@ -306,6 +367,10 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  emptyText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   errorText: {
     ...typography.body,

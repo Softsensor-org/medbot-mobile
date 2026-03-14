@@ -12,7 +12,6 @@ import { usePatientProgress } from "../hooks/useProgress";
 import { safeFormat } from "../utils/dateHelpers";
 import { HeroSurface } from "./common/HeroSurface";
 import { MetricChip } from "./common/MetricChip";
-import { PrimaryButton } from "./common/PrimaryButton";
 import { SecondaryButton } from "./common/SecondaryButton";
 
 export const HeroDashboard = () => {
@@ -34,11 +33,11 @@ export const HeroDashboard = () => {
       : "stable";
 
   const heroTitle = latestPhoto
-    ? "Your routine is building visible momentum."
-    : "Capture today's baseline to anchor your progress.";
+    ? "Your routine rhythm is showing up in the details."
+    : "Start with one grounded signal for today.";
   const heroSubtitle = latestPhoto
-    ? `Latest photo from ${safeFormat(latestPhoto.timestamp, "MMMM do, yyyy")}.`
-    : "Start with one photo and one check-in so tomorrow has something to compare against.";
+    ? `Latest photo from ${safeFormat(latestPhoto.timestamp, "MMMM do, yyyy")}. Keep today simple and steady.`
+    : "Capture a photo or symptom note so tomorrow has something real to compare against.";
 
   return (
     <HeroSurface
@@ -94,23 +93,23 @@ export const HeroDashboard = () => {
       }
       actions={
         <View style={styles.actions}>
-          <PrimaryButton
+          <SecondaryButton
             label="Symptom"
             onPress={() => router.push("/(auth)/intake/symptom-log")}
-            icon={<MaterialIcons name="report-problem" size={18} color={colors.textInverse} />}
-            style={styles.primaryAction}
+            icon={<MaterialIcons name="report-problem" size={18} color={colors.textPrimary} />}
+            style={styles.supportingAction}
           />
           <SecondaryButton
             label="Photo"
             onPress={() => router.push("/(auth)/intake/camera")}
             icon={<MaterialIcons name="photo-camera" size={18} color={colors.textPrimary} />}
-            style={styles.secondaryAction}
+            style={styles.supportingAction}
           />
           <SecondaryButton
             label="Routines"
             onPress={() => router.push("/(auth)/(tabs)/routines")}
             icon={<MaterialIcons name="check-circle" size={18} color={colors.textPrimary} />}
-            style={styles.secondaryAction}
+            style={styles.supportingAction}
           />
         </View>
       }
@@ -161,11 +160,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.sm,
   },
-  primaryAction: {
-    flex: 1,
-    minWidth: 160,
-  },
-  secondaryAction: {
+  supportingAction: {
     flex: 1,
     minWidth: 136,
   },
