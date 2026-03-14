@@ -47,6 +47,22 @@ describe("PHI-safe share scaffold", () => {
           session_id: "session-1",
         },
       ],
+      ritual_history: {
+        total_logs: 3,
+        active_days: 2,
+        current_streak: 1,
+        best_streak: 2,
+        recent_days: [],
+      },
+      insight_modules: [
+        {
+          key: "consistency_window",
+          title: "Consistency window",
+          value: "2 active days",
+          detail: "Current streak: 1. Best streak: 2. Average adherence: 82%.",
+          tone: "neutral",
+        },
+      ],
     });
 
     const serialized = JSON.stringify(summary);

@@ -23,6 +23,10 @@ jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
 
+jest.mock('../src/components/WeeklyReveal', () => ({
+  WeeklyReveal: () => null,
+}));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -58,6 +62,42 @@ describe('ProgressBoard', () => {
     ],
     photos: [
       { id: '1', timestamp: '2026-03-01T10:00:00Z', url: 'http://test.com/1.jpg' },
+    ],
+    ritual_history: {
+      total_logs: 18,
+      active_days: 9,
+      current_streak: 4,
+      best_streak: 6,
+      recent_days: [
+        {
+          date: '2026-03-06',
+          completed_count: 2,
+          avg_completion_rate: 0.75,
+          routine_names: ['Evening Reset', 'Barrier Repair'],
+        },
+        {
+          date: '2026-03-05',
+          completed_count: 1,
+          avg_completion_rate: 0.5,
+          routine_names: [],
+        },
+      ],
+    },
+    insight_modules: [
+      {
+        key: 'consistency',
+        title: 'Consistency Trend',
+        value: '4-day rebound',
+        detail: 'Adherence recovered after one missed day.',
+        tone: 'positive',
+      },
+      {
+        key: 'symptom_watch',
+        title: 'Symptom Watch',
+        value: 'Monitor dryness',
+        detail: 'Dryness clustered on lower-completion days.',
+        tone: 'attention',
+      },
     ],
   };
 
@@ -107,9 +147,31 @@ describe('ProgressBoard', () => {
     // Check sections
     expect(getByText('Symptom Severity')).toBeTruthy();
     expect(getByText('Routine Adherence')).toBeTruthy();
+    expect(getByText('Insight Pack')).toBeTruthy();
+    expect(getByText('Ritual History')).toBeTruthy();
     expect(getByText('Progress Photos')).toBeTruthy();
     expect(getByText('Streak Rescue')).toBeTruthy();
     expect(getByText('PHI-Safe Share Card')).toBeTruthy();
+  });
+
+  it('renders insight pack cards and ritual history details', () => {
+    (usePatientProgress as jest.Mock).mockReturnValue({
+      data: mockData,
+      isLoading: false,
+    });
+
+    const { getByTestId, getByText } = render(<ProgressBoard />, { wrapper });
+
+    expect(getByTestId('insight-pack-section')).toBeTruthy();
+    expect(getByTestId('insight-module-consistency')).toBeTruthy();
+    expect(getByText('4-day rebound')).toBeTruthy();
+    expect(getByText('Dryness clustered on lower-completion days.')).toBeTruthy();
+
+    expect(getByTestId('ritual-history-section')).toBeTruthy();
+    expect(getByText('Total Logs')).toBeTruthy();
+    expect(getByText('18')).toBeTruthy();
+    expect(getByText('Evening Reset, Barrier Repair')).toBeTruthy();
+    expect(getByText('No routine names captured.')).toBeTruthy();
   });
 
   it('handles streak rescue transition and safe share action', async () => {

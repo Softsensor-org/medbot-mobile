@@ -26,6 +26,31 @@ export interface PatientProgressSummary {
   active_routines: number;
 }
 
+export interface RitualHistoryDay {
+  date: string;
+  completed_count: number;
+  avg_completion_rate: number;
+  routine_names: string[];
+}
+
+export interface RitualHistorySummary {
+  total_logs: number;
+  active_days: number;
+  current_streak: number;
+  best_streak: number;
+  recent_days: RitualHistoryDay[];
+}
+
+export type InsightModuleTone = "positive" | "neutral" | "attention";
+
+export interface InsightModule {
+  key: string;
+  title: string;
+  value: string;
+  detail: string;
+  tone: InsightModuleTone;
+}
+
 export interface PatientProgressResponse {
   patient_id: string;
   period_days: number;
@@ -33,6 +58,8 @@ export interface PatientProgressResponse {
   symptoms: SymptomTrendPoint[];
   adherence: AdherenceTrendPoint[];
   photos: ProgressPhoto[];
+  ritual_history: RitualHistorySummary;
+  insight_modules: InsightModule[];
 }
 
 class AnalyticsApiService extends BaseApiService {
