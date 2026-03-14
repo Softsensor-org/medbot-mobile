@@ -33,6 +33,7 @@ describe('validateDeepLink', () => {
   it('allows exact matches from the allowlist', () => {
     expect(validateDeepLink('/weekly-reveal')).toBe('/weekly-reveal');
     expect(validateDeepLink('/(auth)/(tabs)/routines')).toBe('/(auth)/(tabs)/routines');
+    expect(validateDeepLink('/(auth)/(tabs)/')).toBe('/(auth)/(tabs)');
   });
 
   it('allows dynamic chat session routes with valid IDs', () => {

@@ -41,12 +41,21 @@ describe('validateDeepLink', () => {
       expect(validateDeepLink('medbot:///(auth)/(tabs)/progress')).toBe('/(auth)/(tabs)/progress');
     });
 
+    it('normalizes a trailing slash after scheme stripping', () => {
+      expect(validateDeepLink('medbot:///(auth)/(tabs)/')).toBe('/(auth)/(tabs)');
+    });
+
     it('rejects external URL after scheme strip', () => {
       expect(validateDeepLink('medbot://https://evil.com')).toBe('/(auth)/(tabs)');
     });
   });
 
   describe('blocked routes', () => {
+    it('normalizes trailing slashes on direct router paths', () => {
+      expect(validateDeepLink('/(auth)/(tabs)/')).toBe('/(auth)/(tabs)');
+      expect(validateDeepLink('/(auth)/(tabs)/progress/')).toBe('/(auth)/(tabs)/progress');
+    });
+
     it('blocks null/undefined', () => {
       expect(validateDeepLink(null)).toBe('/(auth)/(tabs)');
       expect(validateDeepLink(undefined)).toBe('/(auth)/(tabs)');
