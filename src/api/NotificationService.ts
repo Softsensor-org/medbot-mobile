@@ -25,6 +25,19 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 class NotificationService {
   private handlerConfigured = false;
 
+  private parseQuietHoursValue(value: string | undefined, fallback: string): number {
+    const source = typeof value === "string" && value.includes(":") ? value : fallback;
+    const [rawHours, rawMinutes] = source.split(":");
+    const hours = Number(rawHours);
+    const minutes = Number(rawMinutes);
+
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return this.parseQuietHoursValue(fallback, DEFAULT_NOTIFICATION_SETTINGS.quietHoursStart);
+    }
+
+    return hours * 60 + minutes;
+  }
+
   private async ensureNotificationHandler() {
     if (this.handlerConfigured) {
       return;
@@ -134,11 +147,14 @@ class NotificationService {
     const minutes = date.getMinutes();
     const currentTime = hours * 60 + minutes;
 
-    const [startH, startM] = settings.quietHoursStart.split(':').map(Number);
-    const [endH, endM] = settings.quietHoursEnd.split(':').map(Number);
-    
-    const startTime = startH * 60 + startM;
-    const endTime = endH * 60 + endM;
+    const startTime = this.parseQuietHoursValue(
+      settings.quietHoursStart,
+      DEFAULT_NOTIFICATION_SETTINGS.quietHoursStart,
+    );
+    const endTime = this.parseQuietHoursValue(
+      settings.quietHoursEnd,
+      DEFAULT_NOTIFICATION_SETTINGS.quietHoursEnd,
+    );
 
     if (startTime > endTime) {
       // Overnight quiet hours (e.g. 22:00 to 08:00)

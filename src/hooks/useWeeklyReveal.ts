@@ -38,7 +38,7 @@ export function useWeeklyReveal() {
     if (confidence < 0.4) status = 'low_data';
 
     // 3. Comparison Photos
-    const before = photos.length > 0 ? photos[photos.length - 1] : undefined;
+    const before = photos.length >= 2 ? photos[photos.length - 1] : undefined;
     const after = photos.length > 0 ? photos[0] : undefined;
 
     // 4. Content Generation (Mocked logic for now)
