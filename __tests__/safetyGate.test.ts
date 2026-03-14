@@ -31,7 +31,7 @@ describe("evaluateSafetyGate", () => {
     it("suppresses for 'assigned' status (clinician review active)", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "assigned", session_id: "s-assigned" })],
-        progress: null,
+        symptoms: null,
         insight: null,
       });
 
@@ -44,7 +44,7 @@ describe("evaluateSafetyGate", () => {
     it("suppresses for 'waiting' status (awaiting provider)", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "waiting" })],
-        progress: null,
+        symptoms: null,
         insight: null,
       });
 
@@ -56,7 +56,7 @@ describe("evaluateSafetyGate", () => {
     it("fail-closed for 'new' session when insight is unavailable", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "new" })],
-        progress: null,
+        symptoms: null,
         insight: null,
       });
 
@@ -67,7 +67,7 @@ describe("evaluateSafetyGate", () => {
     it("allows progression for 'new' session when insight IS available and safe", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "new" })],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: { status: "stable", confidence: 0.8 },
       });
 
@@ -77,7 +77,7 @@ describe("evaluateSafetyGate", () => {
     it("allows progression for 'closed' session", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "closed" })],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: { status: "stable", confidence: 0.8 },
       });
 
@@ -89,7 +89,7 @@ describe("evaluateSafetyGate", () => {
     it("returns safe when no sessions and no negative signals", () => {
       const result = evaluateSafetyGate({
         sessions: [],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: { status: "stable", confidence: 0.8 },
       });
 
@@ -99,7 +99,7 @@ describe("evaluateSafetyGate", () => {
     it("suppresses when insight is missing and low confidence threshold", () => {
       const result = evaluateSafetyGate({
         sessions: [],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: { confidence: 0.1 },
       });
 
@@ -110,7 +110,7 @@ describe("evaluateSafetyGate", () => {
     it("handles null progress gracefully", () => {
       const result = evaluateSafetyGate({
         sessions: [],
-        progress: null,
+        symptoms: null,
         insight: { status: "stable", confidence: 0.8 },
       });
 
@@ -120,7 +120,7 @@ describe("evaluateSafetyGate", () => {
     it("handles undefined insight gracefully (no suppress if no sessions)", () => {
       const result = evaluateSafetyGate({
         sessions: [],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: null,
       });
 
@@ -133,7 +133,7 @@ describe("evaluateSafetyGate", () => {
     it("suppresses for severe symptoms (>= 4.5)", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "closed" })],
-        progress: { symptoms: [{ severity: 4.8 }] },
+        symptoms: [{ severity: 4.8 }],
         insight: { status: "stable", confidence: 0.9 },
       });
 
@@ -145,7 +145,7 @@ describe("evaluateSafetyGate", () => {
     it("allows for moderate symptoms (< 4.5)", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "closed" })],
-        progress: { symptoms: [{ severity: 3.0 }] },
+        symptoms: [{ severity: 3.0 }],
         insight: { status: "stable", confidence: 0.8 },
       });
 
@@ -157,7 +157,7 @@ describe("evaluateSafetyGate", () => {
     it("suppresses when insight status is regressing", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "closed" })],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: { status: "regressing", confidence: 0.5 },
       });
 
@@ -171,7 +171,7 @@ describe("evaluateSafetyGate", () => {
     it("suppresses when confidence below threshold (0.2)", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "closed" })],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: { status: "stable", confidence: 0.15 },
       });
 
@@ -182,7 +182,7 @@ describe("evaluateSafetyGate", () => {
     it("allows when confidence at threshold", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "closed" })],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: { status: "stable", confidence: 0.2 },
       });
 
@@ -195,7 +195,7 @@ describe("evaluateSafetyGate", () => {
       // If session list returns [] due to contract mismatch, don't crash
       const result = evaluateSafetyGate({
         sessions: [],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: { status: "stable", confidence: 0.8 },
       });
 
@@ -214,7 +214,7 @@ describe("evaluateSafetyGate", () => {
 
       const result = evaluateSafetyGate({
         sessions: [sparseSession],
-        progress: null,
+        symptoms: null,
         insight: null,
       });
 
@@ -226,7 +226,7 @@ describe("evaluateSafetyGate", () => {
       // Even with a stable/high-confidence insight, assigned status suppresses
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "assigned" })],
-        progress: { symptoms: [] },
+        symptoms: [],
         insight: { status: "stable", confidence: 0.9 },
       });
 
@@ -237,7 +237,7 @@ describe("evaluateSafetyGate", () => {
     it("priority: severe symptoms override safe session status", () => {
       const result = evaluateSafetyGate({
         sessions: [makeSession({ status: "closed" })],
-        progress: { symptoms: [{ severity: 5.0 }] },
+        symptoms: [{ severity: 5.0 }],
         insight: { status: "stable", confidence: 0.9 },
       });
 

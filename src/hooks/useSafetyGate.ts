@@ -10,9 +10,10 @@
 
 import { useMemo } from 'react';
 import { useWeeklyReveal } from './useWeeklyReveal';
-import { usePatientProgress } from './useProgress';
 import { useSessions } from './useSessions';
 import type { SessionMeta } from '../api/sessionsApi';
+import { useSymptoms } from './useSymptomLogging';
+import type { Symptom } from '../types/medical';
 
 export interface SafetyStatus {
   isSafe: boolean;
@@ -34,10 +35,10 @@ export interface SafetyStatus {
  */
 export function evaluateSafetyGate(options: {
   sessions: SessionMeta[];
-  progress: { symptoms: Array<{ severity: number }> } | null | undefined;
+  symptoms: Array<Pick<Symptom, 'severity'>> | null | undefined;
   insight: { status?: string; confidence?: number } | null | undefined;
 }): SafetyStatus {
-  const { sessions, progress, insight } = options;
+  const { sessions, symptoms, insight } = options;
 
   // 1. Session status-based triage check (fail-closed)
   if (sessions.length > 0) {
@@ -78,7 +79,7 @@ export function evaluateSafetyGate(options: {
   }
 
   // 2. Check for severe symptoms (Red Flag from local logs)
-  const hasSevereSymptom = progress?.symptoms.some(s => s.severity >= 4.5);
+  const hasSevereSymptom = symptoms?.some(symptom => symptom.severity >= 4.5);
   if (hasSevereSymptom) {
     return {
       isSafe: false,
@@ -122,16 +123,16 @@ export function evaluateSafetyGate(options: {
 
 export function useSafetyGate() {
   const { insight } = useWeeklyReveal();
-  const { data: progress } = usePatientProgress(7);
+  const { data: symptoms, isLoading: isLoadingSymptoms } = useSymptoms();
   const { data: sessions = [] } = useSessions({ sort_by: "updated_at", sort_order: "desc" });
 
   const safety = useMemo<SafetyStatus>(
-    () => evaluateSafetyGate({ sessions, progress, insight }),
-    [insight, progress, sessions],
+    () => evaluateSafetyGate({ sessions, symptoms, insight }),
+    [insight, sessions, symptoms],
   );
 
   return {
     safety,
-    isLoading: !progress,
+    isLoading: isLoadingSymptoms,
   };
 }
