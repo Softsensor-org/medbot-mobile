@@ -108,27 +108,12 @@ class MedicalApiService extends BaseApiService {
     );
   }
 
-  async uploadPhoto(sessionId: string, base64: string): Promise<{ url: string; filename: string }> {
-    const formData = new FormData();
-    // In React Native, FormData requires a specific object shape for files
-    // But since we are passing base64 to the backend, we can just send it as a field 
-    // or use the multipart format if the backend expects a file.
-    // The backend media.py expects an 'UploadFile'.
-    
-    // We'll use the 'file' key as expected by FastAPI's File(...)
-    const filename = `upload_${Date.now()}.jpg`;
-    formData.append('file', {
-      uri: base64,
-      name: filename,
-      type: 'image/jpeg',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
-
-    return this.post<{ url: string; filename: string }>(
-      `/media/upload/${sessionId}`,
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
+  async uploadPhoto(sessionId: string, base64: string): Promise<ChatResponse> {
+    return this.chat({
+      query: "",
+      session_id: sessionId,
+      image_base64: base64,
+    });
   }
   async getDailySummary(days: number = 7, patientId?: string): Promise<DailySummaryResponse> {
     const qp = new URLSearchParams();
