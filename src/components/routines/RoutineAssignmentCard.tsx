@@ -57,6 +57,8 @@ interface RoutineAssignmentCardProps {
   disabled?: boolean;
   stepCompletions?: Map<number, RoutineStepCompletion>;
   onStepToggle?: (stepId: number) => void;
+  browseOnly?: boolean;
+  muted?: boolean;
   onComplete: (assignmentId: number) => void;
   onDefer: (assignment: RoutineAssignment) => void;
 }
@@ -68,6 +70,8 @@ export function RoutineAssignmentCard({
   disabled = false,
   stepCompletions,
   onStepToggle,
+  browseOnly = false,
+  muted = false,
   onComplete,
   onDefer,
 }: RoutineAssignmentCardProps) {
@@ -80,7 +84,7 @@ export function RoutineAssignmentCard({
   const visibleSteps = variant === "featured" ? steps.slice(0, 4) : steps.slice(0, 2);
   const hiddenStepCount = steps.length - visibleSteps.length;
   const actionButtons =
-    assignment.status === "active" ? (
+    assignment.status === "active" && !browseOnly ? (
       <>
         <PrimaryButton
           label="Complete"
@@ -152,7 +156,7 @@ export function RoutineAssignmentCard({
   }
 
   return (
-    <SoftCard style={styles.standardCard}>
+    <SoftCard style={[styles.standardCard, muted && styles.mutedCard]}>
       <View style={styles.standardHeader}>
         <View style={styles.standardCopy}>
           <Text style={styles.cardTitle}>{name}</Text>
@@ -170,6 +174,9 @@ export function RoutineAssignmentCard({
 const styles = StyleSheet.create({
   standardCard: {
     gap: spacing.md,
+  },
+  mutedCard: {
+    opacity: 0.6,
   },
   standardHeader: {
     flexDirection: "row",
