@@ -156,4 +156,24 @@ describe('ChatScreen', () => {
     const { getByPlaceholderText } = render(<ChatScreen />, { wrapper });
     expect(getByPlaceholderText('Type a message...')).toBeTruthy();
   });
+
+  it('preserves the session id when opening intake from chat', () => {
+    (useSessionTranscript as jest.Mock).mockReturnValue({ data: [], isLoading: false });
+    (useEvidenceSnapshot as jest.Mock).mockReturnValue({
+      data: {
+        slots: [],
+        evidence_completeness: 0.4,
+        missing_evidence: ['photo'],
+      },
+    });
+
+    const { getByTestId } = render(<ChatScreen />, { wrapper });
+
+    fireEvent.press(getByTestId('chat-intake-info-button'));
+
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/(auth)/intake',
+      params: { sessionId: mockSessionId },
+    });
+  });
 });
