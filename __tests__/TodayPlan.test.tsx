@@ -2,16 +2,76 @@ import React from "react";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TodayPlan } from "../src/components/TodayPlan";
+import { medicalApi } from "../src/api/medicalApi";
 import { triggerEngagementHaptic } from "../src/engagement/haptics";
+import type { CareGraphResponse, RoutineLog } from "../src/types/medical";
+import type { DailyCarePlanWithAdaptation } from "../src/types/wellness";
 
 jest.mock("../src/engagement/haptics", () => ({
   triggerEngagementHaptic: jest.fn(),
+}));
+
+jest.mock("../src/api/medicalApi", () => ({
+  medicalApi: {
+    getTodayCarePlan: jest.fn(),
+    getCareGraph: jest.fn(),
+    logRoutineCompletion: jest.fn(),
+  },
 }));
 
 jest.mock("@expo/vector-icons", () => ({
   Ionicons: "Ionicons",
   MaterialIcons: "MaterialIcons",
 }));
+
+const mockedMedicalApi = medicalApi as jest.Mocked<typeof medicalApi>;
+
+const basePlan: DailyCarePlanWithAdaptation = {
+  confidence_context: "context",
+  am_actions: [{ id: 10, action: "Cleanse", done: false }],
+  pm_actions: [],
+  avoid_today: [],
+  watch_for: [],
+};
+
+const urgentCareGraph: CareGraphResponse = {
+  patient_id: "patient-1",
+  triage_sessions: [
+    {
+      session_id: "session-1",
+      status: "open",
+      triage_label: "urgent",
+      confidence_band: "High",
+      priority_score: 95,
+      summary_for_patient: "Escalated symptoms noted.",
+      red_flags: [],
+      evidence_completeness: 0.9,
+      is_preliminary: false,
+      created_at: "2026-03-14T00:00:00Z",
+      updated_at: "2026-03-14T00:10:00Z",
+    },
+  ],
+  events: [],
+  event_counts: { symptom_event: 1, safety_event: 1 },
+  time_range: { since: null, until: null },
+};
+
+const emptyCareGraph: CareGraphResponse = {
+  patient_id: "patient-1",
+  triage_sessions: [],
+  events: [],
+  event_counts: {},
+  time_range: { since: null, until: null },
+};
+
+const completedLog: RoutineLog = {
+  id: 99,
+  routine_id: 10,
+  patient_id: "patient-1",
+  status: "completed",
+  completed_at: "2026-03-14T00:00:00Z",
+  completion_rate: 1,
+};
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -38,70 +98,33 @@ function renderWithClient(ui: React.ReactElement) {
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
-function ok(data: unknown) {
-  return Promise.resolve({
-    ok: true,
-    json: async () => ({ success: true, data }),
-  }) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-}
-
-function mockFetchWithPlan(planData: unknown) {
-  (global.fetch as jest.Mock) = jest.fn(async (input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url.includes("/api/v1/care-plan/today")) {
-      return {
-        ok: true,
-        json: async () => ({ success: true, data: planData }),
-      } as Response;
-    }
-    if (url.includes("/api/v1/care-graph")) {
-      return {
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: { triage_sessions: [], event_counts: {} },
-        }),
-      } as Response;
-    }
-    return {
-      ok: false,
-      json: async () => ({}),
-    } as Response;
-  });
-}
-
 describe("TodayPlan engagement behavior", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    global.fetch = jest.fn((url: string, init?: RequestInit) => {
-      if (url.includes("/care-plan/today")) {
-        return ok({
-          confidence_context: "context",
-          am_actions: [{ id: 10, action: "Cleanse", done: false }],
-          pm_actions: [],
-          avoid_today: [],
-          watch_for: [],
-        });
-      }
-      if (url.includes("/care-graph")) {
-        return ok({
-          triage_sessions: [{ triage_label: "urgent", red_flags: [] }],
-          event_counts: { symptom_event: 1, safety_event: 1 },
-        });
-      }
-      if (url.includes("/routines/10/log") && init?.method === "POST") {
-        return ok({ id: 99 });
-      }
-      return Promise.resolve({
-        ok: false,
-        json: async () => ({ success: false }),
-      }) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    }) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    global.fetch = jest.fn();
+    mockedMedicalApi.getTodayCarePlan.mockResolvedValue(basePlan);
+    mockedMedicalApi.getCareGraph.mockResolvedValue(urgentCareGraph);
+    mockedMedicalApi.logRoutineCompletion.mockResolvedValue(completedLog);
   });
 
   afterEach(() => {
     jest.clearAllTimers();
+  });
+
+  it("loads protected data through the shared medical client", async () => {
+    const renderTarget = createWrapper();
+    const { getByText, unmount } = render(<TodayPlan />, { wrapper: renderTarget.wrapper });
+
+    await waitFor(() => {
+      expect(getByText("Today's Plan")).toBeTruthy();
+    });
+
+    expect(mockedMedicalApi.getTodayCarePlan).toHaveBeenCalledTimes(1);
+    expect(mockedMedicalApi.getCareGraph).toHaveBeenCalledTimes(1);
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    unmount();
+    renderTarget.queryClient.clear();
   });
 
   it("triggers warning haptic when safety note is acknowledged", async () => {
@@ -125,6 +148,7 @@ describe("TodayPlan engagement behavior", () => {
     await waitFor(() => {
       expect(triggerEngagementHaptic).toHaveBeenCalledWith("routine_complete");
     });
+    expect(mockedMedicalApi.logRoutineCompletion).toHaveBeenCalledWith(10, "completed");
     unmount();
     renderTarget.queryClient.clear();
   });
@@ -133,10 +157,12 @@ describe("TodayPlan engagement behavior", () => {
 describe("TodayPlan adaptation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch = jest.fn();
+    mockedMedicalApi.getCareGraph.mockResolvedValue(emptyCareGraph);
   });
 
   it("renders adaptation adjustments when active", async () => {
-    mockFetchWithPlan({
+    mockedMedicalApi.getTodayCarePlan.mockResolvedValue({
       confidence_context: "Personalized from your routine history.",
       am_actions: [{ id: 1, action: "Cleanse", done: false }],
       pm_actions: [{ id: 2, action: "Moisturize", done: false }],
@@ -180,7 +206,7 @@ describe("TodayPlan adaptation", () => {
   });
 
   it("renders suppression fallback copy when adaptation is suppressed", async () => {
-    mockFetchWithPlan({
+    mockedMedicalApi.getTodayCarePlan.mockResolvedValue({
       confidence_context: "Safety-first mode is active.",
       am_actions: [],
       pm_actions: [],
@@ -215,5 +241,18 @@ describe("TodayPlan adaptation", () => {
         getByText("Adaptive changes are paused because recent safety signals were detected."),
       ).toBeTruthy();
     });
+  });
+
+  it("keeps rendering the plan when care graph loading fails", async () => {
+    mockedMedicalApi.getTodayCarePlan.mockResolvedValue(basePlan);
+    mockedMedicalApi.getCareGraph.mockRejectedValue(new Error("401"));
+
+    const { getByText, queryByTestId } = renderWithClient(<TodayPlan />);
+
+    await waitFor(() => {
+      expect(getByText("Today's Plan")).toBeTruthy();
+    });
+
+    expect(queryByTestId("todayplan-safety-ack-button")).toBeNull();
   });
 });

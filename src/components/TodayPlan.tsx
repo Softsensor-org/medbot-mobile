@@ -8,9 +8,9 @@ import {
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE_URL } from "../api/config";
+import { medicalApi } from "../api/medicalApi";
 import { triggerEngagementHaptic } from "../engagement/haptics";
-import type { CarePlanAction } from "../types/medical";
+import type { CareGraphResponse, CarePlanAction, RoutineLog } from "../types/medical";
 import type { DailyCarePlanWithAdaptation } from "../types/wellness";
 import { borderRadius, colors, spacing, typography } from "../theme";
 import { MetricChip } from "./common/MetricChip";
@@ -18,52 +18,32 @@ import { SecondaryButton } from "./common/SecondaryButton";
 import { SectionHeader } from "./common/SectionHeader";
 import { SoftCard } from "./common/SoftCard";
 
-interface TriageSummary {
-  triage_label?: string | null;
-  red_flags?: string[];
-}
-
-interface CareGraphData {
-  triage_sessions?: TriageSummary[];
-  event_counts?: Record<string, number>;
-}
-
 export const TodayPlan: React.FC = () => {
   const queryClient = useQueryClient();
   const [safetyAcknowledged, setSafetyAcknowledged] = useState(false);
 
   const { data: plan, isLoading, isError } = useQuery<DailyCarePlanWithAdaptation>({
     queryKey: ["care-plan", "today"],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/v1/care-plan/today`);
-      if (!res.ok) throw new Error("Failed to fetch care plan");
-      const json = await res.json();
-      return json.data;
-    },
+    queryFn: () => medicalApi.getTodayCarePlan(),
     staleTime: 30_000,
   });
 
-  const { data: careGraph } = useQuery<CareGraphData | null>({
+  const { data: careGraph } = useQuery<CareGraphResponse | null>({
     queryKey: ["care-graph", "today"],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/v1/care-graph`);
-      if (!res.ok) return null;
-      const json = await res.json();
-      return json.data as CareGraphData;
+      try {
+        return await medicalApi.getCareGraph();
+      } catch {
+        return null;
+      }
     },
     staleTime: 60_000,
     retry: false,
   });
 
   const logMutation = useMutation({
-    mutationFn: async ({ routineId, status }: { routineId: number; status: string }) => {
-      const res = await fetch(`${API_BASE_URL}/api/v1/routines/${routineId}/log`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      return res.json();
-    },
+    mutationFn: ({ routineId, status }: { routineId: number; status: RoutineLog["status"] }) =>
+      medicalApi.logRoutineCompletion(routineId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["care-plan", "today"] });
       queryClient.invalidateQueries({ queryKey: ["care-graph"] });
