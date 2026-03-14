@@ -4,10 +4,19 @@ import { ProgressBoard } from '../src/components/ProgressBoard';
 import { usePatientProgress } from '../src/hooks/useProgress';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Share } from 'react-native';
+import { useRouter } from 'expo-router';
 
 // Mock the hook
 jest.mock('../src/hooks/useProgress', () => ({
   usePatientProgress: jest.fn(),
+}));
+
+jest.mock('expo-router', () => ({
+  useRouter: jest.fn(),
+}));
+
+jest.mock('../src/components/WeeklyReveal', () => ({
+  WeeklyReveal: () => null,
 }));
 
 jest.mock('../src/hooks/useEngagementSettings', () => ({
@@ -44,6 +53,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('ProgressBoard', () => {
+  const push = jest.fn();
   const mockData = {
     patient_id: 'test-user',
     period_days: 30,
@@ -104,6 +114,7 @@ describe('ProgressBoard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    (useRouter as jest.Mock).mockReturnValue({ push });
   });
 
   afterEach(async () => {
@@ -194,5 +205,21 @@ describe('ProgressBoard', () => {
       expect(getByTestId('phi-safe-share-status')).toBeTruthy();
     });
     expect(getByText('Shared safely.')).toBeTruthy();
+  });
+
+  it('navigates the tapped symptom bar to the auth timeline with the selected date', () => {
+    (usePatientProgress as jest.Mock).mockReturnValue({
+      data: mockData,
+      isLoading: false,
+    });
+
+    const { getByTestId } = render(<ProgressBoard />, { wrapper });
+
+    fireEvent.press(getByTestId('symptom-bar-0'));
+
+    expect(push).toHaveBeenCalledWith({
+      pathname: '/(auth)/timeline',
+      params: { date: '2026-03-01' },
+    });
   });
 });

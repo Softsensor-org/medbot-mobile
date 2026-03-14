@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -140,6 +140,15 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
     }
   };
 
+  const navigateToTimeline = useCallback((date?: string) => {
+    if (date) {
+      router.push({ pathname: "/(auth)/timeline", params: { date } });
+      return;
+    }
+
+    router.push("/(auth)/timeline");
+  }, [router]);
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <WeeklyReveal />
@@ -220,8 +229,9 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
               {symptoms.map((point: SymptomTrendPoint, index: number) => (
                 <TouchableOpacity 
                   key={index} 
+                  testID={`symptom-bar-${index}`}
                   style={styles.barWrapper}
-                  onPress={() => router.push({ pathname: "/timeline", params: { date: point.date } })}
+                  onPress={() => navigateToTimeline(point.date)}
                 >
                   <View 
                     style={[
@@ -250,8 +260,9 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
               {adherence.map((point: AdherenceTrendPoint, index: number) => (
                 <TouchableOpacity 
                   key={index} 
+                  testID={`adherence-bar-${index}`}
                   style={styles.barWrapper}
-                  onPress={() => router.push({ pathname: "/timeline", params: { date: point.date } })}
+                  onPress={() => navigateToTimeline(point.date)}
                 >
                   <View 
                     style={[
@@ -357,7 +368,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Progress Photos</Text>
-          <TouchableOpacity onPress={() => router.push("/timeline")}>
+          <TouchableOpacity onPress={() => navigateToTimeline()}>
             <Text style={styles.viewAll}>View All</Text>
           </TouchableOpacity>
         </View>
@@ -368,7 +379,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({ days = 30 }) => {
                 <TouchableOpacity
                   key={photo.id}
                   style={styles.photoWrapper}
-                  onPress={() => router.push("/timeline")}
+                  onPress={() => navigateToTimeline()}
                 >
                   <Image source={{ uri: photo.url }} style={styles.photo} />
                   <Text style={styles.photoDate}>{safeFormat(photo.timestamp, 'MMM dd')}</Text>

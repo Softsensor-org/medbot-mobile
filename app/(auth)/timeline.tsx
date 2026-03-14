@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, typography, spacing, borderRadius, shadows } from '../../src/theme';
 import { useTimeline } from '../../src/hooks/useTimeline';
 import { safeFormat } from '../../src/utils/dateHelpers';
@@ -17,6 +17,7 @@ import { CompareSlider } from '../../src/components/common/CompareSlider';
 
 export default function TimelineScreen() {
   const router = useRouter();
+  const { date } = useLocalSearchParams<{ date?: string }>();
   const { data: timeline, isLoading: isLoadingTimeline } = useTimeline();
   const { data: progress, isLoading: isLoadingProgress } = usePatientProgress();
 
@@ -26,23 +27,34 @@ export default function TimelineScreen() {
 
   const events = timeline?.events || [];
   const photos = progress?.photos || [];
+  const selectedDate = typeof date === 'string' ? date : undefined;
+  const selectedDateKey = selectedDate?.slice(0, 10);
+  const filteredEvents = selectedDateKey
+    ? events.filter((event) => event.timestamp.slice(0, 10) === selectedDateKey)
+    : events;
+  const filteredPhotos = selectedDateKey
+    ? photos.filter((photo) => photo.timestamp.slice(0, 10) === selectedDateKey)
+    : photos;
+  const subtitle = selectedDateKey
+    ? `Focused on ${safeFormat(selectedDate, 'MMMM d, yyyy')}`
+    : 'Historical record of treatments and observations';
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.title}>Your Journey</Text>
-        <Text style={styles.subtitle}>Historical record of treatments and observations</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
 
-      {photos.length >= 2 && (
+      {filteredPhotos.length >= 2 && (
         <View style={styles.photoComparison}>
           <Text style={styles.sectionTitle}>Visual Progress</Text>
           <View style={styles.comparisonWrapper}>
             <CompareSlider
-              beforeUri={photos[photos.length - 1].url}
-              afterUri={photos[0].url}
-              beforeLabel={safeFormat(photos[photos.length - 1].timestamp, 'MMM d')}
-              afterLabel={safeFormat(photos[0].timestamp, 'MMM d')}
+              beforeUri={filteredPhotos[filteredPhotos.length - 1].url}
+              afterUri={filteredPhotos[0].url}
+              beforeLabel={safeFormat(filteredPhotos[filteredPhotos.length - 1].timestamp, 'MMM d')}
+              afterLabel={safeFormat(filteredPhotos[0].timestamp, 'MMM d')}
             />
           </View>
         </View>
@@ -50,10 +62,14 @@ export default function TimelineScreen() {
 
       <View style={styles.eventList}>
         <Text style={styles.sectionTitle}>Activity Ledger</Text>
-        {events.length === 0 ? (
-          <Text style={styles.emptyText}>No events recorded yet.</Text>
+        {filteredEvents.length === 0 ? (
+          <Text style={styles.emptyText}>
+            {selectedDateKey
+              ? `No events recorded for ${safeFormat(selectedDate, 'MMMM d, yyyy')}.`
+              : 'No events recorded yet.'}
+          </Text>
         ) : (
-          events.map((event: { id: string; type: string; timestamp: string; title: string; description: string }) => (
+          filteredEvents.map((event: { id: string; type: string; timestamp: string; title: string; description: string }) => (
             <View key={event.id} style={styles.eventCard}>
               <View style={[styles.eventIcon, { backgroundColor: getEventIconColor(event.type) + '1A' }]}>
                 <MaterialIcons
