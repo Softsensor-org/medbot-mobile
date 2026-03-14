@@ -59,10 +59,37 @@ export interface RoutineAdherenceSnapshot {
   streak_routine_name?: string | null;
 }
 
+export type RoutineRecoveryState =
+  | "on_track"
+  | "snoozed"
+  | "deferred"
+  | "recovery_due"
+  | "completed"
+  | "cancelled";
+
+export type RoutineRecoveryRecommendedAction =
+  | "complete"
+  | "resume"
+  | "defer"
+  | "review"
+  | "none";
+
+export interface RoutineRecoverySummary {
+  state: RoutineRecoveryState;
+  headline: string;
+  detail: string;
+  recommended_action: RoutineRecoveryRecommendedAction;
+  source_event_type?: "assigned" | "accepted" | "completed" | "deferred" | "snoozed" | "skipped" | "edited" | null;
+  next_target_at?: string | null;
+  provider_follow_up: boolean;
+  follow_up_reason?: string | null;
+}
+
 export interface RoutineIntelligenceSummary {
   patient_id: string;
   focus: RoutineFocusSummary;
   adherence: RoutineAdherenceSnapshot;
+  recovery: RoutineRecoverySummary;
   generated_at: string;
 }
 
@@ -91,12 +118,13 @@ export interface RoutineAssignment {
   updated_at?: string;
   routine_name?: string;
   routine_description?: string | null;
+  recovery?: RoutineRecoverySummary | null;
 }
 
 export interface RoutineAssignmentActionEvent {
   id: number;
   assignment_id: number;
-  event_type: "assigned" | "accepted" | "completed" | "deferred" | "edited";
+  event_type: "assigned" | "accepted" | "completed" | "deferred" | "snoozed" | "skipped" | "edited";
   actor_id: string;
   payload: Record<string, unknown>;
   idempotency_key?: string | null;
@@ -120,9 +148,26 @@ export interface DeferRoutineAssignmentActionRequest {
   idempotency_key?: string;
 }
 
+export interface SnoozeRoutineAssignmentActionRequest {
+  action: "snooze";
+  defer_reason_code: string;
+  reschedule_intent: RescheduleIntent;
+  comment?: string;
+  idempotency_key?: string;
+}
+
+export interface SkipRoutineAssignmentActionRequest {
+  action: "skip";
+  skip_reason_code: string;
+  comment?: string;
+  idempotency_key?: string;
+}
+
 export type RoutineAssignmentActionRequest =
   | CompleteRoutineAssignmentActionRequest
-  | DeferRoutineAssignmentActionRequest;
+  | DeferRoutineAssignmentActionRequest
+  | SnoozeRoutineAssignmentActionRequest
+  | SkipRoutineAssignmentActionRequest;
 
 export interface RoutineStepCompletion {
   step_id?: number;

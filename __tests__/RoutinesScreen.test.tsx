@@ -65,7 +65,20 @@ describe('RoutinesScreen', () => {
     jest.clearAllMocks();
     (useRoutineAssignments as jest.Mock).mockReturnValue({
       data: [
-        { id: 1, routine_id: 10, routine_name: 'Morning Routine', status: 'active', routine_description: 'Daily skin care' },
+        {
+          id: 1,
+          routine_id: 10,
+          routine_name: 'Morning Routine',
+          status: 'active',
+          routine_description: 'Daily skin care',
+          recovery: {
+            state: 'on_track',
+            headline: 'Ready to complete',
+            detail: 'Follow the authored steps in order and use snooze or skip if today shifts.',
+            recommended_action: 'complete',
+            provider_follow_up: false,
+          },
+        },
       ],
       isLoading: false,
     });
@@ -105,6 +118,13 @@ describe('RoutinesScreen', () => {
           longest_streak: 7,
           streak_routine_id: 10,
           streak_routine_name: 'Morning Routine',
+        },
+        recovery: {
+          state: 'on_track',
+          headline: 'Ready to complete',
+          detail: 'Follow the authored steps in order and use snooze or skip if today shifts.',
+          recommended_action: 'complete',
+          provider_follow_up: false,
         },
         generated_at: '2026-03-13T10:00:00Z',
       },
@@ -181,6 +201,7 @@ describe('RoutinesScreen', () => {
     expect(mockDefer).toHaveBeenCalledWith(
       expect.objectContaining({
         payload: expect.objectContaining({
+          action: 'snooze',
           reschedule_intent: expect.objectContaining({
             type: 'specific_time',
           }),
@@ -188,6 +209,91 @@ describe('RoutinesScreen', () => {
       }),
       expect.anything()
     );
+  });
+
+  it('submits skip recovery action when skip for now is selected', async () => {
+    const mockDefer = jest.fn();
+    (useDeferAssignment as jest.Mock).mockReturnValue({ mutate: mockDefer, isPending: false });
+
+    const { getByText } = render(<RoutinesScreen />, { wrapper });
+
+    fireEvent.press(getByText('Defer (Commit Box)'));
+    fireEvent.press(getByText('Skip for now'));
+
+    await act(async () => {
+      fireEvent.press(getByText('Submit defer'));
+    });
+
+    expect(mockDefer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          action: 'skip',
+          skip_reason_code: 'too_busy',
+        }),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('renders recovery guidance when intelligence is in recovery mode', () => {
+    (useRoutineAssignments as jest.Mock).mockReturnValue({
+      data: [
+        {
+          id: 1,
+          routine_id: 10,
+          routine_name: 'Morning Routine',
+          status: 'active',
+          routine_description: 'Daily skin care',
+          recovery: {
+            state: 'recovery_due',
+            headline: 'Recovery mode: restart gently',
+            detail: 'Start with the first core step when you return.',
+            recommended_action: 'resume',
+            provider_follow_up: true,
+            follow_up_reason: 'routine_skipped_current_window',
+          },
+        },
+      ],
+      isLoading: false,
+    });
+    (useRoutineIntelligence as jest.Mock).mockReturnValue({
+      data: {
+        patient_id: 'patient-1',
+        focus: {
+          kind: 'current',
+          routine_id: 10,
+          assignment_id: 1,
+          routine_name: 'Morning Routine',
+          estimated_duration_minutes: 4,
+          estimated_duration_basis: 'Estimated from 2 authored steps.',
+        },
+        adherence: {
+          adherence_rate_7d: 0.42,
+          logged_events_7d: 4,
+          deferred_or_skipped_7d: 2,
+          current_streak: 1,
+          longest_streak: 7,
+          streak_routine_id: 10,
+          streak_routine_name: 'Morning Routine',
+        },
+        recovery: {
+          state: 'recovery_due',
+          headline: 'Recovery mode: restart gently',
+          detail: 'Start with the first core step when you return.',
+          recommended_action: 'resume',
+          provider_follow_up: true,
+          follow_up_reason: 'routine_skipped_current_window',
+        },
+        generated_at: '2026-03-13T10:00:00Z',
+      },
+    });
+
+    const { getByTestId, getByText, getAllByText } = render(<RoutinesScreen />, { wrapper });
+
+    expect(getByTestId('routine-recovery-card')).toBeTruthy();
+    expect(getByText('Recovery guidance')).toBeTruthy();
+    expect(getAllByText('Recovery mode: restart gently').length).toBeGreaterThan(0);
+    expect(getAllByText('Your care team may review this recovery signal.').length).toBeGreaterThan(0);
   });
 
   it('renders the empty state when no assignments are available', () => {
