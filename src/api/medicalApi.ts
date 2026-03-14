@@ -5,6 +5,7 @@ import type {
   SymptomType,
   Routine,
   RoutineAssignment,
+  RoutineIntelligenceSummary,
   RoutineAssignmentStatus,
   RoutineAssignmentActionRequest,
   RoutineAssignmentActionEvent,
@@ -63,6 +64,16 @@ class MedicalApiService extends BaseApiService {
     const query = search.toString();
     const path = query ? `/routines/assignments?${query}` : "/routines/assignments";
     return this.get<RoutineAssignment[]>(path);
+  }
+
+  async getRoutineIntelligence(params?: { patient_id?: string }): Promise<RoutineIntelligenceSummary> {
+    const search = new URLSearchParams();
+    if (params?.patient_id) {
+      search.set("patient_id", params.patient_id);
+    }
+    const query = search.toString();
+    const path = query ? `/routines/intelligence?${query}` : "/routines/intelligence";
+    return this.get<RoutineIntelligenceSummary>(path);
   }
 
   async postRoutineAssignmentAction(

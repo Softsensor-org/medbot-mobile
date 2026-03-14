@@ -3,6 +3,7 @@ import { render, fireEvent, act } from '@testing-library/react-native';
 import RoutinesScreen from '../app/(auth)/(tabs)/routines';
 import { useRoutineAssignments } from '../src/hooks/useRoutineAssignments';
 import { useCompleteAssignment, useDeferAssignment } from '../src/hooks/useRoutineActions';
+import { useRoutineIntelligence } from '../src/hooks/useRoutineIntelligence';
 import { useRoutines } from '../src/hooks/useRoutines';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSafetyGate } from '../src/hooks/useSafetyGate';
@@ -19,6 +20,10 @@ jest.mock('../src/hooks/useRoutineActions', () => ({
 
 jest.mock('../src/hooks/useRoutines', () => ({
   useRoutines: jest.fn(),
+}));
+
+jest.mock('../src/hooks/useRoutineIntelligence', () => ({
+  useRoutineIntelligence: jest.fn(),
 }));
 
 jest.mock('../src/hooks/useSafetyGate', () => ({
@@ -81,17 +86,62 @@ describe('RoutinesScreen', () => {
       ],
       error: null,
     });
-    (useCompleteAssignment as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
-    (useDeferAssignment as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
+    (useRoutineIntelligence as jest.Mock).mockReturnValue({
+      data: {
+        patient_id: 'patient-1',
+        focus: {
+          kind: 'current',
+          routine_id: 10,
+          assignment_id: 1,
+          routine_name: 'Morning Routine',
+          estimated_duration_minutes: 4,
+          estimated_duration_basis: 'Estimated from 2 authored steps.',
+        },
+        adherence: {
+          adherence_rate_7d: 0.86,
+          logged_events_7d: 6,
+          deferred_or_skipped_7d: 1,
+          current_streak: 4,
+          longest_streak: 7,
+          streak_routine_id: 10,
+          streak_routine_name: 'Morning Routine',
+        },
+        generated_at: '2026-03-13T10:00:00Z',
+      },
+    });
+    (useCompleteAssignment as jest.Mock).mockReturnValue({
+      mutate: jest.fn(),
+      isPending: false,
+      syncStatus: undefined,
+      syncError: null,
+      retrySync: jest.fn(),
+    });
+    (useDeferAssignment as jest.Mock).mockReturnValue({
+      mutate: jest.fn(),
+      isPending: false,
+      syncStatus: undefined,
+      syncError: null,
+      retrySync: jest.fn(),
+    });
     (useSafetyGate as jest.Mock).mockReturnValue({ safety: { isSafe: true }, isLoading: false });
   });
 
   it('renders active assignments', () => {
     const { getByText, getAllByText } = render(<RoutinesScreen />, { wrapper });
-    expect(getByText('Morning Routine')).toBeTruthy();
+    expect(getAllByText('Morning Routine').length).toBeGreaterThan(0);
     expect(getByText('Daily skin care')).toBeTruthy();
     expect(getByText('Cleanser')).toBeTruthy();
     expect(getAllByText('Every day').length).toBeGreaterThan(0);
+  });
+
+  it('renders the routine intelligence summary', () => {
+    const { getByTestId, getByText } = render(<RoutinesScreen />, { wrapper });
+
+    expect(getByTestId('routine-intelligence-card')).toBeTruthy();
+    expect(getByText('Current ritual focus')).toBeTruthy();
+    expect(getByText('86%')).toBeTruthy();
+    expect(getByText('4 days')).toBeTruthy();
+    expect(getByText('~4 min')).toBeTruthy();
   });
 
   it('opens commit box on defer', () => {
