@@ -1,6 +1,7 @@
 import { BaseApiService } from "./BaseApiService";
 import type { ChatResponse } from "../types/ai";
 import type {
+  CareGraphResponse,
   Symptom,
   SymptomType,
   Routine,
@@ -9,6 +10,7 @@ import type {
   RoutineAssignmentStatus,
   RoutineAssignmentActionRequest,
   RoutineAssignmentActionEvent,
+  RoutineLog,
   RoutineProgressResponse,
   CadenceResponse,
   DailySummaryResponse,
@@ -16,6 +18,7 @@ import type {
   PulseResponse,
   PulseEntry,
 } from "../types/medical";
+import type { DailyCarePlanWithAdaptation } from "../types/wellness";
 
 export interface MedicalChatRequest {
   query: string;
@@ -46,6 +49,21 @@ class MedicalApiService extends BaseApiService {
 
   async getRoutines(): Promise<Routine[]> {
     return this.get<Routine[]>("/routines");
+  }
+
+  async getTodayCarePlan(): Promise<DailyCarePlanWithAdaptation> {
+    return this.get<DailyCarePlanWithAdaptation>("/care-plan/today");
+  }
+
+  async getCareGraph(): Promise<CareGraphResponse> {
+    return this.get<CareGraphResponse>("/care-graph");
+  }
+
+  async logRoutineCompletion(
+    routineId: number,
+    status: RoutineLog["status"] = "completed",
+  ): Promise<RoutineLog> {
+    return this.post<RoutineLog>(`/routines/${routineId}/log`, { status });
   }
 
   async createRoutine(routine: Omit<Routine, "id">): Promise<Routine> {
