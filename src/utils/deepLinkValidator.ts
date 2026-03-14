@@ -24,6 +24,13 @@ const SAFE_FALLBACK: Href = '/(auth)/(tabs)' as Href;
 const SCHEME_PREFIX = 'medbot://';
 const SESSION_ID_RE = /^[a-zA-Z0-9_-]+$/;
 
+function normalizeRoutePath(path: string): string {
+  if (path.length <= 1) {
+    return path;
+  }
+  return path.replace(/\/+$/, '');
+}
+
 /**
  * Validate a deep-link URL against the route allowlist.
  *
@@ -38,6 +45,8 @@ export function validateDeepLink(url: string | undefined | null): Href {
   if (path.startsWith(SCHEME_PREFIX)) {
     path = path.slice(SCHEME_PREFIX.length);
   }
+
+  path = normalizeRoutePath(path);
 
   // Block external URLs and protocol-relative paths
   if (path.includes('://') || path.startsWith('//')) {
