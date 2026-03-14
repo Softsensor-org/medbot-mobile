@@ -203,6 +203,7 @@ export default function ChatScreen() {
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
+            testID="chat-summary-button"
             style={styles.iconButton}
             onPress={handleSummarize}
             disabled={isSummarizing}
@@ -214,8 +215,14 @@ export default function ChatScreen() {
             )}
           </TouchableOpacity>
           <TouchableOpacity
+            testID="chat-intake-info-button"
             style={styles.iconButton}
-            onPress={() => router.push("/(auth)/intake")}
+            onPress={() =>
+              router.push({
+                pathname: "/(auth)/intake",
+                params: { sessionId },
+              } as import("expo-router").Href)
+            }
           >
             <MaterialIcons name="info-outline" size={24} color={colors.primary} />
           </TouchableOpacity>
@@ -228,7 +235,12 @@ export default function ChatScreen() {
             evidenceSlots={snapshot.slots}
             evidenceCompleteness={snapshot.evidence_completeness}
             missingEvidence={snapshot.missing_evidence}
-            onPress={() => router.push("/(auth)/intake")}
+            onPress={() =>
+              router.push({
+                pathname: "/(auth)/intake",
+                params: { sessionId },
+              } as import("expo-router").Href)
+            }
           />
         </View>
       )}
