@@ -267,6 +267,51 @@ describe("ConsentScreen", () => {
     });
   });
 
+  it("shows a decline action for optional consents only", () => {
+    (useConsentTypes as jest.Mock).mockReturnValue({
+      data: MOCK_TYPES,
+      isLoading: false,
+    });
+    (useConsentStatus as jest.Mock).mockReturnValue({
+      data: mockStatus(),
+      isLoading: false,
+    });
+
+    const { getByTestId, queryByTestId } = render(<ConsentScreen />, { wrapper });
+
+    fireEvent.press(getByTestId("consent-card-research_opt_in"));
+    fireEvent.press(getByTestId("consent-card-privacy_notice"));
+
+    expect(getByTestId("decline-button-research_opt_in")).toBeTruthy();
+    expect(queryByTestId("decline-button-privacy_notice")).toBeNull();
+  });
+
+  it("records a declined optional consent", async () => {
+    (useConsentTypes as jest.Mock).mockReturnValue({
+      data: MOCK_TYPES,
+      isLoading: false,
+    });
+    (useConsentStatus as jest.Mock).mockReturnValue({
+      data: mockStatus(),
+      isLoading: false,
+    });
+
+    const { getByTestId } = render(<ConsentScreen />, { wrapper });
+
+    fireEvent.press(getByTestId("consent-card-research_opt_in"));
+
+    await act(async () => {
+      fireEvent.press(getByTestId("decline-button-research_opt_in"));
+    });
+
+    expect(mockMutateAsync).toHaveBeenCalledWith({
+      consent_type_id: "research_opt_in",
+      status: "declined",
+      consent_version: "1.0",
+      source: "mobile",
+    });
+  });
+
   it("shows accepted badge for completed consents", () => {
     (useConsentTypes as jest.Mock).mockReturnValue({
       data: MOCK_TYPES,
