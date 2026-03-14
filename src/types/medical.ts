@@ -15,6 +15,8 @@ export interface Symptom {
   created_at?: string;
 }
 
+export type RoutineCategory = "active" | "template" | "history";
+
 export interface RoutineStep {
   id?: number;
   routine_id?: number;
@@ -32,6 +34,7 @@ export interface Routine {
   assigned_at?: string;
   recurrence?: Record<string, unknown>; // Scheduling blob
   day_part?: 'morning' | 'afternoon' | 'evening';
+  category?: RoutineCategory;
   active: boolean;
   steps: RoutineStep[];
 }
@@ -107,7 +110,6 @@ export interface CompleteRoutineAssignmentActionRequest {
   completion_rate?: number;
   comment?: string;
   idempotency_key?: string;
-  steps?: RoutineStepCompletion[];
 }
 
 export interface DeferRoutineAssignmentActionRequest {
@@ -128,6 +130,18 @@ export interface RoutineStepCompletion {
   state: 'completed' | 'skipped' | 'pending';
   completed_at?: string;
   notes?: string;
+}
+
+export interface RoutineLog {
+  id: number;
+  routine_id: number;
+  patient_id: string;
+  status: 'completed' | 'deferred' | 'skipped';
+  completed_at: string;
+  completion_rate: number;
+  notes?: string;
+  metadata?: Record<string, unknown>;
+  steps?: RoutineStepCompletion[];
 }
 
 export interface RoutineProgressDay {
@@ -166,18 +180,6 @@ export interface CadenceRoutineSummary {
 export interface CadenceResponse {
   period_days: number;
   routines: CadenceRoutineSummary[];
-}
-
-export interface RoutineLog {
-  id: number;
-  routine_id: number;
-  patient_id: string;
-  status: 'completed' | 'deferred' | 'skipped';
-  completed_at: string;
-  completion_rate: number;
-  notes?: string;
-  metadata?: Record<string, unknown>;
-  steps?: RoutineStepCompletion[];
 }
 
 export interface CarePlanAction {
@@ -297,20 +299,35 @@ export interface Product {
   created_at?: string;
 }
 
+export type ProductUsageFrequency = 'daily' | 'occasional' | 'as-needed';
+
+export type ProviderProductAnnotationStatus = 'approved' | 'flagged' | 'suggested_alternative';
+
+export interface ProviderProductAnnotationUpdate {
+  status: ProviderProductAnnotationStatus;
+  reason?: string;
+  suggested_alternative?: string;
+}
+
 export interface UserProduct {
   id: number;
   patient_id: string;
   product_id: number;
   product?: Product;
-  usage_frequency: 'daily' | 'occasional' | 'as-needed';
+  usage_frequency: ProductUsageFrequency;
   started_using_at?: string;
   notes?: string;
+  provider_annotation_status?: ProviderProductAnnotationStatus;
+  provider_annotation_reason?: string;
+  provider_suggested_alternative?: string;
+  provider_annotation_by?: string;
+  provider_annotation_at?: string;
   created_at?: string;
 }
 
 export interface UserProductCreate {
   product_id: number;
-  usage_frequency: 'daily' | 'occasional' | 'as-needed';
+  usage_frequency: ProductUsageFrequency;
   started_using_at?: string;
   notes?: string;
 }
@@ -352,6 +369,42 @@ export interface SafetyAssessmentResult {
   overall_risk: 'low' | 'moderate' | 'high';
   ingredient_risks: IngredientRiskFeedback[];
   recommendations: string[];
+}
+
+export type ProductCorrelationConfidenceBand = 'low' | 'moderate' | 'high';
+
+export type ProductCorrelationRecommendedAction =
+  | 'consider_pause_and_review'
+  | 'monitor_and_patch_test'
+  | 'no_strong_signal';
+
+export interface ProductCorrelationTopSymptom {
+  symptom: string;
+  count: number;
+  avg_severity: number;
+}
+
+export interface ProductCorrelationInsight {
+  inventory_item_id: number;
+  product_id: number;
+  product_name: string;
+  product_category: string;
+  usage_frequency?: ProductUsageFrequency;
+  started_using_at?: string;
+  symptom_events_after_start: number;
+  avg_symptom_severity: number;
+  correlation_score: number;
+  confidence_score: number;
+  confidence_band: ProductCorrelationConfidenceBand;
+  top_symptoms: ProductCorrelationTopSymptom[];
+  explainability: string[];
+  recommended_action: ProductCorrelationRecommendedAction;
+}
+
+export interface ProductCorrelationInsightsResponse {
+  patient_id: string;
+  generated_at: string;
+  insights: ProductCorrelationInsight[];
 }
 
 // IMP-243: LLM-powered label extraction

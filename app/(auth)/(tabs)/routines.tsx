@@ -4,7 +4,13 @@ import { useLocalSearchParams } from "expo-router";
 import { useRoutineAssignments } from "../../../src/hooks/useRoutineAssignments";
 import { useCompleteAssignment, useDeferAssignment } from "../../../src/hooks/useRoutineActions";
 import { useRoutines } from "../../../src/hooks/useRoutines";
-import type { RescheduleIntentType, RoutineAssignment, Routine, RoutineStepCompletion } from "../../../src/types/medical";
+import type {
+  RescheduleIntentType,
+  RoutineAssignment,
+  Routine,
+  RoutineAssignmentActionRequest,
+  RoutineStepCompletion,
+} from "../../../src/types/medical";
 import { colors, spacing, typography } from "../../../src/theme";
 import { hapticService } from "../../../src/api/HapticService";
 import { useSafetyGate } from "../../../src/hooks/useSafetyGate";
@@ -22,6 +28,10 @@ interface EnrichedAssignment {
   assignment: RoutineAssignment;
   routine?: Routine;
 }
+
+type CompleteRoutinePayload = RoutineAssignmentActionRequest & {
+  steps?: RoutineStepCompletion[];
+};
 
 function getSyncMessage(
   completeStatus?: string,
@@ -180,16 +190,18 @@ export default function RoutinesScreen() {
         ? Array.from(assignmentSteps.values())
         : [];
 
+      const payload: CompleteRoutinePayload = {
+        action: "complete",
+        timezone: timeZone,
+        completed_at: new Date().toISOString(),
+        completion_rate: 1.0,
+        steps: stepsArray.length > 0 ? stepsArray : undefined,
+      };
+
       completeMutation.mutate(
         {
           assignmentId,
-          payload: {
-            action: "complete",
-            timezone: timeZone,
-            completed_at: new Date().toISOString(),
-            completion_rate: 1.0,
-            steps: stepsArray.length > 0 ? stepsArray : undefined,
-          },
+          payload,
         },
         {
           onSuccess: (result) => {
