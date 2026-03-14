@@ -11,9 +11,11 @@ import { SafetyGateOverlay } from "../../../src/components/SafetyGateOverlay";
 import { CommitBoxSheet } from "../../../src/components/routines/CommitBoxSheet";
 import { RoutineAssignmentCard } from "../../../src/components/routines/RoutineAssignmentCard";
 import { EmptyStateCard } from "../../../src/components/common/EmptyStateCard";
+import { MetricChip } from "../../../src/components/common/MetricChip";
 import { ScreenShell } from "../../../src/components/common/ScreenShell";
 import { SectionHeader } from "../../../src/components/common/SectionHeader";
 import { SoftCard } from "../../../src/components/common/SoftCard";
+import { useRoutineIntelligence } from "../../../src/hooks/useRoutineIntelligence";
 
 interface EnrichedAssignment {
   assignment: RoutineAssignment;
@@ -42,6 +44,7 @@ function getSyncMessage(
 export default function RoutinesScreen() {
   const { data: assignments = [], isLoading, error: assignmentError } = useRoutineAssignments();
   const { data: routines = [], error: routinesError } = useRoutines();
+  const { data: routineIntelligence } = useRoutineIntelligence();
   const completeMutation = useCompleteAssignment();
   const deferMutation = useDeferAssignment();
   const { safety, isLoading: isLoadingSafety } = useSafetyGate();
@@ -84,10 +87,39 @@ export default function RoutinesScreen() {
 
   const activeAssignments = enrichedAssignments.filter((item) => item.assignment.status === "active");
   const recentAssignments = enrichedAssignments.filter((item) => item.assignment.status !== "active");
-  const featuredAssignment = activeAssignments[0] ?? recentAssignments[0] ?? null;
+  const focusedAssignmentId = routineIntelligence?.focus.assignment_id ?? null;
+  const featuredAssignment =
+    (focusedAssignmentId != null
+      ? activeAssignments.find((item) => item.assignment.id === focusedAssignmentId) ?? null
+      : null) ??
+    activeAssignments[0] ??
+    recentAssignments[0] ??
+    null;
   const featuredId = featuredAssignment?.assignment.id ?? null;
   const queuedActiveAssignments = activeAssignments.filter((item) => item.assignment.id !== featuredId);
   const secondaryRecentAssignments = recentAssignments.filter((item) => item.assignment.id !== featuredId);
+  const focusTitle =
+    routineIntelligence?.focus.routine_name ??
+    featuredAssignment?.assignment.routine_name ??
+    featuredAssignment?.routine?.name ??
+    "Routine focus";
+  const focusEyebrow =
+    routineIntelligence?.focus.kind === "current"
+      ? "Current ritual focus"
+      : routineIntelligence?.focus.kind === "next"
+        ? "Next ritual focus"
+        : "Routine focus";
+  const focusDescription =
+    routineIntelligence?.focus.estimated_duration_basis ??
+    "Use the hero card to complete the clearest next routine or capture a structured defer.";
+  const adherenceRate7d = routineIntelligence?.adherence.adherence_rate_7d;
+  const adherenceValue = adherenceRate7d != null ? `${Math.round(adherenceRate7d * 100)}%` : "Pending";
+  const streakValue = routineIntelligence?.adherence.current_streak
+    ? `${routineIntelligence.adherence.current_streak} days`
+    : "Not started";
+  const durationValue = routineIntelligence?.focus.estimated_duration_minutes
+    ? `~${routineIntelligence.focus.estimated_duration_minutes} min`
+    : "No estimate";
 
   const isSafetyBlocked = !isLoadingSafety && !safety.isSafe && safety.reason !== "low_confidence";
 
@@ -198,6 +230,44 @@ export default function RoutinesScreen() {
                 Complete the current ritual from the hero card or open the Commit Box to document a structured reschedule.
               </Text>
             </SoftCard>
+
+            {routineIntelligence && routineIntelligence.focus.kind !== "none" ? (
+              <SoftCard tone="highlight" style={styles.intelligenceCard} testID="routine-intelligence-card">
+                <SectionHeader
+                  eyebrow={focusEyebrow}
+                  title={focusTitle}
+                  subtitle={focusDescription}
+                />
+                <View style={styles.intelligenceMetrics}>
+                  <MetricChip
+                    label="Adherence"
+                    value={adherenceValue}
+                    tone={
+                      adherenceRate7d == null
+                        ? "default"
+                        : adherenceRate7d >= 0.8
+                          ? "success"
+                          : adherenceRate7d >= 0.5
+                            ? "info"
+                            : "warning"
+                    }
+                    style={styles.metricChip}
+                  />
+                  <MetricChip
+                    label="Current streak"
+                    value={streakValue}
+                    tone={routineIntelligence.adherence.current_streak ? "success" : "primary"}
+                    style={styles.metricChip}
+                  />
+                  <MetricChip
+                    label="Estimated time"
+                    value={durationValue}
+                    tone={routineIntelligence.focus.estimated_duration_minutes ? "info" : "default"}
+                    style={styles.metricChip}
+                  />
+                </View>
+              </SoftCard>
+            ) : null}
 
             {isLoading || isLoadingSafety ? (
               <SoftCard tone="muted">
@@ -356,6 +426,9 @@ const styles = StyleSheet.create({
   introCard: {
     gap: spacing.sm,
   },
+  intelligenceCard: {
+    gap: spacing.md,
+  },
   introEyebrow: {
     ...typography.eyebrow,
     color: colors.textSecondary,
@@ -392,5 +465,13 @@ const styles = StyleSheet.create({
   },
   stack: {
     gap: spacing.md,
+  },
+  intelligenceMetrics: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  metricChip: {
+    flexGrow: 1,
   },
 });

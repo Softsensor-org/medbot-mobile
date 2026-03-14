@@ -36,6 +36,33 @@ export interface Routine {
   steps: RoutineStep[];
 }
 
+export interface RoutineFocusSummary {
+  kind: "current" | "next" | "none";
+  routine_id?: number;
+  assignment_id?: number;
+  routine_name?: string | null;
+  day_part?: "morning" | "afternoon" | "evening" | string | null;
+  estimated_duration_minutes?: number | null;
+  estimated_duration_basis?: string | null;
+}
+
+export interface RoutineAdherenceSnapshot {
+  adherence_rate_7d?: number | null;
+  logged_events_7d: number;
+  deferred_or_skipped_7d: number;
+  current_streak?: number | null;
+  longest_streak?: number | null;
+  streak_routine_id?: number | null;
+  streak_routine_name?: string | null;
+}
+
+export interface RoutineIntelligenceSummary {
+  patient_id: string;
+  focus: RoutineFocusSummary;
+  adherence: RoutineAdherenceSnapshot;
+  generated_at: string;
+}
+
 export type RoutineAssignmentStatus = "active" | "deferred" | "completed" | "cancelled";
 
 export type RescheduleIntentType = "later_today" | "tomorrow" | "specific_time" | "skip_for_now";
