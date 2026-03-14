@@ -5,10 +5,15 @@ import { useConsentStatus, useConsentTypes, useRecordConsent } from '../../src/h
 import { useSharePacket, useEvidenceSnapshot } from '../../src/hooks/useSessions';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+const mockRouter = {
+  back: jest.fn(),
+  push: jest.fn(),
+};
+
 // Mocks
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ back: jest.fn() }),
-  useLocalSearchParams: () => ({ sessionId: 'test-session-123' }),
+  useRouter: jest.fn(() => mockRouter),
+  useLocalSearchParams: jest.fn(() => ({ sessionId: 'test-session-123' })),
 }));
 
 jest.mock('../../src/hooks/useConsent', () => ({
@@ -58,6 +63,24 @@ describe('ReviewPacketScreen', () => {
     expect(getByText(/Review Packet/i)).toBeTruthy();
     expect(getByText(/Location:/i)).toBeTruthy();
     expect(getByText(/arm/i)).toBeTruthy();
+  });
+
+  it('is intended to be reached from the intake selector with a session id', async () => {
+    const { useRouter, useLocalSearchParams } = jest.requireMock('expo-router');
+    useRouter.mockReturnValue(mockRouter);
+    useLocalSearchParams.mockReturnValue({ sessionId: 'test-session-123' });
+    const IntakeModeSelector = require('../../app/(auth)/intake/index').default;
+
+    const { getByTestId } = render(<IntakeModeSelector />, { wrapper });
+
+    fireEvent.press(getByTestId('review-packet-card'));
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: '/(auth)/intake/review',
+        params: { sessionId: 'test-session-123' },
+      });
+    });
   });
 
   it('handles direct share when no consents pending', async () => {

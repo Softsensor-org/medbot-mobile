@@ -80,6 +80,7 @@ describe('CareScreen', () => {
 
     expect(getByText('No sessions yet')).toBeTruthy();
     expect(getByText('Start New Session')).toBeTruthy();
+    expect(getByText('Scan Product Label')).toBeTruthy();
   });
 
   it('renders session list with backend-aligned status values', () => {
@@ -145,6 +146,22 @@ describe('CareScreen', () => {
     fireEvent.press(getByText('Resume consultation'));
 
     expect(mockRouter.push).toHaveBeenCalledWith('/(auth)/chat/session-123');
+  });
+
+  it('navigates to label scan from the care tab entry card', () => {
+    (useSessions as jest.Mock).mockReturnValue({
+      isLoading: false,
+      data: [],
+      isError: false,
+      refetch: jest.fn(),
+      isRefetching: false,
+    });
+
+    const { getByTestId } = render(<CareScreen />, { wrapper });
+
+    fireEvent.press(getByTestId('label-scan-button'));
+
+    expect(mockRouter.push).toHaveBeenCalledWith('/(auth)/label-scan');
   });
 
   it('reuses a reusable session (new/waiting) on start', async () => {

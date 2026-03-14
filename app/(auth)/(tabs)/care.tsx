@@ -169,6 +169,22 @@ export default function CareScreen() {
         </TouchableOpacity>
       </View>
 
+      <TouchableOpacity
+        testID="label-scan-button"
+        style={styles.scanCard}
+        onPress={() => router.push("/(auth)/label-scan")}
+        activeOpacity={0.8}
+      >
+        <View style={styles.scanCardCopy}>
+          <Text style={styles.scanEyebrow}>Inventory tools</Text>
+          <Text style={styles.scanTitle}>Scan Product Label</Text>
+          <Text style={styles.scanBody}>
+            Capture an ingredient label and add recognized products to your inventory.
+          </Text>
+        </View>
+        <MaterialIcons name="document-scanner" size={26} color={colors.primary} />
+      </TouchableOpacity>
+
       <FlatList
         data={data}
         renderItem={renderSessionCard}
@@ -226,6 +242,37 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
     flexGrow: 1,
+  },
+  scanCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    ...shadows.sm,
+  },
+  scanCardCopy: {
+    flex: 1,
+    gap: spacing.xxs,
+    paddingRight: spacing.md,
+  },
+  scanEyebrow: {
+    ...typography.caption,
+    color: colors.primary,
+    textTransform: "uppercase",
+  },
+  scanTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  scanBody: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   card: {
     backgroundColor: colors.surface,
