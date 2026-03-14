@@ -15,7 +15,7 @@ export default function DailyScreen() {
   return (
     <ScreenShell
       title="Daily Plan"
-      subtitle="A softer, steadier rhythm for today."
+      subtitle="How you're doing, what comes next, and what to watch today."
       headerRight={
         <TouchableOpacity
           style={styles.statsButton}
@@ -29,13 +29,14 @@ export default function DailyScreen() {
     >
       <HeroDashboard />
 
+      <AutopilotCard />
+
       <TodayPlan />
 
-      <AutopilotCard />
       <SoftCard tone="muted" style={styles.infoCard}>
         <MaterialIcons name="lightbulb-outline" size={20} color={colors.primary} />
         <Text style={styles.infoText}>
-          Consistency is key to skin health. Complete your morning and evening routines to see progress.
+          One photo, one completed step, and one quick symptom note give tomorrow's plan better context.
         </Text>
       </SoftCard>
     </ScreenShell>

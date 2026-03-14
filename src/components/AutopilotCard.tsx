@@ -85,7 +85,7 @@ export const AutopilotCard: React.FC = () => {
             title={currentStep.title}
             subtitle={currentStep.subtitle}
           />
-          <SecondaryButton
+          <PrimaryButton
             label="View Weekly Progress"
             onPress={() => router.push("/weekly-reveal")}
           />
@@ -97,9 +97,9 @@ export const AutopilotCard: React.FC = () => {
   const isPhotoStep = currentStep.type === "photo";
 
   return (
-    <SoftCard tone="highlight" style={styles.card}>
+    <SoftCard tone="default" style={styles.card}>
       <SectionHeader
-        eyebrow="Autopilot"
+        eyebrow="Next step"
         title={currentStep.title}
         subtitle={currentStep.subtitle}
       />
@@ -124,13 +124,6 @@ export const AutopilotCard: React.FC = () => {
       </View>
 
       <View style={styles.actions}>
-        <SecondaryButton
-          label="Snooze"
-          onPress={onSnooze}
-          disabled={isProcessing}
-          icon={<MaterialIcons name="snooze" size={18} color={colors.textPrimary} />}
-          style={styles.sideAction}
-        />
         <PrimaryButton
           label={isProcessing ? "Working..." : isPhotoStep ? "Open Camera" : "Done"}
           onPress={
@@ -155,13 +148,22 @@ export const AutopilotCard: React.FC = () => {
           }
           style={styles.primaryAction}
         />
-        <SecondaryButton
-          label="Skip"
-          onPress={onSkip}
-          disabled={isProcessing}
-          icon={<MaterialIcons name="fast-forward" size={18} color={colors.textPrimary} />}
-          style={styles.sideAction}
-        />
+        <View style={styles.secondaryActions}>
+          <SecondaryButton
+            label="Snooze"
+            onPress={onSnooze}
+            disabled={isProcessing}
+            icon={<MaterialIcons name="snooze" size={18} color={colors.textPrimary} />}
+            style={styles.sideAction}
+          />
+          <SecondaryButton
+            label="Skip"
+            onPress={onSkip}
+            disabled={isProcessing}
+            icon={<MaterialIcons name="fast-forward" size={18} color={colors.textPrimary} />}
+            style={styles.sideAction}
+          />
+        </View>
       </View>
     </SoftCard>
   );
@@ -191,15 +193,17 @@ const styles = StyleSheet.create({
     minWidth: 150,
   },
   actions: {
+    gap: spacing.sm,
+  },
+  secondaryActions: {
     flexDirection: "row",
     gap: spacing.sm,
     alignItems: "stretch",
   },
   sideAction: {
     flex: 1,
-    minWidth: 94,
   },
   primaryAction: {
-    flex: 1.3,
+    width: "100%",
   },
 });

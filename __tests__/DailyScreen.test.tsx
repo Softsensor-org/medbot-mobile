@@ -49,13 +49,13 @@ describe("DailyScreen", () => {
     const { getByText } = render(<DailyScreen />, { wrapper });
 
     expect(getByText("Daily Plan")).toBeTruthy();
-    expect(getByText("A softer, steadier rhythm for today.")).toBeTruthy();
+    expect(getByText("How you're doing, what comes next, and what to watch today.")).toBeTruthy();
     expect(getByText("HeroDashboard")).toBeTruthy();
     expect(getByText("TodayPlan")).toBeTruthy();
     expect(getByText("AutopilotCard")).toBeTruthy();
     expect(
       getByText(
-        "Consistency is key to skin health. Complete your morning and evening routines to see progress.",
+        "One photo, one completed step, and one quick symptom note give tomorrow's plan better context.",
       ),
     ).toBeTruthy();
   });

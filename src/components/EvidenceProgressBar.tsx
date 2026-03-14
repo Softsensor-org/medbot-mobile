@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  View,
-  Text,
   StyleSheet,
+  Text,
   TouchableOpacity,
+  View,
   ViewStyle,
 } from 'react-native';
-import { colors, typography, spacing } from '../theme';
+import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 import { EvidenceSlot } from '../types/ai';
 
 interface EvidenceProgressBarProps {
@@ -32,18 +32,18 @@ export default function EvidenceProgressBar({
     switch (state) {
       case 'provided':
         return {
-          backgroundColor: '#E8F5E9', // success.light equivalent
-          color: '#2E7D32', // success.dark equivalent
+          backgroundColor: colors.successLight,
+          color: colors.success,
         };
       case 'pending':
         return {
-          backgroundColor: '#FFF3E0', // warning.light equivalent
-          color: '#EF6C00', // warning.dark equivalent
+          backgroundColor: colors.warningLight,
+          color: colors.warning,
         };
       case 'unknown':
         return {
-          backgroundColor: '#EEEEEE', // grey.200 equivalent
-          color: '#757575', // grey.600 equivalent
+          backgroundColor: colors.surfaceLight,
+          color: colors.textSecondary,
         };
       default:
         return {
@@ -106,11 +106,12 @@ export default function EvidenceProgressBar({
 const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
-    backgroundColor: '#F8FAFC', // colors.surfaceLight equivalent
-    borderRadius: 12,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.borderMuted,
     marginBottom: spacing.md,
+    ...shadows.sm,
   },
   header: {
     flexDirection: 'row',
@@ -130,7 +131,7 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     height: 6,
-    backgroundColor: colors.border,
+    backgroundColor: colors.divider,
     borderRadius: 3,
     marginBottom: spacing.sm,
     overflow: 'hidden',
@@ -150,6 +151,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   chipText: {
     fontSize: 10,
