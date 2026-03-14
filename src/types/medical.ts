@@ -107,6 +107,7 @@ export interface CompleteRoutineAssignmentActionRequest {
   completion_rate?: number;
   comment?: string;
   idempotency_key?: string;
+  steps?: RoutineStepCompletion[];
 }
 
 export interface DeferRoutineAssignmentActionRequest {
@@ -121,6 +122,52 @@ export type RoutineAssignmentActionRequest =
   | CompleteRoutineAssignmentActionRequest
   | DeferRoutineAssignmentActionRequest;
 
+export interface RoutineStepCompletion {
+  step_id?: number;
+  step_name: string;
+  state: 'completed' | 'skipped' | 'pending';
+  completed_at?: string;
+  notes?: string;
+}
+
+export interface RoutineProgressDay {
+  date: string;
+  steps_completed: number;
+  steps_total: number;
+  ratio: number;
+  status: 'completed' | 'partial' | 'skipped' | 'missed';
+}
+
+export interface RoutineProgressResponse {
+  routine_id: number;
+  routine_name: string;
+  period_days: number;
+  completion_by_day: RoutineProgressDay[];
+  summary: {
+    total_days: number;
+    completed_days: number;
+    partial_days: number;
+    missed_days: number;
+    adherence_ratio: number;
+  };
+}
+
+export interface CadenceRoutineSummary {
+  routine_id: number;
+  routine_name: string;
+  target_completions: number;
+  actual_completions: number;
+  ratio: number;
+  current_streak: number;
+  longest_streak: number;
+  completion_by_day: RoutineProgressDay[];
+}
+
+export interface CadenceResponse {
+  period_days: number;
+  routines: CadenceRoutineSummary[];
+}
+
 export interface RoutineLog {
   id: number;
   routine_id: number;
@@ -130,6 +177,7 @@ export interface RoutineLog {
   completion_rate: number;
   notes?: string;
   metadata?: Record<string, unknown>;
+  steps?: RoutineStepCompletion[];
 }
 
 export interface CarePlanAction {

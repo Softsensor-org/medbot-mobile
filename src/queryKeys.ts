@@ -46,6 +46,8 @@ export const routineKeys = {
   catalog: () => [...routineKeys.all, "catalog"] as const,
   assignments: (params?: Record<string, unknown>) => [...routineKeys.all, "assignments", params] as const,
   intelligence: () => [...routineKeys.all, "intelligence"] as const,
+  progress: (routineId: number, days: number) => [...routineKeys.all, routineId, "progress", days] as const,
+  cadence: (days: number) => [...routineKeys.all, "cadence", days] as const,
 };
 
 export const wellnessKeys = {

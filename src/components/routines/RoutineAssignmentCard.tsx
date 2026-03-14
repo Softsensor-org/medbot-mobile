@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { borderRadius, colors, spacing, typography } from "../../theme";
-import type { Routine, RoutineAssignment } from "../../types/medical";
+import type { Routine, RoutineAssignment, RoutineStepCompletion } from "../../types/medical";
 import { HeroSurface } from "../common/HeroSurface";
 import { MetricChip } from "../common/MetricChip";
 import { PrimaryButton } from "../common/PrimaryButton";
@@ -55,6 +55,8 @@ interface RoutineAssignmentCardProps {
   routine?: Routine;
   variant?: CardVariant;
   disabled?: boolean;
+  stepCompletions?: Map<number, RoutineStepCompletion>;
+  onStepToggle?: (stepId: number) => void;
   onComplete: (assignmentId: number) => void;
   onDefer: (assignment: RoutineAssignment) => void;
 }
@@ -64,6 +66,8 @@ export function RoutineAssignmentCard({
   routine,
   variant = "standard",
   disabled = false,
+  stepCompletions,
+  onStepToggle,
   onComplete,
   onDefer,
 }: RoutineAssignmentCardProps) {
@@ -106,13 +110,18 @@ export function RoutineAssignmentCard({
         <Text style={styles.emptyStepText}>Your provider has not added step detail for this routine yet.</Text>
       ) : (
         <>
-          {visibleSteps.map((step, index) => (
-            <RoutineStepRow
-              key={`${assignment.id}-${step.step_order}-${step.name}`}
-              step={step}
-              state={getStepState(assignment.status, index)}
-            />
-          ))}
+          {visibleSteps.map((step, index) => {
+            const completion = step.id != null ? stepCompletions?.get(step.id) : undefined;
+            return (
+              <RoutineStepRow
+                key={`${assignment.id}-${step.step_order}-${step.name}`}
+                step={step}
+                state={getStepState(assignment.status, index)}
+                completionState={completion?.state}
+                onToggle={assignment.status === "active" ? onStepToggle : undefined}
+              />
+            );
+          })}
           {hiddenStepCount > 0 ? (
             <Text style={styles.hiddenStepsText}>+{hiddenStepCount} more step{hiddenStepCount === 1 ? "" : "s"} in this routine.</Text>
           ) : null}

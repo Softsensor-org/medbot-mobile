@@ -9,6 +9,8 @@ import type {
   RoutineAssignmentStatus,
   RoutineAssignmentActionRequest,
   RoutineAssignmentActionEvent,
+  RoutineProgressResponse,
+  CadenceResponse,
   DailySummaryResponse,
   SkinHealthScoreResponse,
   PulseResponse,
@@ -127,6 +129,18 @@ class MedicalApiService extends BaseApiService {
 
   async getRecentPulses(days = 7): Promise<PulseEntry[]> {
     return this.get<PulseEntry[]>(`/pulse?days=${days}`);
+  }
+
+  async getRoutineProgress(routineId: number, days = 7): Promise<RoutineProgressResponse> {
+    const qp = new URLSearchParams();
+    qp.set("days", days.toString());
+    return this.get<RoutineProgressResponse>(`/routines/${routineId}/progress?${qp.toString()}`);
+  }
+
+  async getRoutineCadence(days = 7): Promise<CadenceResponse> {
+    const qp = new URLSearchParams();
+    qp.set("days", days.toString());
+    return this.get<CadenceResponse>(`/routines/cadence?${qp.toString()}`);
   }
 }
 
