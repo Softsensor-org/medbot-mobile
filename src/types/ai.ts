@@ -173,7 +173,7 @@ export type CardType = "symptom" | "product" | "routine" | "intervention" | "sum
 export type CardStatus = "draft" | "confirmed" | "dismissed" | "flagged";
 
 export interface HandoffTarget {
-  screen: string;
+  screen: string; // "routines" | "routine-detail"
   params?: Record<string, unknown>;
 }
 
@@ -185,7 +185,6 @@ export interface ChatCard {
   data: Record<string, unknown>;
   source_turn: number;
   editable_fields: string[];
-  session_id?: string;
   handoff_target?: HandoffTarget;
 }
 
