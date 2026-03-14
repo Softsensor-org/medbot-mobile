@@ -5,6 +5,7 @@ import { AuthContext } from "../src/auth/AuthProvider";
 import { useRouter } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useHandoffSummary } from "../src/hooks/useInterventions";
+import { usePatientProfile, useUpdatePatientProfile } from "../src/hooks/useUser";
 
 // Mock notifications module
 const mockLoadPreferences = jest.fn();
@@ -62,6 +63,15 @@ jest.mock('../src/hooks/useInterventions', () => ({
   useHandoffSummary: jest.fn(),
 }));
 
+jest.mock('../src/hooks/useUser', () => ({
+  usePatientProfile: jest.fn(),
+  useUpdatePatientProfile: jest.fn(),
+}));
+
+jest.mock('../src/providers/ToastProvider', () => ({
+  showToast: jest.fn(),
+}));
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
@@ -98,6 +108,19 @@ describe("SettingsScreen", () => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
     (useHandoffSummary as jest.Mock).mockReturnValue({ data: null, isLoading: false, refetch: jest.fn() });
+    (usePatientProfile as jest.Mock).mockReturnValue({
+      data: {
+        preferred_name: "Maya",
+        pronouns: "she/her",
+        skin_type: "sensitive",
+        skin_sensitivity: "moderate",
+        allergies: ["Fragrance"],
+        conditions: ["Rosacea"],
+        notes_for_care_team: "Patch test new actives first.",
+      },
+      isLoading: false,
+    });
+    (useUpdatePatientProfile as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
     mockLoadPreferences.mockResolvedValue({ ...DEFAULT_PREFS });
     mockSavePreferences.mockResolvedValue(undefined);
     mockRequestPermission.mockResolvedValue(true);
@@ -129,6 +152,31 @@ describe("SettingsScreen", () => {
     await waitFor(() => {
       expect(getByText("Haptic Feedback")).toBeTruthy();
       expect(getByText("Notification Settings")).toBeTruthy();
+    });
+  });
+
+  it("saves identity details", async () => {
+    const mockUpdate = jest.fn();
+    (useUpdatePatientProfile as jest.Mock).mockReturnValue({ mutate: mockUpdate, isPending: false });
+
+    const { getByDisplayValue, getByTestId } = render(
+      <AuthContext.Provider value={mockAuth}>
+        <SettingsScreen />
+      </AuthContext.Provider>,
+      { wrapper }
+    );
+
+    fireEvent.changeText(getByDisplayValue("Maya"), "Maya R.");
+    fireEvent.press(getByTestId("settings-save-identity-button"));
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preferred_name: "Maya R.",
+          allergies: ["Fragrance"],
+        }),
+        expect.anything()
+      );
     });
   });
 

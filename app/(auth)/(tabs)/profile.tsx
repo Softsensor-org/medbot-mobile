@@ -1,14 +1,15 @@
 import React from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../../../src/auth/useAuth";
 import { ScreenShell } from "../../../src/components/common/ScreenShell";
 import { SectionHeader } from "../../../src/components/common/SectionHeader";
 import { SecondaryButton } from "../../../src/components/common/SecondaryButton";
-import { colors, spacing } from "../../../src/theme";
+import { SoftCard } from "../../../src/components/common/SoftCard";
+import { borderRadius, colors, spacing, typography } from "../../../src/theme";
 import { HandoffSummaryCard } from "../../../src/components/HandoffSummaryCard";
-import { usePreferenceProfile } from "../../../src/hooks/useUser";
+import { usePatientProfile, usePreferenceProfile } from "../../../src/hooks/useUser";
 import { useConsentStatus } from "../../../src/hooks/useConsent";
 import { useEngagementSettings } from "../../../src/hooks/useEngagementSettings";
 import { ProfileHero } from "../../../src/components/profile/ProfileHero";
@@ -16,9 +17,27 @@ import { ProfileStatsRow } from "../../../src/components/profile/ProfileStatsRow
 import { ProfileMenuCard } from "../../../src/components/profile/ProfileMenuCard";
 import { ProfilePreferenceSummary } from "../../../src/components/profile/ProfilePreferenceSummary";
 
+function summarizeList(values?: string[]) {
+  if (!values || values.length === 0) {
+    return "Not set yet";
+  }
+  return values.join(", ");
+}
+
+function titleize(value?: string | null) {
+  if (!value) {
+    return "Not set yet";
+  }
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { data: patientProfile } = usePatientProfile();
   const { data: preferenceProfile } = usePreferenceProfile();
   const { data: consentStatus } = useConsentStatus();
   const { hapticsEnabled } = useEngagementSettings();
@@ -49,7 +68,7 @@ export default function ProfileScreen() {
       testID="profile-screen"
     >
       <ProfileHero
-        name={user?.name}
+        name={patientProfile?.preferred_name || user?.name}
         email={user?.email}
         privacyLabel={privacyLabel}
         hapticsEnabled={hapticsEnabled}
@@ -60,10 +79,56 @@ export default function ProfileScreen() {
       <ProfileStatsRow
         items={[
           { label: "Goals", value: goalsCount > 0 ? `${goalsCount} saved` : "Needs review", tone: goalsCount > 0 ? "success" : "warning" },
-          { label: "Avoids", value: avoidCount > 0 ? `${avoidCount} tracked` : "None yet", tone: avoidCount > 0 ? "primary" : "default" },
+          {
+            label: "Allergies",
+            value: (patientProfile?.allergies?.length ?? 0) > 0 ? `${patientProfile?.allergies?.length ?? 0} tracked` : "None yet",
+            tone: (patientProfile?.allergies?.length ?? 0) > 0 ? "warning" : "default",
+          },
           { label: "Privacy", value: privacyLabel, tone: pendingRequiredCount > 0 ? "warning" : "success" },
         ]}
       />
+
+      <SoftCard style={styles.cardSection}>
+        <SectionHeader
+          eyebrow="Profile context"
+          title="What your provider handoff can see"
+          subtitle="Identity and sensitivity details now live alongside your treatment preferences."
+        />
+        <View style={styles.identityGrid}>
+          <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Preferred name</Text>
+            <Text style={styles.identityValue}>{patientProfile?.preferred_name || user?.name || "Not set yet"}</Text>
+          </View>
+          <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Pronouns</Text>
+            <Text style={styles.identityValue}>{patientProfile?.pronouns || "Not set yet"}</Text>
+          </View>
+          <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Skin profile</Text>
+            <Text style={styles.identityValue}>
+              {`${titleize(patientProfile?.skin_type)} • ${titleize(patientProfile?.skin_sensitivity)}`}
+            </Text>
+          </View>
+          <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Avoid list</Text>
+            <Text style={styles.identityValue}>{avoidCount > 0 ? `${avoidCount} ingredients tracked` : "None yet"}</Text>
+          </View>
+          <View style={styles.identityFullCell}>
+            <Text style={styles.identityLabel}>Allergies</Text>
+            <Text style={styles.identityValue}>{summarizeList(patientProfile?.allergies)}</Text>
+          </View>
+          <View style={styles.identityFullCell}>
+            <Text style={styles.identityLabel}>Conditions</Text>
+            <Text style={styles.identityValue}>{summarizeList(patientProfile?.conditions)}</Text>
+          </View>
+          <View style={styles.identityFullCell}>
+            <Text style={styles.identityLabel}>Care note</Text>
+            <Text style={styles.identityValue}>
+              {patientProfile?.notes_for_care_team || "No care-team note saved yet."}
+            </Text>
+          </View>
+        </View>
+      </SoftCard>
 
       <ProfilePreferenceSummary
         preferenceProfile={preferenceProfile}
@@ -134,7 +199,39 @@ const styles = StyleSheet.create({
   section: {
     gap: spacing.md,
   },
+  cardSection: {
+    gap: spacing.md,
+  },
   stack: {
     gap: spacing.md,
+  },
+  identityGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  identityCell: {
+    flexBasis: "48%",
+    flexGrow: 1,
+    minWidth: 140,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surfaceLight,
+    gap: spacing.xxs,
+  },
+  identityFullCell: {
+    width: "100%",
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surfaceLight,
+    gap: spacing.xxs,
+  },
+  identityLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  identityValue: {
+    ...typography.bodyStrong,
+    color: colors.textPrimary,
   },
 });

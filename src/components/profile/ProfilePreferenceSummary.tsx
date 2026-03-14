@@ -73,6 +73,26 @@ export function ProfilePreferenceSummary({
           <Text style={styles.label}>Avoid list</Text>
           <Text style={styles.value}>{summarizeList(essential?.avoid_list)}</Text>
         </View>
+        <View style={styles.cell}>
+          <Text style={styles.label}>Textures</Text>
+          <Text style={styles.value}>{summarizeList(essential?.texture_preferences)}</Text>
+        </View>
+        <View style={styles.cell}>
+          <Text style={styles.label}>Reminders</Text>
+          <Text style={styles.value}>
+            {essential?.reminder_cadence ? titleize(essential.reminder_cadence) : "Not set yet"}
+          </Text>
+        </View>
+        <View style={styles.cell}>
+          <Text style={styles.label}>Shopping</Text>
+          <Text style={styles.value}>
+            {essential?.shopping_preference ? titleize(essential.shopping_preference) : "Not set yet"}
+          </Text>
+        </View>
+        <View style={styles.cell}>
+          <Text style={styles.label}>Fragrance free</Text>
+          <Text style={styles.value}>{essential?.fragrance_free_only ? "Required" : "Flexible"}</Text>
+        </View>
       </View>
 
       <View style={styles.actions}>

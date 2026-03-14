@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -14,7 +15,10 @@ import { colors, typography, spacing } from "../../../src/theme";
 import { usePreferenceProfile, useUpdatePreferenceProfile } from "../../../src/hooks/useUser";
 import { 
   BudgetPreference, 
+  ReminderCadence,
   RoutineDepthPreference, 
+  ShoppingPreference,
+  TexturePreference,
   TreatmentModalityPreference 
 } from "../../../src/types/user";
 import { showToast } from "../../../src/providers/ToastProvider";
@@ -38,6 +42,26 @@ const MODALITY_OPTIONS: { value: TreatmentModalityPreference; label: string }[] 
   { value: "hybrid", label: "Hybrid approach" },
 ];
 
+const TEXTURE_OPTIONS: { value: TexturePreference; label: string }[] = [
+  { value: "gel", label: "Gel" },
+  { value: "cream", label: "Cream" },
+  { value: "serum", label: "Serum" },
+  { value: "balm", label: "Balm" },
+  { value: "mist", label: "Mist" },
+];
+
+const REMINDER_OPTIONS: { value: ReminderCadence; label: string }[] = [
+  { value: "gentle", label: "Gentle" },
+  { value: "standard", label: "Standard" },
+  { value: "structured", label: "Structured" },
+];
+
+const SHOPPING_OPTIONS: { value: ShoppingPreference; label: string }[] = [
+  { value: "otc", label: "OTC first" },
+  { value: "mixed", label: "Mixed" },
+  { value: "clinical", label: "Clinical / provider-guided" },
+];
+
 export default function PreferencesScreen() {
   const router = useRouter();
   const { data: profile, isLoading } = usePreferenceProfile();
@@ -47,6 +71,10 @@ export default function PreferencesScreen() {
   const [depth, setDepth] = useState<RoutineDepthPreference>("moderate");
   const [modality, setModality] = useState<TreatmentModalityPreference>("hybrid");
   const [avoidList, setAvoidList] = useState("");
+  const [texturePreferences, setTexturePreferences] = useState<TexturePreference[]>([]);
+  const [fragranceFreeOnly, setFragranceFreeOnly] = useState(false);
+  const [reminderCadence, setReminderCadence] = useState<ReminderCadence>("standard");
+  const [shoppingPreference, setShoppingPreference] = useState<ShoppingPreference>("mixed");
 
   useEffect(() => {
     if (profile?.essential) {
@@ -54,8 +82,18 @@ export default function PreferencesScreen() {
       setDepth(profile.essential.routine_depth || "moderate");
       setModality(profile.essential.treatment_modality_comfort || "hybrid");
       setAvoidList(profile.essential.avoid_list?.join(", ") || "");
+      setTexturePreferences(profile.essential.texture_preferences || []);
+      setFragranceFreeOnly(profile.essential.fragrance_free_only || false);
+      setReminderCadence(profile.essential.reminder_cadence || "standard");
+      setShoppingPreference(profile.essential.shopping_preference || "mixed");
     }
   }, [profile]);
+
+  const toggleTexturePreference = (value: TexturePreference) => {
+    setTexturePreferences((current) =>
+      current.includes(value) ? current.filter((item) => item !== value) : [...current, value]
+    );
+  };
 
   const handleSave = () => {
     const avoid_list = avoidList
@@ -70,6 +108,10 @@ export default function PreferencesScreen() {
           routine_depth: depth,
           treatment_modality_comfort: modality,
           avoid_list,
+          texture_preferences: texturePreferences,
+          fragrance_free_only: fragranceFreeOnly,
+          reminder_cadence: reminderCadence,
+          shopping_preference: shoppingPreference,
           goals: profile?.essential?.goals || [],
         },
       },
@@ -137,6 +179,45 @@ export default function PreferencesScreen() {
         <Text style={styles.hint}>Separate ingredients with commas.</Text>
       </View>
 
+      <ChipSelect
+        label="Preferred Textures"
+        options={TEXTURE_OPTIONS}
+        selectedValue={null}
+        selectedValues={texturePreferences}
+        multiSelect
+        onSelect={(val) => toggleTexturePreference(val)}
+        horizontal={false}
+      />
+
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleCopy}>
+          <Text style={styles.label}>Fragrance-free only</Text>
+          <Text style={styles.hint}>Prioritize fragrance-free formulas across plan recommendations.</Text>
+        </View>
+        <Switch
+          value={fragranceFreeOnly}
+          onValueChange={setFragranceFreeOnly}
+          trackColor={{ false: colors.border, true: colors.primaryLight }}
+          thumbColor={fragranceFreeOnly ? colors.primary : colors.surface}
+        />
+      </View>
+
+      <ChipSelect
+        label="Reminder Cadence"
+        options={REMINDER_OPTIONS}
+        selectedValue={reminderCadence}
+        onSelect={(val) => setReminderCadence(val)}
+        horizontal={false}
+      />
+
+      <ChipSelect
+        label="Shopping Preference"
+        options={SHOPPING_OPTIONS}
+        selectedValue={shoppingPreference}
+        onSelect={(val) => setShoppingPreference(val)}
+        horizontal={false}
+      />
+
       <TouchableOpacity
         style={[styles.saveButton, isPending && styles.disabled]}
         onPress={handleSave}
@@ -185,6 +266,16 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  toggleCopy: {
+    flex: 1,
   },
   input: {
     backgroundColor: colors.surface,

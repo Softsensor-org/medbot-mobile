@@ -41,7 +41,18 @@ describe('PreferencesScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (usePreferenceProfile as jest.Mock).mockReturnValue({
-      data: { essential: { budget: 'low', routine_depth: 'minimal', treatment_modality_comfort: 'clinical-only', avoid_list: ['Fragrance'] } },
+      data: {
+        essential: {
+          budget: 'low',
+          routine_depth: 'minimal',
+          treatment_modality_comfort: 'clinical-only',
+          avoid_list: ['Fragrance'],
+          texture_preferences: ['gel'],
+          fragrance_free_only: false,
+          reminder_cadence: 'standard',
+          shopping_preference: 'mixed',
+        }
+      },
       isLoading: false,
     });
     (useUpdatePreferenceProfile as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
@@ -51,6 +62,7 @@ describe('PreferencesScreen', () => {
     const { getByText } = render(<PreferencesScreen />, { wrapper });
     
     expect(getByText('Budget-friendly')).toBeTruthy();
+    expect(getByText('Reminder Cadence')).toBeTruthy();
   });
 
   it('updates preferences on save', async () => {
@@ -61,6 +73,7 @@ describe('PreferencesScreen', () => {
     
     // Select "Moderate" budget
     fireEvent.press(getByText('Moderate'));
+    fireEvent.press(getByText('Cream'));
     
     await act(async () => {
       fireEvent.press(getByText('Save Preferences'));
@@ -70,6 +83,7 @@ describe('PreferencesScreen', () => {
       expect.objectContaining({
         essential: expect.objectContaining({
           budget: 'medium',
+          texture_preferences: ['gel', 'cream'],
         }),
       }),
       expect.anything()
