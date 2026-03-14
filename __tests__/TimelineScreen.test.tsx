@@ -1,5 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
+import { useLocalSearchParams } from 'expo-router';
 import TimelineScreen from '../app/(auth)/timeline';
 import { useTimeline } from '../src/hooks/useTimeline';
 import { usePatientProgress } from '../src/hooks/useProgress';
@@ -8,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Mocks
 jest.mock('expo-router', () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+  useLocalSearchParams: jest.fn(),
 }));
 
 jest.mock('../src/hooks/useTimeline', () => ({
@@ -42,6 +44,7 @@ describe('TimelineScreen', () => {
   const mockEvents = [
     { id: 'symptom-1', type: 'symptom', timestamp: '2026-03-05T10:00:00Z', title: 'Itching', description: 'Mild itching', metadata: { severity: 2 } },
     { id: 'routine-1', type: 'routine', timestamp: '2026-03-05T08:00:00Z', title: 'Morning Cleanse', description: '', metadata: { completion_rate: 1.0 } },
+    { id: 'routine-2', type: 'routine', timestamp: '2026-03-06T08:00:00Z', title: 'Evening Repair', description: '', metadata: { completion_rate: 1.0 } },
   ];
 
   const mockPhotos = [
@@ -51,6 +54,7 @@ describe('TimelineScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (useLocalSearchParams as jest.Mock).mockReturnValue({});
     (useTimeline as jest.Mock).mockReturnValue({
       data: { events: mockEvents },
       isLoading: false,
@@ -68,5 +72,17 @@ describe('TimelineScreen', () => {
     expect(getByText('Morning Cleanse')).toBeTruthy();
     // Since we have 2 photos in same week, slider should be shown
     expect(getAllByTestId('compare-slider').length).toBeGreaterThan(0);
+  });
+
+  it('focuses the selected day when a date param is present', () => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({ date: '2026-03-05' });
+
+    const { getByText, queryByText, queryByTestId } = render(<TimelineScreen />, { wrapper });
+
+    expect(getByText('Focused on March 5, 2026')).toBeTruthy();
+    expect(getByText('Itching')).toBeTruthy();
+    expect(getByText('Morning Cleanse')).toBeTruthy();
+    expect(queryByText('Evening Repair')).toBeNull();
+    expect(queryByTestId('compare-slider')).toBeNull();
   });
 });
