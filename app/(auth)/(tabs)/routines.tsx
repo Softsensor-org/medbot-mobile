@@ -4,7 +4,13 @@ import { useLocalSearchParams } from "expo-router";
 import { useRoutineAssignments } from "../../../src/hooks/useRoutineAssignments";
 import { useCompleteAssignment, useDeferAssignment } from "../../../src/hooks/useRoutineActions";
 import { useRoutines } from "../../../src/hooks/useRoutines";
-import type { RescheduleIntentType, RoutineAssignment, Routine } from "../../../src/types/medical";
+import type {
+  RescheduleIntentType,
+  RoutineAssignment,
+  Routine,
+  RoutineAssignmentActionRequest,
+  RoutineStepCompletion,
+} from "../../../src/types/medical";
 import { colors, spacing, typography } from "../../../src/theme";
 import { hapticService } from "../../../src/api/HapticService";
 import { useSafetyGate } from "../../../src/hooks/useSafetyGate";
@@ -22,6 +28,10 @@ interface EnrichedAssignment {
   assignment: RoutineAssignment;
   routine?: Routine;
 }
+
+type CompleteRoutinePayload = RoutineAssignmentActionRequest & {
+  steps?: RoutineStepCompletion[];
+};
 
 function getSyncMessage(
   completeStatus?: string,
@@ -62,6 +72,40 @@ export default function RoutinesScreen() {
       return () => clearTimeout(timer);
     }
   }, [from_chat]);
+  // Step-level completion tracking: Map<assignmentId, Map<stepId, RoutineStepCompletion>>
+  const [stepCompletions, setStepCompletions] = useState<Map<number, Map<number, RoutineStepCompletion>>>(new Map());
+
+  const getStepCompletionsForAssignment = useCallback(
+    (assignmentId: number): Map<number, RoutineStepCompletion> => {
+      return stepCompletions.get(assignmentId) ?? new Map();
+    },
+    [stepCompletions],
+  );
+
+  const handleStepToggle = useCallback(
+    (assignmentId: number, routine: Routine | undefined) => (stepId: number) => {
+      const step = routine?.steps.find((s) => s.id === stepId);
+      if (!step) return;
+
+      setStepCompletions((prev) => {
+        const next = new Map(prev);
+        const assignmentSteps = new Map(next.get(assignmentId) ?? new Map());
+        const current = assignmentSteps.get(stepId);
+        const newState: RoutineStepCompletion["state"] =
+          current?.state === "completed" ? "pending" : "completed";
+        assignmentSteps.set(stepId, {
+          step_id: stepId,
+          step_name: step.name,
+          state: newState,
+          completed_at: newState === "completed" ? new Date().toISOString() : undefined,
+        });
+        next.set(assignmentId, assignmentSteps);
+        return next;
+      });
+    },
+    [],
+  );
+
   const [selectedAssignment, setSelectedAssignment] = useState<RoutineAssignment | null>(null);
   const [deferReasonCode, setDeferReasonCode] = useState("too_busy");
   const [rescheduleType, setRescheduleType] = useState<RescheduleIntentType>("later_today");
@@ -139,19 +183,35 @@ export default function RoutinesScreen() {
       setError(null);
       setInfo(null);
       hapticService.triggerWarning();
+
+      // Collect step-level completions for this assignment
+      const assignmentSteps = stepCompletions.get(assignmentId);
+      const stepsArray: RoutineStepCompletion[] = assignmentSteps
+        ? Array.from(assignmentSteps.values())
+        : [];
+
+      const payload: CompleteRoutinePayload = {
+        action: "complete",
+        timezone: timeZone,
+        completed_at: new Date().toISOString(),
+        completion_rate: 1.0,
+        steps: stepsArray.length > 0 ? stepsArray : undefined,
+      };
+
       completeMutation.mutate(
         {
           assignmentId,
-          payload: {
-            action: "complete",
-            timezone: timeZone,
-            completed_at: new Date().toISOString(),
-            completion_rate: 1.0,
-          },
+          payload,
         },
         {
           onSuccess: (result) => {
             hapticService.triggerSuccess();
+            // Clear step completions for this assignment
+            setStepCompletions((prev) => {
+              const next = new Map(prev);
+              next.delete(assignmentId);
+              return next;
+            });
             setInfo(
               result?.mode === "queued"
                 ? "Routine action queued offline and will sync automatically."
@@ -162,7 +222,7 @@ export default function RoutinesScreen() {
         },
       );
     },
-    [completeMutation, timeZone],
+    [completeMutation, timeZone, stepCompletions],
   );
 
   const openCommitBox = useCallback((assignment: RoutineAssignment) => {
@@ -366,6 +426,8 @@ export default function RoutinesScreen() {
                   routine={featuredAssignment.routine}
                   variant="featured"
                   disabled={isSubmitting}
+                  stepCompletions={getStepCompletionsForAssignment(featuredAssignment.assignment.id)}
+                  onStepToggle={handleStepToggle(featuredAssignment.assignment.id, featuredAssignment.routine)}
                   onComplete={handleComplete}
                   onDefer={openCommitBox}
                 />
@@ -386,6 +448,8 @@ export default function RoutinesScreen() {
                       assignment={item.assignment}
                       routine={item.routine}
                       disabled={isSubmitting}
+                      stepCompletions={getStepCompletionsForAssignment(item.assignment.id)}
+                      onStepToggle={handleStepToggle(item.assignment.id, item.routine)}
                       onComplete={handleComplete}
                       onDefer={openCommitBox}
                     />

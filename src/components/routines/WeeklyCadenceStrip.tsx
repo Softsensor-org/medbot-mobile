@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { borderRadius, colors, spacing, typography } from "../../theme";
-import type { Routine } from "../../types/medical";
+import type { Routine, RoutineProgressDay } from "../../types/medical";
 
 const WEEK_DAYS = [
   { key: "sunday", label: "S" },
@@ -64,12 +64,38 @@ export function getRoutineCadenceSummary(routine?: Routine): RoutineCadenceSumma
   };
 }
 
-interface WeeklyCadenceStripProps {
-  routine?: Routine;
+function getProgressDayStyle(status: RoutineProgressDay["status"]) {
+  switch (status) {
+    case "completed":
+      return { chip: styles.dayChipCompleted, label: styles.dayLabelCompleted };
+    case "partial":
+      return { chip: styles.dayChipPartial, label: styles.dayLabelPartial };
+    case "skipped":
+      return { chip: styles.dayChipSkipped, label: styles.dayLabelSkipped };
+    case "missed":
+    default:
+      return { chip: styles.dayChipIdle, label: styles.dayLabelIdle };
+  }
 }
 
-export function WeeklyCadenceStrip({ routine }: WeeklyCadenceStripProps) {
+interface WeeklyCadenceStripProps {
+  routine?: Routine;
+  completionByDay?: RoutineProgressDay[];
+}
+
+export function WeeklyCadenceStrip({ routine, completionByDay }: WeeklyCadenceStripProps) {
   const cadence = getRoutineCadenceSummary(routine);
+
+  // Build a lookup from day-of-week index to progress status
+  const progressByDayIndex = React.useMemo(() => {
+    if (!completionByDay || completionByDay.length === 0) return null;
+    const map = new Map<number, RoutineProgressDay>();
+    for (const day of completionByDay) {
+      const date = new Date(day.date + "T00:00:00");
+      map.set(date.getDay(), day);
+    }
+    return map;
+  }, [completionByDay]);
 
   return (
     <View style={styles.wrapper}>
@@ -79,6 +105,20 @@ export function WeeklyCadenceStrip({ routine }: WeeklyCadenceStripProps) {
       </View>
       <View style={styles.daysRow}>
         {WEEK_DAYS.map((day, index) => {
+          const progressDay = progressByDayIndex?.get(index);
+          if (progressDay) {
+            const progressStyle = getProgressDayStyle(progressDay.status);
+            return (
+              <View
+                key={day.key}
+                style={[styles.dayChip, progressStyle.chip]}
+              >
+                <Text style={[styles.dayLabel, progressStyle.label]}>
+                  {day.label}
+                </Text>
+              </View>
+            );
+          }
           const isActive = cadence.activeDays[index];
           return (
             <View
@@ -140,5 +180,26 @@ const styles = StyleSheet.create({
   },
   dayLabelIdle: {
     color: colors.textSecondary,
+  },
+  dayChipCompleted: {
+    backgroundColor: colors.successLight,
+    borderColor: colors.success,
+  },
+  dayLabelCompleted: {
+    color: colors.textPrimary,
+  },
+  dayChipPartial: {
+    backgroundColor: colors.infoLight,
+    borderColor: colors.info,
+  },
+  dayLabelPartial: {
+    color: colors.textPrimary,
+  },
+  dayChipSkipped: {
+    backgroundColor: colors.warningLight,
+    borderColor: colors.warning,
+  },
+  dayLabelSkipped: {
+    color: colors.textPrimary,
   },
 });
