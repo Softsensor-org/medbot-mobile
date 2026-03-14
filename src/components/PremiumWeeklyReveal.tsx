@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.textSecondary,
     letterSpacing: 2,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   title: {
     ...typography.h1,
@@ -213,17 +213,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   divider: {
-    width: 60,
-    height: 4,
+    width: '20%',
+    height: 5,
     marginTop: spacing.md,
-    borderRadius: 2,
+    borderRadius: borderRadius.xs,
   },
   card: {
     backgroundColor: colors.surface,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
     ...shadows.md,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   insightHeader: {
     flexDirection: 'row',
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   comparisonSection: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   sectionLabel: {
     ...typography.label,
@@ -261,7 +261,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
     ...shadows.lg,
   },
   trajectoryInfo: {
@@ -299,9 +301,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   metricDivider: {
-    width: 1,
+    width: 2,
     height: '60%',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   actionSection: {
     gap: spacing.md,
@@ -332,6 +334,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.md,
     gap: spacing.sm,
+    backgroundColor: colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
   },
   shareText: {
     ...typography.button,
