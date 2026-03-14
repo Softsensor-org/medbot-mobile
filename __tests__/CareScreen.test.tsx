@@ -239,6 +239,23 @@ describe('CareScreen', () => {
     });
   });
 
+  // --- FIX-019 regression: label-scan is reachable from Care tab ---
+  it('label-scan button navigates to label-scan route', () => {
+    (useSessions as jest.Mock).mockReturnValue({
+      isLoading: false,
+      data: [],
+      isError: false,
+      refetch: jest.fn(),
+      isRefetching: false,
+    });
+
+    const { getByTestId } = render(<CareScreen />, { wrapper });
+
+    fireEvent.press(getByTestId('label-scan-button'));
+
+    expect(mockRouter.push).toHaveBeenCalledWith('/(auth)/label-scan');
+  });
+
   it('does not reuse closed/assigned sessions', async () => {
     mutateAsync.mockResolvedValue({ sessionId: 'session-fresh' });
     (useSessions as jest.Mock).mockReturnValue({

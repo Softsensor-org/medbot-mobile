@@ -1,11 +1,15 @@
 import React from "react";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
-import { Linking } from "react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { Linking, Alert } from "react-native";
 import EscalationGateModal from "../src/components/EscalationGateModal";
 
 jest.mock("@expo/vector-icons", () => ({
   MaterialIcons: "MaterialIcons",
 }));
+
+jest.spyOn(Linking, "canOpenURL").mockResolvedValue(true);
+jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+jest.spyOn(Alert, "alert").mockImplementation(() => {});
 
 describe("EscalationGateModal", () => {
   const onAcknowledge = jest.fn();
@@ -204,4 +208,5 @@ describe("EscalationGateModal", () => {
       getByText(/we recommend seeking immediate medical attention/i)
     ).toBeTruthy();
   });
+
 });

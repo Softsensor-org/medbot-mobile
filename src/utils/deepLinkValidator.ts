@@ -10,18 +10,24 @@ import type { Href } from 'expo-router';
 const ALLOWED_ROUTES: readonly string[] = [
   '/weekly-reveal',
   '/(auth)/(tabs)',
+  '/(auth)/(tabs)/care',
   '/(auth)/(tabs)/routines',
   '/(auth)/(tabs)/progress',
+  '/(auth)/(tabs)/profile',
   '/(auth)/timeline',
   '/(auth)/intake',
   '/(auth)/intake/camera',
   '/(auth)/intake/symptom-log',
+  '/(auth)/intake/pre-visit',
+  '/(auth)/intake/review',
   '/(auth)/settings',
   '/(auth)/notifications',
   '/(auth)/consent',
+  '/(auth)/label-scan',
   '/(auth)/onboarding/skin-brief',
   '/(auth)/onboarding/preferences',
   '/(auth)/interventions',
+  '/(auth)/onboarding/goal-journey',
 ];
 
 const SAFE_FALLBACK: Href = '/(auth)/(tabs)' as Href;
@@ -62,6 +68,11 @@ export function validateDeepLink(url: string | undefined | null): Href {
   if (path.includes('..')) {
     console.warn('[DeepLink] Blocked path traversal:', url);
     return SAFE_FALLBACK;
+  }
+
+  // Normalize trailing slash (e.g. "/(auth)/intake/" -> "/(auth)/intake")
+  if (path.length > 1 && path.endsWith('/')) {
+    path = path.slice(0, -1);
   }
 
   // Exact match against allowlist

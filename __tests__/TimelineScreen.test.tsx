@@ -1,15 +1,19 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import { useLocalSearchParams } from 'expo-router';
 import TimelineScreen from '../app/(auth)/timeline';
 import { useTimeline } from '../src/hooks/useTimeline';
 import { usePatientProgress } from '../src/hooks/useProgress';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mocks
+const mockSetParams = jest.fn();
+const mockRouterBack = jest.fn();
+const mockRouterPush = jest.fn();
+let mockSearchParams: Record<string, string | undefined> = {};
+
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
-  useLocalSearchParams: jest.fn(),
+  useRouter: () => ({ back: mockRouterBack, push: mockRouterPush, setParams: mockSetParams }),
+  useLocalSearchParams: () => mockSearchParams,
 }));
 
 jest.mock('../src/hooks/useTimeline', () => ({
@@ -54,7 +58,7 @@ describe('TimelineScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useLocalSearchParams as jest.Mock).mockReturnValue({});
+    mockSearchParams = {};
     (useTimeline as jest.Mock).mockReturnValue({
       data: { events: mockEvents },
       isLoading: false,
@@ -67,7 +71,7 @@ describe('TimelineScreen', () => {
 
   it('renders combined events grouped by week', () => {
     const { getByText, getAllByTestId } = render(<TimelineScreen />, { wrapper });
-    
+
     expect(getByText('Itching')).toBeTruthy();
     expect(getByText('Morning Cleanse')).toBeTruthy();
     // Since we have 2 photos in same week, slider should be shown
@@ -75,7 +79,7 @@ describe('TimelineScreen', () => {
   });
 
   it('focuses the selected day when a date param is present', () => {
-    (useLocalSearchParams as jest.Mock).mockReturnValue({ date: '2026-03-05' });
+    mockSearchParams = { date: '2026-03-05' };
 
     const { getByText, queryByText, queryByTestId } = render(<TimelineScreen />, { wrapper });
 
