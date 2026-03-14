@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import ChatScreen from '../app/(auth)/chat/[sessionId]';
 import { useSessionTranscript, useEvidenceSnapshot } from '../src/hooks/useSessions';
@@ -112,6 +112,29 @@ describe('ChatScreen', () => {
 
     expect(getByTestId('streamed-content')).toBeTruthy();
     expect(getByTestId('streamed-content').children[0]).toBe('Sure, tell me more.');
+  });
+
+  it('keeps the final assistant reply visible after stream completion', async () => {
+    (useSessionTranscript as jest.Mock).mockReturnValue({ data: [], isLoading: false });
+    (useEvidenceSnapshot as jest.Mock).mockReturnValue({ data: null });
+
+    (streamChat as jest.Mock).mockImplementation(async ({ onEvent }) => {
+      onEvent({ type: 'token', content: 'Thanks for the update.' });
+      onEvent({ type: 'complete', model_output: { escalation_required: false } });
+    });
+
+    const { getByPlaceholderText, getByTestId, getByText, queryByTestId } = render(<ChatScreen />, { wrapper });
+
+    fireEvent.changeText(getByPlaceholderText('Type a message...'), 'My skin is itchy');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('send-button'));
+    });
+
+    await waitFor(() => {
+      expect(getByText('Thanks for the update.')).toBeTruthy();
+    });
+    expect(queryByTestId('streamed-content')).toBeNull();
   });
 
   it('handles invalid session id', () => {
