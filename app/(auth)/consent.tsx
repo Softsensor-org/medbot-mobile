@@ -98,11 +98,13 @@ function ConsentCard({
   consentType,
   statusItem,
   onAccept,
+  onDecline,
   isRecording,
 }: {
   consentType: ConsentType;
   statusItem?: ConsentStatusItem;
   onAccept: (typeId: string, version: string, signature?: string) => void;
+  onDecline: (typeId: string, version: string) => void;
   isRecording: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -208,6 +210,17 @@ function ConsentCard({
                   </Text>
                 )}
               </TouchableOpacity>
+
+              {consentType.type === "optional" && (
+                <TouchableOpacity
+                  testID={`decline-button-${consentType.id}`}
+                  style={[styles.declineButton, isRecording && styles.declineButtonDisabled]}
+                  disabled={isRecording}
+                  onPress={() => onDecline(consentType.id, consentType.version)}
+                >
+                  <Text style={styles.declineButtonText}>Decline for now</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -242,6 +255,23 @@ export default function ConsentScreen() {
           status: "accepted",
           consent_version: version,
           signature,
+          source: "mobile",
+        });
+      } finally {
+        setRecordingId(null);
+      }
+    },
+    [recordConsent],
+  );
+
+  const handleDecline = useCallback(
+    async (typeId: string, version: string) => {
+      setRecordingId(typeId);
+      try {
+        await recordConsent.mutateAsync({
+          consent_type_id: typeId,
+          status: "declined",
+          consent_version: version,
           source: "mobile",
         });
       } finally {
@@ -299,6 +329,7 @@ export default function ConsentScreen() {
               consentType={ct}
               statusItem={getStatusForType(ct, status, latestConsents)}
               onAccept={handleAccept}
+              onDecline={handleDecline}
               isRecording={recordingId === ct.id}
             />
           ))}
@@ -495,6 +526,23 @@ const styles = StyleSheet.create({
   acceptButtonText: {
     ...typography.button,
     color: colors.surface,
+    fontWeight: "600",
+  },
+  declineButton: {
+    marginTop: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  declineButtonDisabled: {
+    opacity: 0.6,
+  },
+  declineButtonText: {
+    ...typography.button,
+    color: colors.textPrimary,
     fontWeight: "600",
   },
   badge: {
