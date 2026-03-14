@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/client";
+import { unwrapApiEnvelope } from "../api/BaseApiService";
 import { OnboardingBrief, PatientProfile, PatientProfilePayload, PreferenceProfile, GoalJourney, GoalJourneyCreate, UserProfile } from "../types/user";
 
 export const userKeys = {
@@ -15,8 +16,8 @@ export function useUser() {
   const { data: profile, isLoading } = useQuery({
     queryKey: userKeys.profile(),
     queryFn: async () => {
-      const response = await api.get("/user/profile");
-      return response.data.data as UserProfile;
+      const response = await api.get<UserProfile>("/api/v1/me");
+      return response.data;
     },
   });
 
@@ -31,7 +32,7 @@ export function useOnboardingBrief() {
     queryKey: userKeys.brief(),
     queryFn: async () => {
       const response = await api.get("/api/v1/wellness/onboarding/brief");
-      return response.data.data as OnboardingBrief;
+      return unwrapApiEnvelope<OnboardingBrief>(response);
     },
   });
 }
@@ -41,7 +42,7 @@ export function useUpdateOnboardingBrief() {
   return useMutation({
     mutationFn: async (payload: Partial<OnboardingBrief>) => {
       const response = await api.post("/api/v1/wellness/onboarding/brief", payload);
-      return response.data.data as OnboardingBrief;
+      return unwrapApiEnvelope<OnboardingBrief>(response);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.brief() });
@@ -54,7 +55,7 @@ export function usePatientProfile() {
     queryKey: userKeys.patientProfile(),
     queryFn: async () => {
       const response = await api.get("/api/v1/wellness/patient/profile");
-      return response.data.data as PatientProfile;
+      return unwrapApiEnvelope<PatientProfile>(response);
     },
   });
 }
@@ -64,7 +65,7 @@ export function useUpdatePatientProfile() {
   return useMutation({
     mutationFn: async (payload: PatientProfilePayload) => {
       const response = await api.put("/api/v1/wellness/patient/profile", payload);
-      return response.data.data as PatientProfile;
+      return unwrapApiEnvelope<PatientProfile>(response);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.patientProfile() });
@@ -77,7 +78,7 @@ export function usePreferenceProfile() {
     queryKey: userKeys.preferences(),
     queryFn: async () => {
       const response = await api.get("/api/v1/wellness/preferences/profile");
-      return response.data.data as PreferenceProfile;
+      return unwrapApiEnvelope<PreferenceProfile>(response);
     },
   });
 }
@@ -87,7 +88,7 @@ export function useUpdatePreferenceProfile() {
   return useMutation({
     mutationFn: async (payload: Partial<PreferenceProfile>) => {
       const response = await api.post("/api/v1/wellness/preferences/profile", payload);
-      return response.data.data as PreferenceProfile;
+      return unwrapApiEnvelope<PreferenceProfile>(response);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.preferences() });
@@ -100,7 +101,7 @@ export function useGoalJourneys() {
     queryKey: userKeys.goals(),
     queryFn: async () => {
       const response = await api.get("/api/v1/goals/journeys");
-      return response.data.data;
+      return unwrapApiEnvelope<GoalJourney[]>(response);
     },
   });
 }
@@ -110,7 +111,7 @@ export function useUpsertGoalJourney() {
   return useMutation({
     mutationFn: async (payload: GoalJourneyCreate) => {
       const response = await api.post("/api/v1/goals/journeys", payload);
-      return response.data.data as GoalJourney;
+      return unwrapApiEnvelope<GoalJourney>(response);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.goals() });

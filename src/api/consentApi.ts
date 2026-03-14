@@ -1,5 +1,5 @@
 import { BaseApiService } from "./BaseApiService";
-import type { ConsentStatusItem } from "../types/consent";
+import type { ConsentStatusDashboard, ExpiredConsentItem, PendingConsentItem } from "../types/consent";
 
 export type ConsentStatus = "accepted" | "declined" | "revoked";
 
@@ -35,28 +35,10 @@ export interface UserConsent {
   source: string;
 }
 
-export interface PendingConsentItem {
-  id: string;
-  title: string;
-  version: string;
-}
-
-export interface ExpiredConsentItem {
-  id: string;
-  title: string;
-  expired_at: string;
-}
-
-export interface ConsentStatusResponse {
-  total_consents: number;
-  required_consents: number;
-  optional_consents: number;
-  accepted_required: ConsentStatusItem[];
-  accepted_optional: ConsentStatusItem[];
-  pending_required: ConsentStatusItem[];
-  pending_optional: ConsentStatusItem[];
-  expired_consents: ConsentStatusItem[];
-  requires_action: boolean;
+export interface ConsentStatusResponse extends ConsentStatusDashboard {
+  pending_required: PendingConsentItem[];
+  pending_optional: PendingConsentItem[];
+  expired_consents: ExpiredConsentItem[];
 }
 
 class ConsentApiService extends BaseApiService {

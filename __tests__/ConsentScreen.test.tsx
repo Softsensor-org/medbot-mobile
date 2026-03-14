@@ -1,7 +1,7 @@
 import React from "react";
 import { render, fireEvent, act } from "@testing-library/react-native";
 import ConsentScreen from "../app/(auth)/consent";
-import { useConsentTypes, useConsentStatus, useRecordConsent } from "../src/hooks/useConsent";
+import { useConsentTypes, useConsentStatus, useRecordConsent, useUserConsents } from "../src/hooks/useConsent";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 jest.mock("expo-router", () => ({
@@ -11,6 +11,7 @@ jest.mock("expo-router", () => ({
 jest.mock("../src/hooks/useConsent", () => ({
   useConsentTypes: jest.fn(),
   useConsentStatus: jest.fn(),
+  useUserConsents: jest.fn(),
   useRecordConsent: jest.fn(),
 }));
 
@@ -69,12 +70,15 @@ const MOCK_TYPES = [
 
 function mockStatus(overrides: Partial<ReturnType<typeof useConsentStatus>["data"]> = {}) {
   return {
+    total_consents: 3,
+    required_consents: 2,
+    optional_consents: 1,
     requires_action: false,
     pending_required: [],
     pending_optional: [],
     expired_consents: [],
-    accepted_required: [],
-    accepted_optional: [],
+    accepted_required: 0,
+    accepted_optional: 0,
     ...overrides,
   };
 }
@@ -84,6 +88,7 @@ const mockMutateAsync = jest.fn().mockResolvedValue({});
 describe("ConsentScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useUserConsents as jest.Mock).mockReturnValue({ data: [], isLoading: false });
     (useRecordConsent as jest.Mock).mockReturnValue({
       mutateAsync: mockMutateAsync,
     });
@@ -128,14 +133,8 @@ describe("ConsentScreen", () => {
         pending_required: [
           {
             id: "privacy_notice",
-            consent_type_id: "privacy_notice",
             title: "Privacy Notice",
-            type: "required",
-            status: "pending",
             version: "1.0",
-            current_version: "1.0",
-            version_match: true,
-            expired: false,
           },
         ],
       }),
@@ -155,20 +154,7 @@ describe("ConsentScreen", () => {
     (useConsentStatus as jest.Mock).mockReturnValue({
       data: mockStatus({
         requires_action: false,
-        accepted_required: [
-          {
-            id: "privacy_notice",
-            consent_type_id: "privacy_notice",
-            title: "Privacy Notice",
-            type: "required",
-            status: "accepted",
-            version: "1.0",
-            consent_version: "1.0",
-            current_version: "1.0",
-            version_match: true,
-            expired: false,
-          },
-        ],
+        accepted_required: 2,
       }),
       isLoading: false,
     });
@@ -222,7 +208,7 @@ describe("ConsentScreen", () => {
       status: "accepted",
       consent_version: "1.0",
       signature: undefined,
-      source: "mobile_app",
+      source: "mobile",
     });
   });
 
@@ -277,7 +263,7 @@ describe("ConsentScreen", () => {
       status: "accepted",
       consent_version: "1.0",
       signature: "John Doe",
-      source: "mobile_app",
+      source: "mobile",
     });
   });
 
@@ -287,22 +273,18 @@ describe("ConsentScreen", () => {
       isLoading: false,
     });
     (useConsentStatus as jest.Mock).mockReturnValue({
-      data: mockStatus({
-        accepted_required: [
-          {
-            id: "privacy_notice",
-            consent_type_id: "privacy_notice",
-            title: "Privacy Notice",
-            type: "required",
-            status: "accepted",
-            version: "1.0",
-            consent_version: "1.0",
-            current_version: "1.0",
-            version_match: true,
-            expired: false,
-          },
-        ],
-      }),
+      data: mockStatus({ accepted_required: 1 }),
+      isLoading: false,
+    });
+    (useUserConsents as jest.Mock).mockReturnValue({
+      data: [
+        {
+          consent_type_id: "privacy_notice",
+          status: "accepted",
+          consent_version: "1.0",
+          acted_at: "2026-03-14T00:00:00Z",
+        },
+      ],
       isLoading: false,
     });
 
@@ -322,18 +304,23 @@ describe("ConsentScreen", () => {
         expired_consents: [
           {
             id: "privacy_notice",
-            consent_type_id: "privacy_notice",
             title: "Privacy Notice",
-            type: "required",
-            status: "accepted",
-            version: "1.0",
-            consent_version: "1.0",
-            current_version: "1.0",
-            version_match: true,
-            expired: true,
+            expired_at: "2026-03-01T00:00:00Z",
           },
         ],
       }),
+      isLoading: false,
+    });
+    (useUserConsents as jest.Mock).mockReturnValue({
+      data: [
+        {
+          consent_type_id: "privacy_notice",
+          status: "accepted",
+          consent_version: "1.0",
+          acted_at: "2026-02-01T00:00:00Z",
+          expires_at: "2026-03-01T00:00:00Z",
+        },
+      ],
       isLoading: false,
     });
 

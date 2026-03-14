@@ -7,6 +7,14 @@ export interface ApiEnvelope<T> {
   error?: string;
 }
 
+export function unwrapApiEnvelope<T>(res: AxiosResponse<ApiEnvelope<T>>): T {
+  const body = res.data;
+  if (!body.success) {
+    throw new Error(body.error ?? "API request failed");
+  }
+  return body.data as T;
+}
+
 /**
  * Base API service providing typed request methods.
  * All responses follow the { success, data, error } envelope.
@@ -48,11 +56,6 @@ export class BaseApiService {
   }
 
   private unwrap<T>(res: AxiosResponse<ApiEnvelope<T>>): T {
-    const body = res.data;
-    if (!body.success) {
-      throw new Error(body.error ?? "API request failed");
-    }
-    // For some successful requests (like DELETE or 204), data might be null/undefined
-    return body.data as T;
+    return unwrapApiEnvelope(res);
   }
 }

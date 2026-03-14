@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -11,7 +11,8 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import Markdown from "react-native-markdown-display";
 import { colors, typography, spacing } from "../../src/theme";
-import { useConsentTypes, useConsentStatus, useRecordConsent } from "../../src/hooks/useConsent";
+import type { UserConsent } from "../../src/api/consentApi";
+import { useConsentTypes, useConsentStatus, useRecordConsent, useUserConsents } from "../../src/hooks/useConsent";
 import type { ConsentType, ConsentStatusItem } from "../../src/types/consent";
 
 const CONSENT_SUMMARIES: Record<string, string> = {
@@ -24,18 +25,35 @@ const CONSENT_SUMMARIES: Record<string, string> = {
 };
 
 function getStatusForType(
-  typeId: string,
+  consentType: ConsentType,
   status: ReturnType<typeof useConsentStatus>["data"],
+  latestConsents: Map<string, UserConsent>,
 ): ConsentStatusItem | undefined {
   if (!status) return undefined;
-  const all = [
-    ...status.pending_required,
-    ...status.pending_optional,
-    ...status.expired_consents,
-    ...status.accepted_required,
-    ...status.accepted_optional,
-  ];
-  return all.find((s) => s.consent_type_id === typeId);
+  const latest = latestConsents.get(consentType.id);
+  const expired = status.expired_consents.some((item) => item.id === consentType.id);
+  const isPendingRequired = status.pending_required.some((item) => item.id === consentType.id);
+  const isPendingOptional = status.pending_optional.some((item) => item.id === consentType.id);
+
+  if (!latest && !isPendingRequired && !isPendingOptional) {
+    return undefined;
+  }
+
+  const consentVersion = latest?.consent_version;
+  const versionMatch = consentVersion ? consentVersion === consentType.version : false;
+
+  return {
+    id: consentType.id,
+    consent_type_id: consentType.id,
+    title: consentType.title,
+    type: consentType.type,
+    status: latest?.status ?? "pending",
+    version: consentType.version,
+    consent_version: consentVersion,
+    current_version: consentType.version,
+    version_match: versionMatch,
+    expired,
+  };
 }
 
 function StatusBadge({ item }: { item?: ConsentStatusItem }) {
@@ -201,8 +219,19 @@ function ConsentCard({
 export default function ConsentScreen() {
   const { data: types, isLoading: typesLoading } = useConsentTypes();
   const { data: status, isLoading: statusLoading } = useConsentStatus();
+  const { data: userConsents, isLoading: userConsentsLoading } = useUserConsents();
   const recordConsent = useRecordConsent();
   const [recordingId, setRecordingId] = useState<string | null>(null);
+
+  const latestConsents = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof userConsents>[number]>();
+    for (const consent of userConsents ?? []) {
+      if (!map.has(consent.consent_type_id)) {
+        map.set(consent.consent_type_id, consent);
+      }
+    }
+    return map;
+  }, [userConsents]);
 
   const handleAccept = useCallback(
     async (typeId: string, version: string, signature?: string) => {
@@ -213,7 +242,7 @@ export default function ConsentScreen() {
           status: "accepted",
           consent_version: version,
           signature,
-          source: "mobile_app",
+          source: "mobile",
         });
       } finally {
         setRecordingId(null);
@@ -222,7 +251,7 @@ export default function ConsentScreen() {
     [recordConsent],
   );
 
-  const isLoading = typesLoading || statusLoading;
+  const isLoading = typesLoading || statusLoading || userConsentsLoading;
   const requiresAction = status?.requires_action ?? false;
   const activeTypes = types?.filter((t) => t.active) ?? [];
 
@@ -268,7 +297,7 @@ export default function ConsentScreen() {
             <ConsentCard
               key={ct.id}
               consentType={ct}
-              statusItem={getStatusForType(ct.id, status)}
+              statusItem={getStatusForType(ct, status, latestConsents)}
               onAccept={handleAccept}
               isRecording={recordingId === ct.id}
             />

@@ -31,6 +31,18 @@ export interface ConsentRecordRequest {
   expires_at?: string;
 }
 
+export interface PendingConsentItem {
+  id: string;
+  title: string;
+  version: string;
+}
+
+export interface ExpiredConsentItem {
+  id: string;
+  title: string;
+  expired_at: string;
+}
+
 export interface ConsentStatusItem {
   id: string;
   consent_type_id: string;
@@ -45,12 +57,15 @@ export interface ConsentStatusItem {
 }
 
 export interface ConsentStatusDashboard {
+  total_consents: number;
+  required_consents: number;
+  optional_consents: number;
   requires_action: boolean;
-  pending_required: ConsentStatusItem[];
-  pending_optional: ConsentStatusItem[];
-  expired_consents: ConsentStatusItem[];
-  accepted_required: ConsentStatusItem[];
-  accepted_optional: ConsentStatusItem[];
+  accepted_required: number;
+  accepted_optional: number;
+  pending_required: PendingConsentItem[];
+  pending_optional: PendingConsentItem[];
+  expired_consents: ExpiredConsentItem[];
 }
 
 export interface ShareConsentValidation {
