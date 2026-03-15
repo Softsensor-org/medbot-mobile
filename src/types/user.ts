@@ -24,6 +24,43 @@ export type TreatmentPlanStatus = "inactive" | "active" | "maintenance" | "on-ho
 export type ProgramContextSource = "manual" | "goal-journey-derived";
 export type JourneyStage = "prep" | "treatment" | "recovery" | "maintenance" | "next_step";
 export type JourneyStageSource = "manual" | "derived";
+export type ProgramTemplateId =
+  | "acne_clearance"
+  | "acne_maintenance"
+  | "chronic_barrier_repair"
+  | "chronic_rosacea_control"
+  | "chronic_melasma_control";
+export type ProgramTemplateTrack = "acne" | "chronic_skin";
+
+export interface ProgramTemplateStageDefinition {
+  stage: JourneyStage;
+  title: string;
+  objective: string;
+  routine_focus: string;
+  follow_up_cadence_days: number;
+  routine_recovery_hint: string;
+  escalation_signals: string[];
+}
+
+export interface ProgramTemplateRoutineRecovery {
+  defer_enabled: boolean;
+  snooze_enabled: boolean;
+  skip_enabled: boolean;
+  max_consecutive_skips: number;
+  recovery_window_days: number;
+  resume_guidance: string;
+}
+
+export interface ProgramTemplateSnapshot {
+  template_id: ProgramTemplateId;
+  label: string;
+  track: ProgramTemplateTrack;
+  summary: string;
+  default_follow_up_cadence_days: number;
+  escalation_criteria: string[];
+  routine_recovery: ProgramTemplateRoutineRecovery;
+  stages: ProgramTemplateStageDefinition[];
+}
 
 export interface MembershipContext {
   status: MembershipStatus;
@@ -39,6 +76,7 @@ export interface ProgramTrackContext {
   summary?: string | null;
   target_date?: string | null;
   source: ProgramContextSource;
+  template?: ProgramTemplateSnapshot | null;
 }
 
 export interface TreatmentPlanContext {
