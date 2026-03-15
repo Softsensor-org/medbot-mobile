@@ -1,7 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/client";
 import { unwrapApiEnvelope } from "../api/BaseApiService";
-import { OnboardingBrief, PatientProfile, PatientProfilePayload, PreferenceProfile, GoalJourney, GoalJourneyCreate, UserProfile } from "../types/user";
+import {
+  GoalJourney,
+  GoalJourneyCreate,
+  OnboardingBrief,
+  PatientProfile,
+  PatientProfilePayload,
+  PreferenceProfile,
+  RecoveryFollowUpContext,
+  RecoveryFollowUpUpsertRequest,
+  UserProfile,
+} from "../types/user";
 
 export const userKeys = {
   all: ["user"] as const,
@@ -69,6 +79,30 @@ export function useUpdatePatientProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.patientProfile() });
+    },
+  });
+}
+
+export function useRecoveryFollowUp() {
+  return useQuery({
+    queryKey: [...userKeys.all, "recovery-follow-up"],
+    queryFn: async () => {
+      const response = await api.get("/api/v1/wellness/patient/recovery-follow-up");
+      return unwrapApiEnvelope<RecoveryFollowUpContext>(response);
+    },
+  });
+}
+
+export function useUpdateRecoveryFollowUp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: RecoveryFollowUpUpsertRequest) => {
+      const response = await api.post("/api/v1/wellness/patient/recovery-follow-up", payload);
+      return unwrapApiEnvelope<RecoveryFollowUpContext>(response);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.patientProfile() });
+      queryClient.invalidateQueries({ queryKey: [...userKeys.all, "recovery-follow-up"] });
     },
   });
 }

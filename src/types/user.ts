@@ -61,6 +61,9 @@ export interface ProgramTemplateSnapshot {
   routine_recovery: ProgramTemplateRoutineRecovery;
   stages: ProgramTemplateStageDefinition[];
 }
+export type RecoveryFollowUpStatus = "not_started" | "check_in_due" | "monitoring" | "awaiting_review" | "escalated" | "resolved";
+export type RecoveryGuidanceBand = "expected" | "concerning" | "urgent";
+export type RecoverySymptomKey = "redness" | "swelling" | "pain" | "drainage" | "itching";
 
 export interface MembershipContext {
   status: MembershipStatus;
@@ -92,6 +95,45 @@ export interface JourneyStageContext {
   updated_at?: string | null;
 }
 
+export interface RecoverySymptomRating {
+  symptom: RecoverySymptomKey;
+  severity: number;
+}
+
+export interface RecoveryPhotoEvidence {
+  id?: string;
+  data_url: string;
+  mime_type?: string | null;
+  captured_at?: string | null;
+}
+
+export interface RecoveryGuidanceSummary {
+  band: RecoveryGuidanceBand;
+  headline: string;
+  detail: string;
+  next_step: string;
+  watch_for: string[];
+  escalation_recommended: boolean;
+  provider_follow_up: boolean;
+}
+
+export interface RecoveryFollowUpContext {
+  status: RecoveryFollowUpStatus;
+  symptoms: RecoverySymptomRating[];
+  notes?: string | null;
+  photos: RecoveryPhotoEvidence[];
+  submitted_at?: string | null;
+  updated_at?: string | null;
+  guidance: RecoveryGuidanceSummary;
+}
+
+export interface RecoveryFollowUpUpsertRequest {
+  symptoms: RecoverySymptomRating[];
+  notes?: string | null;
+  photos: RecoveryPhotoEvidence[];
+  mark_resolved?: boolean;
+}
+
 export interface ProgramContextSnapshot {
   id?: number;
   version: number;
@@ -100,6 +142,7 @@ export interface ProgramContextSnapshot {
   program: ProgramTrackContext;
   treatment_plan: TreatmentPlanContext;
   journey_stage: JourneyStageContext;
+  recovery_follow_up: RecoveryFollowUpContext;
 }
 
 export interface PatientProfilePayload {

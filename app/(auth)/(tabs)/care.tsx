@@ -13,10 +13,11 @@ import { formatDistanceToNow } from "date-fns";
 import { MaterialIcons } from "@expo/vector-icons";
 import { colors, typography, spacing, shadows } from "../../../src/theme";
 import { useCreateSession, useSessions } from "../../../src/hooks/useSessions";
-import { usePatientProfile } from "../../../src/hooks/useUser";
+import { usePatientProfile, useUpdateRecoveryFollowUp } from "../../../src/hooks/useUser";
 import { SessionMeta } from "../../../src/api/sessionsApi";
 import { colorFor } from "../../../src/status/statusHelpers";
 import { ReadinessChecklist } from "../../../src/components/ReadinessChecklist";
+import RecoveryFollowUpCard from "../../../src/components/RecoveryFollowUpCard";
 
 const JOURNEY_STAGE_COPY = {
   prep: "Prep phase: confirm your setup, products, and readiness items before treatment ramps up.",
@@ -40,10 +41,19 @@ export default function CareScreen() {
   const router = useRouter();
   const { data, isLoading, isError, refetch, isRefetching } = useSessions();
   const { data: patientProfile } = usePatientProfile();
+  const updateRecoveryFollowUp = useUpdateRecoveryFollowUp();
   const { mutateAsync: createSession, isPending: isBootstrapping } = useCreateSession();
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const journeyStage = patientProfile?.program_context?.journey_stage?.stage ?? "prep";
   const journeyStageLabel = titleize(journeyStage);
+  const recoveryFollowUp = patientProfile?.program_context?.recovery_follow_up;
+  const shouldShowRecoveryFollowUp = Boolean(
+    recoveryFollowUp && (
+      recoveryFollowUp.status !== "not_started" ||
+      patientProfile?.program_context?.treatment_plan?.status !== "inactive" ||
+      journeyStage !== "prep"
+    )
+  );
 
   const navigateToIntake = useCallback((sessionId: string) => {
     router.push({
@@ -225,6 +235,19 @@ export default function CareScreen() {
         </View>
       )}
 
+      {shouldShowRecoveryFollowUp && recoveryFollowUp ? (
+        <View style={styles.recoveryCardWrap}>
+          <RecoveryFollowUpCard
+            recovery={recoveryFollowUp}
+            journeyStageLabel={journeyStageLabel}
+            treatmentPlanName={patientProfile?.program_context?.treatment_plan?.name}
+            isSaving={updateRecoveryFollowUp.isPending}
+            error={updateRecoveryFollowUp.isError ? "Failed to save recovery update. Please try again." : null}
+            onSubmit={(payload) => updateRecoveryFollowUp.mutateAsync(payload)}
+          />
+        </View>
+      ) : null}
+
       <FlatList
         data={data}
         renderItem={renderSessionCard}
@@ -324,6 +347,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceElevated,
     gap: spacing.xs,
     ...shadows.sm,
+  },
+  recoveryCardWrap: {
+    marginHorizontal: spacing.lg,
   },
   stageHeader: {
     flexDirection: "row",
