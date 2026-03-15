@@ -5,6 +5,7 @@ export type AnalyticsEvent =
   | 'weekly_reveal_viewed'
   | 'weekly_reveal_cta_clicked'
   | 'weekly_reveal_share_clicked'
+  | 'weekly_reveal_share_completed'
   | 'safety_gate_triggered'
   | 'safety_gate_cta_clicked';
 
