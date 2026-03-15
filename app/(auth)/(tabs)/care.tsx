@@ -16,6 +16,7 @@ import { useCreateSession, useSessions } from "../../../src/hooks/useSessions";
 import { usePatientProfile } from "../../../src/hooks/useUser";
 import { SessionMeta } from "../../../src/api/sessionsApi";
 import { colorFor } from "../../../src/status/statusHelpers";
+import { ReadinessChecklist } from "../../../src/components/ReadinessChecklist";
 
 const JOURNEY_STAGE_COPY = {
   prep: "Prep phase: confirm your setup, products, and readiness items before treatment ramps up.",
@@ -218,6 +219,12 @@ export default function CareScreen() {
         <Text style={styles.stageBody}>{JOURNEY_STAGE_COPY[journeyStage]}</Text>
       </View>
 
+      {journeyStage === "prep" && (
+        <View style={styles.readinessWrapper}>
+          <ReadinessChecklist />
+        </View>
+      )}
+
       <FlatList
         data={data}
         renderItem={renderSessionCard}
@@ -335,6 +342,10 @@ const styles = StyleSheet.create({
   stageBody: {
     ...typography.bodySmall,
     color: colors.textSecondary,
+  },
+  readinessWrapper: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
   card: {
     backgroundColor: colors.surface,
