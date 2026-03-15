@@ -1,44 +1,28 @@
 import { validateDeepLink } from '../src/utils/deepLinkValidator';
+import { APP_ROUTES } from '../src/testSupport/deepLinkRoutes';
 
 describe('validateDeepLink', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
   describe('allowed routes', () => {
-    it.each([
-      '/(auth)/(tabs)',
-      '/(auth)/(tabs)/care',
-      '/(auth)/(tabs)/routines',
-      '/(auth)/(tabs)/progress',
-      '/(auth)/(tabs)/profile',
-      '/(auth)/timeline',
-      '/(auth)/intake',
-      '/(auth)/intake/camera',
-      '/(auth)/intake/symptom-log',
-      '/(auth)/intake/pre-visit',
-      '/(auth)/intake/review',
-      '/(auth)/settings',
-      '/(auth)/notifications',
-      '/(auth)/consent',
-      '/(auth)/label-scan',
-      '/(auth)/onboarding/skin-brief',
-      '/(auth)/onboarding/preferences',
-      '/(auth)/interventions',
-      '/(auth)/onboarding/goal-journey',
-      '/weekly-reveal',
-    ])('allows exact route: %s', (route) => {
+    it.each(APP_ROUTES)('allows exact route: %s', (route) => {
       expect(validateDeepLink(route)).toBe(route);
     });
   });
 
   describe('trailing-slash normalization', () => {
-    it('normalizes trailing slash on allowed route', () => {
-      expect(validateDeepLink('/(auth)/intake/')).toBe('/(auth)/intake');
-    });
-
-    it('normalizes trailing slash on label-scan', () => {
-      expect(validateDeepLink('/(auth)/label-scan/')).toBe('/(auth)/label-scan');
-    });
-
-    it('normalizes trailing slash on timeline', () => {
-      expect(validateDeepLink('/(auth)/timeline/')).toBe('/(auth)/timeline');
+    it('normalizes trailing slash variants for all allowed routes', () => {
+      for (const route of APP_ROUTES) {
+        expect(validateDeepLink(`${route}/`)).toBe(route);
+      }
     });
   });
 
@@ -75,11 +59,6 @@ describe('validateDeepLink', () => {
   });
 
   describe('blocked routes', () => {
-    it('normalizes trailing slashes on direct router paths', () => {
-      expect(validateDeepLink('/(auth)/(tabs)/')).toBe('/(auth)/(tabs)');
-      expect(validateDeepLink('/(auth)/(tabs)/progress/')).toBe('/(auth)/(tabs)/progress');
-    });
-
     it('blocks null/undefined', () => {
       expect(validateDeepLink(null)).toBe('/(auth)/(tabs)');
       expect(validateDeepLink(undefined)).toBe('/(auth)/(tabs)');

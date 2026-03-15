@@ -1,28 +1,16 @@
 import { validateDeepLink } from "../src/utils/deepLinkValidator";
+import { APP_ROUTES } from "../src/testSupport/deepLinkRoutes";
 
 describe("FIX-020: Mobile Route Alignment", () => {
-  const APP_ROUTES = [
-    "/(auth)/(tabs)",
-    "/(auth)/(tabs)/care",
-    "/(auth)/(tabs)/routines",
-    "/(auth)/(tabs)/progress",
-    "/(auth)/(tabs)/profile",
-    "/(auth)/intake",
-    "/(auth)/intake/camera",
-    "/(auth)/intake/symptom-log",
-    "/(auth)/intake/pre-visit",
-    "/(auth)/intake/review",
-    "/(auth)/settings",
-    "/(auth)/notifications",
-    "/(auth)/consent",
-    "/(auth)/label-scan",
-    "/(auth)/timeline",
-    "/(auth)/interventions",
-    "/(auth)/onboarding/skin-brief",
-    "/(auth)/onboarding/preferences",
-    "/(auth)/onboarding/goal-journey",
-    "/weekly-reveal",
-  ];
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
 
   it.each(APP_ROUTES)("router path %s is in the deep-link allowlist", (route) => {
     expect(validateDeepLink(route)).toBe(route);
