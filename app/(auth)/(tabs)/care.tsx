@@ -230,7 +230,6 @@ export default function CareScreen() {
       </View>
 
       {journeyStage === "prep" && (
-      {journeyStage === "prep" && (
         <View style={styles.readinessWrapper}>
           <ReadinessChecklist />
         </View>
