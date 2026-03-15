@@ -26,6 +26,24 @@ export interface ReadinessSummary {
   session_count: number;
 }
 
+export interface PrepChecklistItem {
+  key: string;
+  label: string;
+  description: string;
+  completed: boolean;
+  progress: number | null;
+}
+
+export interface PrepChecklistResponse {
+  journey_stage: string;
+  readiness_score: number;
+  readiness_status: string;
+  items: PrepChecklistItem[];
+  prep_guidance: string;
+  next_action: string;
+  completion_percent: number;
+}
+
 class ReadinessApiService extends BaseApiService {
   constructor() {
     super("/api/v1/readiness");
@@ -33,6 +51,10 @@ class ReadinessApiService extends BaseApiService {
 
   async getSummary(days: number = 30): Promise<ReadinessSummary> {
     return this.get<ReadinessSummary>("/summary", { params: { days } });
+  }
+
+  async getPrepChecklist(days: number = 30): Promise<PrepChecklistResponse> {
+    return this.get<PrepChecklistResponse>("/prep-checklist", { params: { days } });
   }
 }
 
