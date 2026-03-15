@@ -11,6 +11,7 @@ interface ProfileHeroProps {
   email?: string | null;
   membershipLabel: string;
   programLabel: string;
+  journeyStageLabel: string;
   privacyLabel: string;
   hapticsEnabled: boolean;
   onOpenSettings: () => void;
@@ -22,6 +23,7 @@ export function ProfileHero({
   email,
   membershipLabel,
   programLabel,
+  journeyStageLabel,
   privacyLabel,
   hapticsEnabled,
   onOpenSettings,
@@ -48,6 +50,10 @@ export function ProfileHero({
           <View style={styles.metric}>
             <Text style={styles.metricLabel}>Program</Text>
             <Text style={styles.metricValue}>{programLabel}</Text>
+          </View>
+          <View style={styles.metric}>
+            <Text style={styles.metricLabel}>Stage</Text>
+            <Text style={styles.metricValue}>{journeyStageLabel}</Text>
           </View>
           <View style={styles.metric}>
             <Text style={styles.metricLabel}>Privacy</Text>

@@ -22,6 +22,8 @@ export type MembershipStatus = "inactive" | "trial" | "active" | "paused" | "end
 export type ProgramStatus = "not_started" | "active" | "paused" | "completed";
 export type TreatmentPlanStatus = "inactive" | "active" | "maintenance" | "on-hold" | "completed";
 export type ProgramContextSource = "manual" | "goal-journey-derived";
+export type JourneyStage = "prep" | "treatment" | "recovery" | "maintenance" | "next_step";
+export type JourneyStageSource = "manual" | "derived";
 
 export interface MembershipContext {
   status: MembershipStatus;
@@ -46,6 +48,12 @@ export interface TreatmentPlanContext {
   next_review_at?: string | null;
 }
 
+export interface JourneyStageContext {
+  stage: JourneyStage;
+  source: JourneyStageSource;
+  updated_at?: string | null;
+}
+
 export interface ProgramContextSnapshot {
   id?: number;
   version: number;
@@ -53,6 +61,7 @@ export interface ProgramContextSnapshot {
   membership: MembershipContext;
   program: ProgramTrackContext;
   treatment_plan: TreatmentPlanContext;
+  journey_stage: JourneyStageContext;
 }
 
 export interface PatientProfilePayload {

@@ -13,14 +13,36 @@ import { formatDistanceToNow } from "date-fns";
 import { MaterialIcons } from "@expo/vector-icons";
 import { colors, typography, spacing, shadows } from "../../../src/theme";
 import { useCreateSession, useSessions } from "../../../src/hooks/useSessions";
+import { usePatientProfile } from "../../../src/hooks/useUser";
 import { SessionMeta } from "../../../src/api/sessionsApi";
 import { colorFor } from "../../../src/status/statusHelpers";
+
+const JOURNEY_STAGE_COPY = {
+  prep: "Prep phase: confirm your setup, products, and readiness items before treatment ramps up.",
+  treatment: "Treatment phase: stay steady with the plan and keep logging how your skin responds.",
+  recovery: "Recovery phase: use gentle care and track healing cues for your provider.",
+  maintenance: "Maintenance phase: keep gains stable with lighter upkeep and routine follow-through.",
+  next_step: "Next-step phase: review this phase and confirm what comes next with your care team.",
+} as const;
+
+function titleize(value?: string | null) {
+  if (!value) {
+    return "Not set yet";
+  }
+  return value
+    .split(/[-_]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 export default function CareScreen() {
   const router = useRouter();
   const { data, isLoading, isError, refetch, isRefetching } = useSessions();
+  const { data: patientProfile } = usePatientProfile();
   const { mutateAsync: createSession, isPending: isBootstrapping } = useCreateSession();
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const journeyStage = patientProfile?.program_context?.journey_stage?.stage ?? "prep";
+  const journeyStageLabel = titleize(journeyStage);
 
   const navigateToIntake = useCallback((sessionId: string) => {
     router.push({
@@ -185,6 +207,17 @@ export default function CareScreen() {
         <MaterialIcons name="document-scanner" size={26} color={colors.primary} />
       </TouchableOpacity>
 
+      <View style={styles.stageCard}>
+        <View style={styles.stageHeader}>
+          <View>
+            <Text style={styles.stageEyebrow}>Journey stage</Text>
+            <Text style={styles.stageTitle}>{journeyStageLabel}</Text>
+          </View>
+          <MaterialIcons name="timeline" size={22} color={colors.primary} />
+        </View>
+        <Text style={styles.stageBody}>{JOURNEY_STAGE_COPY[journeyStage]}</Text>
+      </View>
+
       <FlatList
         data={data}
         renderItem={renderSessionCard}
@@ -271,6 +304,35 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   scanBody: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  stageCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.surfaceElevated,
+    gap: spacing.xs,
+    ...shadows.sm,
+  },
+  stageHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  stageEyebrow: {
+    ...typography.caption,
+    color: colors.primary,
+    textTransform: "uppercase",
+  },
+  stageTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  stageBody: {
     ...typography.bodySmall,
     color: colors.textSecondary,
   },
