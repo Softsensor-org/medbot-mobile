@@ -9,8 +9,8 @@ import type {
   RoutineAssignment,
   Routine,
   RoutineAssignmentActionRequest,
+  RoutineRecoverySummary,
   RoutineStepCompletion,
-  RoutineCategory,
 } from "../../../src/types/medical";
 import { colors, spacing, typography } from "../../../src/theme";
 import { hapticService } from "../../../src/api/HapticService";
@@ -29,6 +29,8 @@ interface EnrichedAssignment {
   assignment: RoutineAssignment;
   routine?: Routine;
 }
+
+type AssignmentBucket = "active" | "recovery" | "template" | "history";
 
 type CompleteRoutinePayload = RoutineAssignmentActionRequest & {
   steps?: RoutineStepCompletion[];
@@ -51,6 +53,16 @@ function getSyncMessage(
     return "Routine sync failed. Retry.";
   }
   return null;
+}
+
+function getRecoveryState(assignment: RoutineAssignment): RoutineRecoverySummary["state"] {
+  if (assignment.recovery?.state) {
+    return assignment.recovery.state;
+  }
+  if (assignment.status === "deferred") return "deferred";
+  if (assignment.status === "completed") return "completed";
+  if (assignment.status === "cancelled") return "cancelled";
+  return "on_track";
 }
 
 export default function RoutinesScreen() {
@@ -141,24 +153,29 @@ export default function RoutinesScreen() {
     }));
   }, [assignments, assignmentMap]);
 
-  const getCategory = (item: EnrichedAssignment): RoutineCategory => {
-    if (item.routine?.category) return item.routine.category;
-    if (item.assignment.status === "active") return "active";
-    if (item.assignment.status === "completed" || item.assignment.status === "deferred" || item.assignment.status === "cancelled") return "history";
+  const getCategory = (item: EnrichedAssignment): AssignmentBucket => {
+    if (item.routine?.category === "template") return "template";
+    const recoveryState = getRecoveryState(item.assignment);
+    if (item.assignment.status === "completed" || item.assignment.status === "cancelled") return "history";
+    if (recoveryState === "snoozed" || recoveryState === "deferred" || recoveryState === "recovery_due") {
+      return "recovery";
+    }
     return "active";
   };
 
   const categorized = useMemo(() => {
     const active: EnrichedAssignment[] = [];
+    const recovery: EnrichedAssignment[] = [];
     const template: EnrichedAssignment[] = [];
     const history: EnrichedAssignment[] = [];
     for (const item of enrichedAssignments) {
       const cat = getCategory(item);
       if (cat === "template") template.push(item);
+      else if (cat === "recovery") recovery.push(item);
       else if (cat === "history") history.push(item);
       else active.push(item);
     }
-    return { active, template, history };
+    return { active, recovery, template, history };
   }, [enrichedAssignments]);
 
   const DAY_PART_ORDER = ["morning", "evening", "afternoon", undefined] as const;
@@ -199,9 +216,12 @@ export default function RoutinesScreen() {
   const focusedAssignmentId = routineIntelligence?.focus.assignment_id ?? null;
   const featuredAssignment =
     (focusedAssignmentId != null
-      ? categorized.active.find((item) => item.assignment.id === focusedAssignmentId) ?? null
+      ? categorized.active.find((item) => item.assignment.id === focusedAssignmentId)
+        ?? categorized.recovery.find((item) => item.assignment.id === focusedAssignmentId)
+        ?? null
       : null) ??
     categorized.active[0] ??
+    categorized.recovery[0] ??
     null;
   const featuredId = featuredAssignment?.assignment.id ?? null;
   const focusTitle =
@@ -216,8 +236,11 @@ export default function RoutinesScreen() {
         ? "Next ritual focus"
         : "Routine focus";
   const focusDescription =
-    routineIntelligence?.focus.estimated_duration_basis ??
-    "Use the hero card to complete the clearest next routine or capture a structured defer.";
+    routineIntelligence?.recovery?.state &&
+    !["on_track", "completed", "cancelled"].includes(routineIntelligence.recovery.state)
+      ? routineIntelligence.recovery.detail
+      : routineIntelligence?.focus.estimated_duration_basis ??
+        "Use the hero card to complete the clearest next routine or capture a structured defer.";
   const adherenceRate7d = routineIntelligence?.adherence.adherence_rate_7d;
   const adherenceValue = adherenceRate7d != null ? `${Math.round(adherenceRate7d * 100)}%` : "Pending";
   const streakValue = routineIntelligence?.adherence.current_streak
@@ -226,6 +249,8 @@ export default function RoutinesScreen() {
   const durationValue = routineIntelligence?.focus.estimated_duration_minutes
     ? `~${routineIntelligence.focus.estimated_duration_minutes} min`
     : "No estimate";
+  const recoverySummary = routineIntelligence?.recovery;
+  const showRecoveryCard = !!recoverySummary && !["on_track", "completed", "cancelled"].includes(recoverySummary.state);
 
   const isSafetyBlocked = !isLoadingSafety && !safety.isSafe && safety.reason !== "low_confidence";
 
@@ -303,26 +328,38 @@ export default function RoutinesScreen() {
 
     setError(null);
     setInfo(null);
+    const recoveryPayload =
+      rescheduleType === "skip_for_now"
+        ? {
+            action: "skip" as const,
+            skip_reason_code: deferReasonCode,
+            comment: comment.trim() || undefined,
+          }
+        : {
+            action: (rescheduleType === "tomorrow" ? "defer" : "snooze") as "defer" | "snooze",
+            defer_reason_code: deferReasonCode,
+            comment: comment.trim() || undefined,
+            reschedule_intent: {
+              type: rescheduleType,
+              target_at: rescheduleType === "specific_time" ? targetAt.trim() : undefined,
+            },
+          };
     deferMutation.mutate(
       {
         assignmentId: selectedAssignment.id,
-        payload: {
-          action: "defer",
-          defer_reason_code: deferReasonCode,
-          comment: comment.trim() || undefined,
-          reschedule_intent: {
-            type: rescheduleType,
-            target_at: rescheduleType === "specific_time" ? targetAt.trim() : undefined,
-          },
-        },
+        payload: recoveryPayload,
       },
       {
         onSuccess: (result) => {
           hapticService.triggerSuccess();
           setInfo(
             result?.mode === "queued"
-              ? "Routine defer queued offline and will sync automatically."
-              : "Routine deferred with commit details.",
+              ? "Routine recovery action queued offline and will sync automatically."
+              : rescheduleType === "skip_for_now"
+                ? "Routine moved into recovery mode."
+                : rescheduleType === "tomorrow"
+                  ? "Routine deferred with commit details."
+                  : "Routine snoozed with a recovery plan.",
           );
           setSelectedAssignment(null);
         },
@@ -352,7 +389,7 @@ export default function RoutinesScreen() {
               <Text style={styles.introEyebrow}>Ritual flow</Text>
               <Text style={styles.introTitle}>One calm place for current assignments, cadence, and defer decisions.</Text>
               <Text style={styles.introBody}>
-                Complete the current ritual from the hero card or open the Commit Box to document a structured reschedule.
+                Complete the current ritual from the hero card or open the Commit Box to document a structured recovery plan.
               </Text>
             </SoftCard>
 
@@ -391,6 +428,21 @@ export default function RoutinesScreen() {
                     style={styles.metricChip}
                   />
                 </View>
+              </SoftCard>
+            ) : null}
+
+            {showRecoveryCard && recoverySummary ? (
+              <SoftCard tone="muted" style={styles.recoverySummaryCard} testID="routine-recovery-card">
+                <SectionHeader
+                  eyebrow="Recovery guidance"
+                  title={recoverySummary.headline}
+                  subtitle={recoverySummary.detail}
+                />
+                {recoverySummary.provider_follow_up ? (
+                  <Text style={styles.recoveryFollowUp}>
+                    Your care team may review this recovery signal.
+                  </Text>
+                ) : null}
               </SoftCard>
             ) : null}
 
@@ -503,6 +555,45 @@ export default function RoutinesScreen() {
               </>
             ) : null}
 
+            {categorized.recovery.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader
+                  eyebrow="Recovery Queue"
+                  title="Safe resumption guidance"
+                  subtitle="These routines already have a structured recovery plan. Resume from the first core step when you come back."
+                />
+                {!categorized.active.length && featuredAssignment ? (
+                  <RoutineAssignmentCard
+                    assignment={featuredAssignment.assignment}
+                    routine={featuredAssignment.routine}
+                    variant="featured"
+                    disabled={isSubmitting}
+                    stepCompletions={getStepCompletionsForAssignment(featuredAssignment.assignment.id)}
+                    onStepToggle={handleStepToggle(featuredAssignment.assignment.id, featuredAssignment.routine)}
+                    onComplete={handleComplete}
+                    onDefer={openCommitBox}
+                  />
+                ) : null}
+                <View style={styles.stack}>
+                  {categorized.recovery
+                    .filter((item) => item.assignment.id !== featuredId || categorized.active.length > 0)
+                    .map((item) => (
+                    <RoutineAssignmentCard
+                      key={item.assignment.id}
+                      assignment={item.assignment}
+                      routine={item.routine}
+                      muted={item.assignment.status === "deferred"}
+                      disabled={isSubmitting}
+                      stepCompletions={getStepCompletionsForAssignment(item.assignment.id)}
+                      onStepToggle={handleStepToggle(item.assignment.id, item.routine)}
+                      onComplete={handleComplete}
+                      onDefer={openCommitBox}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
             {/* Available Templates */}
             {categorized.template.length > 0 ? (
               <View style={styles.section}>
@@ -533,7 +624,7 @@ export default function RoutinesScreen() {
                 <SectionHeader
                   eyebrow="History"
                   title="Past routines"
-                  subtitle="Completed and deferred rituals for reference."
+                  subtitle="Completed and inactive rituals for reference."
                 />
                 <View style={styles.stack}>
                   {categorized.history.map((item) => (
@@ -581,6 +672,9 @@ const styles = StyleSheet.create({
   intelligenceCard: {
     gap: spacing.md,
   },
+  recoverySummaryCard: {
+    gap: spacing.sm,
+  },
   introEyebrow: {
     ...typography.eyebrow,
     color: colors.textSecondary,
@@ -597,6 +691,10 @@ const styles = StyleSheet.create({
   introBody: {
     ...typography.body,
     color: colors.textSecondary,
+  },
+  recoveryFollowUp: {
+    ...typography.caption,
+    color: colors.warning,
   },
   metaText: {
     ...typography.body,

@@ -5,6 +5,8 @@ import { borderRadius, colors, spacing, typography } from "../../theme";
 export type StepState =
   | "active"
   | "deferred"
+  | "snoozed"
+  | "recovery"
   | "completed"
   | "cancelled"
   | "up-next"
@@ -22,6 +24,18 @@ const stateMeta: Record<
   },
   deferred: {
     label: "Deferred",
+    backgroundColor: colors.warningLight,
+    borderColor: colors.warning,
+    textColor: colors.textPrimary,
+  },
+  snoozed: {
+    label: "Snoozed",
+    backgroundColor: colors.infoLight,
+    borderColor: colors.info,
+    textColor: colors.textPrimary,
+  },
+  recovery: {
+    label: "Recovery",
     backgroundColor: colors.warningLight,
     borderColor: colors.warning,
     textColor: colors.textPrimary,

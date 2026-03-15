@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { borderRadius, colors, spacing, typography } from "../../theme";
-import type { Routine, RoutineAssignment, RoutineStepCompletion } from "../../types/medical";
+import type { Routine, RoutineAssignment, RoutineRecoverySummary, RoutineStepCompletion } from "../../types/medical";
 import { HeroSurface } from "../common/HeroSurface";
 import { MetricChip } from "../common/MetricChip";
 import { PrimaryButton } from "../common/PrimaryButton";
@@ -14,18 +14,41 @@ import { WeeklyCadenceStrip, getRoutineCadenceSummary } from "./WeeklyCadenceStr
 
 type CardVariant = "featured" | "standard";
 
-function getStatusDetail(status: RoutineAssignment["status"]) {
-  switch (status) {
+function getRecoveryState(assignment: RoutineAssignment): RoutineRecoverySummary["state"] {
+  if (assignment.recovery?.state) {
+    return assignment.recovery.state;
+  }
+  if (assignment.status === "deferred") return "deferred";
+  if (assignment.status === "completed") return "completed";
+  if (assignment.status === "cancelled") return "cancelled";
+  return "on_track";
+}
+
+function getStatusDetail(assignment: RoutineAssignment) {
+  const recoveryState = getRecoveryState(assignment);
+  switch (recoveryState) {
     case "completed":
       return {
         label: "Completed",
         summary: "This ritual has already been finished for the current window.",
         metricTone: "success" as const,
       };
+    case "snoozed":
+      return {
+        label: "Snoozed",
+        summary: assignment.recovery?.headline ?? "This ritual will come back later in the day.",
+        metricTone: "info" as const,
+      };
     case "deferred":
       return {
         label: "Deferred",
-        summary: "A structured defer reason was captured and the next timing was adjusted.",
+        summary: assignment.recovery?.headline ?? "A structured defer reason was captured and the next timing was adjusted.",
+        metricTone: "warning" as const,
+      };
+    case "recovery_due":
+      return {
+        label: "Recovery due",
+        summary: assignment.recovery?.headline ?? "Restart gently from the first core step.",
         metricTone: "warning" as const,
       };
     case "cancelled":
@@ -43,10 +66,13 @@ function getStatusDetail(status: RoutineAssignment["status"]) {
   }
 }
 
-function getStepState(status: RoutineAssignment["status"], index: number): StepState {
-  if (status === "completed") return "completed";
-  if (status === "deferred") return "deferred";
-  if (status === "cancelled") return "cancelled";
+function getStepState(assignment: RoutineAssignment, index: number): StepState {
+  const recoveryState = getRecoveryState(assignment);
+  if (recoveryState === "completed") return "completed";
+  if (recoveryState === "deferred") return "deferred";
+  if (recoveryState === "snoozed") return "snoozed";
+  if (recoveryState === "recovery_due") return "recovery";
+  if (recoveryState === "cancelled") return "cancelled";
   return index === 0 ? "up-next" : "queued";
 }
 
@@ -75,16 +101,18 @@ export function RoutineAssignmentCard({
   onComplete,
   onDefer,
 }: RoutineAssignmentCardProps) {
-  const status = getStatusDetail(assignment.status);
+  const status = getStatusDetail(assignment);
   const cadence = getRoutineCadenceSummary(routine);
   const name = assignment.routine_name || routine?.name || `Routine #${assignment.routine_id}`;
   const description =
     assignment.routine_description || routine?.description || status.summary;
+  const recovery = assignment.recovery;
+  const isActionable = assignment.status !== "completed" && assignment.status !== "cancelled";
   const steps = routine?.steps ?? [];
   const visibleSteps = variant === "featured" ? steps.slice(0, 4) : steps.slice(0, 2);
   const hiddenStepCount = steps.length - visibleSteps.length;
   const actionButtons =
-    assignment.status === "active" && !browseOnly ? (
+    isActionable && !browseOnly ? (
       <>
         <PrimaryButton
           label="Complete"
@@ -120,9 +148,9 @@ export function RoutineAssignmentCard({
               <RoutineStepRow
                 key={`${assignment.id}-${step.step_order}-${step.name}`}
                 step={step}
-                state={getStepState(assignment.status, index)}
+                state={getStepState(assignment, index)}
                 completionState={completion?.state}
-                onToggle={assignment.status === "active" ? onStepToggle : undefined}
+                onToggle={isActionable ? onStepToggle : undefined}
               />
             );
           })}
@@ -149,6 +177,15 @@ export function RoutineAssignmentCard({
         }
         actions={actionButtons}
       >
+        {recovery && recovery.state !== "on_track" && recovery.state !== "completed" && recovery.state !== "cancelled" ? (
+          <SoftCard tone="muted" style={styles.recoveryCard}>
+            <Text style={styles.recoveryTitle}>{recovery.headline}</Text>
+            <Text style={styles.recoveryDetail}>{recovery.detail}</Text>
+            {recovery.provider_follow_up ? (
+              <Text style={styles.recoveryFollowUp}>Your care team may review this recovery signal.</Text>
+            ) : null}
+          </SoftCard>
+        ) : null}
         <WeeklyCadenceStrip routine={routine} />
         {stepsBlock}
       </HeroSurface>
@@ -161,8 +198,14 @@ export function RoutineAssignmentCard({
         <View style={styles.standardCopy}>
           <Text style={styles.cardTitle}>{name}</Text>
           <Text style={styles.cardDescription}>{description}</Text>
+          {recovery && recovery.state !== "on_track" && recovery.state !== "completed" && recovery.state !== "cancelled" ? (
+            <View style={styles.recoveryInlineBlock}>
+              <Text style={styles.recoveryInlineTitle}>{recovery.headline}</Text>
+              <Text style={styles.recoveryInlineDetail}>{recovery.detail}</Text>
+            </View>
+          ) : null}
         </View>
-        <StepStateBadge state={assignment.status === "active" ? "active" : getStepState(assignment.status, 0)} />
+        <StepStateBadge state={getStepState(assignment, 0)} />
       </View>
       <WeeklyCadenceStrip routine={routine} />
       {stepsBlock}
@@ -178,6 +221,9 @@ const styles = StyleSheet.create({
   mutedCard: {
     opacity: 0.6,
   },
+  recoveryCard: {
+    gap: spacing.xs,
+  },
   standardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -188,12 +234,39 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
   },
+  recoveryInlineBlock: {
+    marginTop: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surfaceLight,
+    gap: spacing.xs,
+  },
   cardTitle: {
     ...typography.h3,
     color: colors.textPrimary,
   },
   cardDescription: {
     ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  recoveryTitle: {
+    ...typography.label,
+    color: colors.textPrimary,
+  },
+  recoveryDetail: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  recoveryFollowUp: {
+    ...typography.caption,
+    color: colors.warning,
+  },
+  recoveryInlineTitle: {
+    ...typography.label,
+    color: colors.textPrimary,
+  },
+  recoveryInlineDetail: {
+    ...typography.caption,
     color: colors.textSecondary,
   },
   stepsBlock: {
