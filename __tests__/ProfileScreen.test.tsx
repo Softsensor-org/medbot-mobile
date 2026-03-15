@@ -30,6 +30,29 @@ jest.mock("../src/hooks/useUser", () => ({
       allergies: ["Fragrance"],
       conditions: ["Rosacea"],
       notes_for_care_team: "Patch test new actives first.",
+      program_context: {
+        version: 1,
+        membership: {
+          status: "active",
+          name: "Glow Club",
+          cadence_label: "Monthly",
+          renewal_at: "2026-04-15T00:00:00Z",
+        },
+        program: {
+          status: "active",
+          name: "Acne Reset Program",
+          focus: "Acne Maintenance",
+          summary: "Six-week physician-led acne reset.",
+          target_date: "2026-05-01T00:00:00Z",
+          source: "manual",
+        },
+        treatment_plan: {
+          status: "active",
+          name: "Azelaic + Peel Series",
+          summary: "Continue nightly azelaic acid and monthly peel cadence.",
+          next_review_at: "2026-03-28T00:00:00Z",
+        },
+      },
     },
   }),
   usePreferenceProfile: () => ({
@@ -80,6 +103,8 @@ describe("ProfileScreen", () => {
     const { getAllByText, getByText } = render(<ProfileScreen />);
 
     expect(getAllByText("Maya").length).toBeGreaterThan(0);
+    expect(getAllByText("Glow Club").length).toBeGreaterThan(0);
+    expect(getAllByText("Acne Reset Program").length).toBeGreaterThan(0);
     expect(getByText("What your care plan is tuned for")).toBeTruthy();
     expect(getByText("What your provider handoff can see")).toBeTruthy();
     expect(getByText("Consents & legal")).toBeTruthy();

@@ -34,6 +34,17 @@ function titleize(value?: string | null) {
     .join(" ");
 }
 
+function formatDateLabel(value?: string | null) {
+  if (!value) {
+    return "Not scheduled";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Not scheduled";
+  }
+  return parsed.toLocaleDateString();
+}
+
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -49,6 +60,14 @@ export default function ProfileScreen() {
       : "All current";
   const goalsCount = preferenceProfile?.essential.goals.length ?? 0;
   const avoidCount = preferenceProfile?.essential.avoid_list.length ?? 0;
+  const programContext = patientProfile?.program_context;
+  const membership = programContext?.membership;
+  const program = programContext?.program;
+  const treatmentPlan = programContext?.treatment_plan;
+  const membershipLabel =
+    membership?.name || (membership?.status && membership.status !== "inactive" ? titleize(membership.status) : "Not enrolled");
+  const programLabel =
+    program?.name || (program?.status && program.status !== "not_started" ? titleize(program.status) : "No active program");
 
   const handleLogout = () => {
     Alert.alert("Log out", "Are you sure you want to log out?", [
@@ -70,6 +89,8 @@ export default function ProfileScreen() {
       <ProfileHero
         name={patientProfile?.preferred_name || user?.name}
         email={user?.email}
+        membershipLabel={membershipLabel}
+        programLabel={programLabel}
         privacyLabel={privacyLabel}
         hapticsEnabled={hapticsEnabled}
         onOpenSettings={() => router.push("/(auth)/settings")}
@@ -92,7 +113,7 @@ export default function ProfileScreen() {
         <SectionHeader
           eyebrow="Profile context"
           title="What your provider handoff can see"
-          subtitle="Identity and sensitivity details now live alongside your treatment preferences."
+          subtitle="Identity, sensitivity, and active program context now live alongside your treatment preferences."
         />
         <View style={styles.identityGrid}>
           <View style={styles.identityCell}>
@@ -113,6 +134,22 @@ export default function ProfileScreen() {
             <Text style={styles.identityLabel}>Avoid list</Text>
             <Text style={styles.identityValue}>{avoidCount > 0 ? `${avoidCount} ingredients tracked` : "None yet"}</Text>
           </View>
+          <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Membership</Text>
+            <Text style={styles.identityValue}>{membershipLabel}</Text>
+          </View>
+          <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Program</Text>
+            <Text style={styles.identityValue}>{programLabel}</Text>
+          </View>
+          <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Treatment plan</Text>
+            <Text style={styles.identityValue}>{treatmentPlan?.name || "No active plan"}</Text>
+          </View>
+          <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Next review</Text>
+            <Text style={styles.identityValue}>{formatDateLabel(treatmentPlan?.next_review_at)}</Text>
+          </View>
           <View style={styles.identityFullCell}>
             <Text style={styles.identityLabel}>Allergies</Text>
             <Text style={styles.identityValue}>{summarizeList(patientProfile?.allergies)}</Text>
@@ -125,6 +162,18 @@ export default function ProfileScreen() {
             <Text style={styles.identityLabel}>Care note</Text>
             <Text style={styles.identityValue}>
               {patientProfile?.notes_for_care_team || "No care-team note saved yet."}
+            </Text>
+          </View>
+          <View style={styles.identityFullCell}>
+            <Text style={styles.identityLabel}>Program summary</Text>
+            <Text style={styles.identityValue}>
+              {program?.summary || treatmentPlan?.summary || "Your clinic can add a structured program or plan summary here when your longitudinal care path is active."}
+            </Text>
+          </View>
+          <View style={styles.identityFullCell}>
+            <Text style={styles.identityLabel}>Key dates</Text>
+            <Text style={styles.identityValue}>
+              {`Membership renewal: ${formatDateLabel(membership?.renewal_at)} • Goal target: ${formatDateLabel(program?.target_date)}`}
             </Text>
           </View>
         </View>
