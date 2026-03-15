@@ -71,6 +71,7 @@ export default function ProfileScreen() {
   const programContext = patientProfile?.program_context;
   const membership = programContext?.membership;
   const program = programContext?.program;
+  const programTemplate = program?.template;
   const treatmentPlan = programContext?.treatment_plan;
   const journeyStage = programContext?.journey_stage?.stage ?? "prep";
   const journeyStageSource = programContext?.journey_stage?.source ?? "derived";
@@ -155,6 +156,10 @@ export default function ProfileScreen() {
             <Text style={styles.identityValue}>{programLabel}</Text>
           </View>
           <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Program template</Text>
+            <Text style={styles.identityValue}>{programTemplate?.label || "Not inferred yet"}</Text>
+          </View>
+          <View style={styles.identityCell}>
             <Text style={styles.identityLabel}>Journey stage</Text>
             <Text style={styles.identityValue}>{journeyStageLabel}</Text>
           </View>
@@ -190,6 +195,26 @@ export default function ProfileScreen() {
               {program?.summary || treatmentPlan?.summary || "Your clinic can add a structured program or plan summary here when your longitudinal care path is active."}
             </Text>
           </View>
+          {programTemplate ? (
+            <View style={styles.identityFullCell}>
+              <Text style={styles.identityLabel}>Template guidance</Text>
+              <Text style={styles.identityValue}>
+                {`${programTemplate.summary} Follow-up every ${programTemplate.default_follow_up_cadence_days} days.`}
+              </Text>
+            </View>
+          ) : null}
+          {programTemplate?.routine_recovery ? (
+            <View style={styles.identityFullCell}>
+              <Text style={styles.identityLabel}>Routine recovery logic</Text>
+              <Text style={styles.identityValue}>{programTemplate.routine_recovery.resume_guidance}</Text>
+            </View>
+          ) : null}
+          {programTemplate?.escalation_criteria?.length ? (
+            <View style={styles.identityFullCell}>
+              <Text style={styles.identityLabel}>Escalation triggers</Text>
+              <Text style={styles.identityValue}>{programTemplate.escalation_criteria.slice(0, 3).join(" • ")}</Text>
+            </View>
+          ) : null}
           <View style={styles.identityFullCell}>
             <Text style={styles.identityLabel}>Stage source</Text>
             <Text style={styles.identityValue}>{titleize(journeyStageSource)}</Text>

@@ -50,6 +50,23 @@ jest.mock("../src/hooks/useUser", () => ({
           summary: "Six-week physician-led acne reset.",
           target_date: "2026-05-01T00:00:00Z",
           source: "manual",
+          template: {
+            template_id: "acne_clearance",
+            label: "Acne Reset",
+            track: "acne",
+            summary: "Structured acne-reset track.",
+            default_follow_up_cadence_days: 14,
+            escalation_criteria: ["Rapidly worsening inflammatory lesions"],
+            routine_recovery: {
+              defer_enabled: true,
+              snooze_enabled: true,
+              skip_enabled: true,
+              max_consecutive_skips: 2,
+              recovery_window_days: 3,
+              resume_guidance: "Resume with tolerated nightly step first.",
+            },
+            stages: [],
+          },
         },
         treatment_plan: {
           status: "active",
@@ -110,6 +127,7 @@ describe("ProfileScreen", () => {
     expect(getAllByText("Maya").length).toBeGreaterThan(0);
     expect(getAllByText("Glow Club").length).toBeGreaterThan(0);
     expect(getAllByText("Acne Reset Program").length).toBeGreaterThan(0);
+    expect(getAllByText("Acne Reset").length).toBeGreaterThan(0);
     expect(getAllByText("Treatment").length).toBeGreaterThan(0);
     expect(getByText("What your care plan is tuned for")).toBeTruthy();
     expect(getByText("What your provider handoff can see")).toBeTruthy();
