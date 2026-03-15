@@ -32,6 +32,11 @@ jest.mock("../src/hooks/useUser", () => ({
       notes_for_care_team: "Patch test new actives first.",
       program_context: {
         version: 1,
+        journey_stage: {
+          stage: "treatment",
+          source: "derived",
+          updated_at: "2026-03-12T00:00:00Z",
+        },
         membership: {
           status: "active",
           name: "Glow Club",
@@ -105,6 +110,7 @@ describe("ProfileScreen", () => {
     expect(getAllByText("Maya").length).toBeGreaterThan(0);
     expect(getAllByText("Glow Club").length).toBeGreaterThan(0);
     expect(getAllByText("Acne Reset Program").length).toBeGreaterThan(0);
+    expect(getAllByText("Treatment").length).toBeGreaterThan(0);
     expect(getByText("What your care plan is tuned for")).toBeTruthy();
     expect(getByText("What your provider handoff can see")).toBeTruthy();
     expect(getByText("Consents & legal")).toBeTruthy();

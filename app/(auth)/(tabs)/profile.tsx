@@ -29,7 +29,7 @@ function titleize(value?: string | null) {
     return "Not set yet";
   }
   return value
-    .split("-")
+    .split(/[-_]/)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
@@ -44,6 +44,14 @@ function formatDateLabel(value?: string | null) {
   }
   return parsed.toLocaleDateString();
 }
+
+const JOURNEY_STAGE_COPY = {
+  prep: "You are lining up products, routines, and readiness details before the core treatment phase starts.",
+  treatment: "You are in the active treatment phase. Consistency and observation matter most right now.",
+  recovery: "You are in a recovery window. Use gentle care and keep your provider aware of healing changes.",
+  maintenance: "You are protecting gains and keeping your skin stable with lighter, steady upkeep.",
+  next_step: "Your current phase is wrapping up. Confirm the next review, plan adjustment, or treatment step.",
+} as const;
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -64,6 +72,9 @@ export default function ProfileScreen() {
   const membership = programContext?.membership;
   const program = programContext?.program;
   const treatmentPlan = programContext?.treatment_plan;
+  const journeyStage = programContext?.journey_stage?.stage ?? "prep";
+  const journeyStageSource = programContext?.journey_stage?.source ?? "derived";
+  const journeyStageLabel = titleize(journeyStage);
   const membershipLabel =
     membership?.name || (membership?.status && membership.status !== "inactive" ? titleize(membership.status) : "Not enrolled");
   const programLabel =
@@ -91,6 +102,7 @@ export default function ProfileScreen() {
         email={user?.email}
         membershipLabel={membershipLabel}
         programLabel={programLabel}
+        journeyStageLabel={journeyStageLabel}
         privacyLabel={privacyLabel}
         hapticsEnabled={hapticsEnabled}
         onOpenSettings={() => router.push("/(auth)/settings")}
@@ -143,6 +155,10 @@ export default function ProfileScreen() {
             <Text style={styles.identityValue}>{programLabel}</Text>
           </View>
           <View style={styles.identityCell}>
+            <Text style={styles.identityLabel}>Journey stage</Text>
+            <Text style={styles.identityValue}>{journeyStageLabel}</Text>
+          </View>
+          <View style={styles.identityCell}>
             <Text style={styles.identityLabel}>Treatment plan</Text>
             <Text style={styles.identityValue}>{treatmentPlan?.name || "No active plan"}</Text>
           </View>
@@ -165,10 +181,18 @@ export default function ProfileScreen() {
             </Text>
           </View>
           <View style={styles.identityFullCell}>
+            <Text style={styles.identityLabel}>Stage guidance</Text>
+            <Text style={styles.identityValue}>{JOURNEY_STAGE_COPY[journeyStage]}</Text>
+          </View>
+          <View style={styles.identityFullCell}>
             <Text style={styles.identityLabel}>Program summary</Text>
             <Text style={styles.identityValue}>
               {program?.summary || treatmentPlan?.summary || "Your clinic can add a structured program or plan summary here when your longitudinal care path is active."}
             </Text>
+          </View>
+          <View style={styles.identityFullCell}>
+            <Text style={styles.identityLabel}>Stage source</Text>
+            <Text style={styles.identityValue}>{titleize(journeyStageSource)}</Text>
           </View>
           <View style={styles.identityFullCell}>
             <Text style={styles.identityLabel}>Key dates</Text>
