@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Animated,
   Platform,
+  Share,
+  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
@@ -17,6 +19,8 @@ import { useSafetyGate } from '../hooks/useSafetyGate';
 import { SafetyGateOverlay } from './SafetyGateOverlay';
 import { CompareSlider } from './common/CompareSlider';
 import { analytics } from '../api/AnalyticsService';
+import { usePatientProgress } from '../hooks/useProgress';
+import { buildPhiSafeShareSummary, buildPhiSafeShareMessage } from '../engagement/shareScaffold';
 import { useRouter } from 'expo-router';
 import { validateDeepLink } from '../utils/deepLinkValidator';
 import { format, parseISO } from 'date-fns';
@@ -28,6 +32,23 @@ export const PremiumWeeklyReveal: React.FC = () => {
   const { trajectory, isLoading: isLoadingTrajectory } = useTrajectory();
   const { safety, isLoading: isLoadingSafety } = useSafetyGate();
   const { reduceMotion } = useMotion();
+  const { data: progressData } = usePatientProgress();
+
+  const handleShare = useCallback(async () => {
+    analytics.track('weekly_reveal_share_clicked');
+    if (!progressData) {
+      Alert.alert('Not ready', 'Progress data is still loading. Please try again in a moment.');
+      return;
+    }
+    const summary = buildPhiSafeShareSummary(progressData);
+    const message = buildPhiSafeShareMessage(summary);
+    try {
+      await Share.share({ message, title: summary.title });
+      analytics.track('weekly_reveal_share_completed');
+    } catch {
+      // User cancelled or share failed silently
+    }
+  }, [progressData]);
 
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
@@ -157,12 +178,12 @@ export const PremiumWeeklyReveal: React.FC = () => {
             <MaterialIcons name="arrow-forward" size={20} color={colors.surface} />
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
             style={styles.shareButton}
-            onPress={() => analytics.track('weekly_reveal_share_clicked')}
+            onPress={handleShare}
         >
             <MaterialIcons name="ios-share" size={20} color={colors.primary} />
-            <Text style={styles.shareText}>Save PHI-Safe Summary</Text>
+            <Text style={styles.shareText}>Share PHI-Safe Summary</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
