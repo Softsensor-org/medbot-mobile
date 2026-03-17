@@ -24,6 +24,7 @@ interface ChipSelectProps {
   horizontal?: boolean;
   multiSelect?: boolean;
   selectedValues?: (string | number)[];
+  allowDeselect?: boolean;
 }
 
 export const ChipSelect: React.FC<ChipSelectProps> = ({
@@ -34,10 +35,15 @@ export const ChipSelect: React.FC<ChipSelectProps> = ({
   horizontal = true,
   multiSelect = false,
   selectedValues = [],
+  allowDeselect = false,
 }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlePress = (value: any) => {
     hapticService.triggerSelection();
+    if (!multiSelect && allowDeselect && selectedValue === value) {
+      onSelect(null);
+      return;
+    }
     onSelect(value);
   };
 
