@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -21,9 +21,14 @@ interface ChatCardInlineProps {
 
 export const ChatCardInline: React.FC<ChatCardInlineProps> = ({ card, onCardUpdate, escalationActive }) => {
   const [isFlagging, setIsFlagging] = useState(false);
+  const flagInFlightRef = useRef(false);
   const router = useRouter();
 
   const handleFlag = async () => {
+    if (flagInFlightRef.current) {
+      return;
+    }
+    flagInFlightRef.current = true;
     setIsFlagging(true);
     try {
       const updated = await sessionsApi.flagCard(card.card_id);
@@ -31,6 +36,7 @@ export const ChatCardInline: React.FC<ChatCardInlineProps> = ({ card, onCardUpda
     } catch (err) {
       console.error("Failed to flag card:", err);
     } finally {
+      flagInFlightRef.current = false;
       setIsFlagging(false);
     }
   };
