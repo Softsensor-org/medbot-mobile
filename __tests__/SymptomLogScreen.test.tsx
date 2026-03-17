@@ -116,4 +116,28 @@ describe('SymptomLogScreen', () => {
     expect(showToast).toHaveBeenCalledWith('error', 'Error', 'Failed to log symptom');
     expect(consoleErrorSpy).toHaveBeenCalledWith('Log symptom error:', expect.any(Error));
   });
+
+  it('allows deselecting the last symptom and provides a skip path', () => {
+    const mockMutate = jest.fn();
+    (useLogSymptom as jest.Mock).mockReturnValue({ mutate: mockMutate, isPending: false });
+
+    const { getByText, getAllByText } = render(<SymptomLogScreen />, { wrapper });
+
+    fireEvent.press(getByText('Rash'));
+    fireEvent.press(getByText('Rash'));
+
+    const submitButtons = getAllByText('Log Symptom');
+    fireEvent.press(submitButtons[submitButtons.length - 1]);
+
+    expect(mockMutate).not.toHaveBeenCalled();
+    expect(getByText('Skip for now')).toBeTruthy();
+  });
+
+  it('uses skip action when no symptom is selected', () => {
+    const { getByText } = render(<SymptomLogScreen />, { wrapper });
+
+    fireEvent.press(getByText('Skip for now'));
+
+    expect(mockRouter.back).toHaveBeenCalled();
+  });
 });

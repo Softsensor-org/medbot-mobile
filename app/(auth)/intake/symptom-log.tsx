@@ -36,6 +36,7 @@ export default function SymptomLogScreen() {
   const [selectedType, setSelectedType] = useState<SymptomType | null>(null);
   const [severity, setSeverity] = useState<number>(3);
   const [notes, setNotes] = useState("");
+  const canSubmit = Boolean(selectedType) && !isSubmitting;
 
   const handleSubmit = useCallback(() => {
     if (!selectedType) {
@@ -130,11 +131,23 @@ export default function SymptomLogScreen() {
           options={symptomOptions}
           selectedValue={selectedType?.id || null}
           onSelect={(id) => {
+            if (id === null) {
+              setSelectedType(null);
+              return;
+            }
             const type = symptomTypes?.find(t => t.id === id);
             if (type) setSelectedType(type);
           }}
           horizontal={true}
+          allowDeselect={true}
         />
+        {selectedType ? (
+          <TouchableOpacity style={styles.clearSelectionButton} onPress={() => setSelectedType(null)}>
+            <Text style={styles.clearSelectionText}>Clear symptom selection</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.selectionHint}>Select a symptom to log, or skip for now.</Text>
+        )}
 
         <Text style={styles.label}>How severe is it? (1-5)</Text>
         <View style={styles.severityContainer}>
@@ -175,9 +188,9 @@ export default function SymptomLogScreen() {
         />
 
         <TouchableOpacity
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
           onPress={handleSubmit}
-          disabled={isSubmitting}
+          disabled={!canSubmit}
         >
           {isSubmitting ? (
             <ActivityIndicator color={colors.surface} />
@@ -185,6 +198,11 @@ export default function SymptomLogScreen() {
             <Text style={styles.submitButtonText}>Log Symptom</Text>
           )}
         </TouchableOpacity>
+        {!selectedType ? (
+          <TouchableOpacity style={styles.skipButton} onPress={() => router.back()}>
+            <Text style={styles.skipButtonText}>Skip for now</Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -285,6 +303,20 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
   },
+  selectionHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  clearSelectionButton: {
+    alignSelf: "flex-start",
+    marginTop: spacing.xs,
+  },
+  clearSelectionText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: "600",
+  },
   textArea: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -310,5 +342,14 @@ const styles = StyleSheet.create({
   submitButtonText: {
     ...typography.button,
     color: colors.surface,
+  },
+  skipButton: {
+    marginTop: spacing.sm,
+    alignItems: "center",
+    paddingVertical: spacing.sm,
+  },
+  skipButtonText: {
+    ...typography.label,
+    color: colors.textSecondary,
   },
 });
