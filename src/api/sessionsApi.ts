@@ -46,6 +46,12 @@ export interface SessionMeta {
   priority_score?: number;
   age_minutes?: number;
   sla_target_minutes?: number;
+  queue_lane?: "prep_review" | "recovery_follow_up" | "adherence_risk" | "product_conflict" | "clinical_review";
+  queue_time_state?: "on_track" | "due_soon" | "due_now" | "overdue";
+  queue_reasons?: string[];
+  recommended_next_action?: string;
+  queue_owner?: string;
+  treatment_stage?: "intake" | "prep" | "treatment" | "recovery" | "maintenance" | "rebook_next_step";
   consent_given?: boolean;
   consent_at?: string | null;
   timeline_events?: TimelineEvent[];

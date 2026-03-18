@@ -46,6 +46,12 @@ export default function CareScreen() {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const journeyStage = patientProfile?.program_context?.journey_stage?.stage ?? "prep";
   const journeyStageLabel = titleize(journeyStage);
+  const programTemplate = patientProfile?.program_context?.program?.template;
+  const stageTemplate = programTemplate?.stages?.find((stage) => stage.stage === journeyStage);
+  const stageCadenceDays = stageTemplate?.follow_up_cadence_days ?? programTemplate?.default_follow_up_cadence_days;
+  const stageTemplateAction = stageTemplate
+    ? `Next focus: ${stageTemplate.objective} Follow-up cadence: every ${stageCadenceDays} days.`
+    : null;
   const recoveryFollowUp = patientProfile?.program_context?.recovery_follow_up;
   const shouldShowRecoveryFollowUp = Boolean(
     recoveryFollowUp && (
@@ -114,6 +120,11 @@ export default function CareScreen() {
           <Text style={styles.sessionStatus}>
             Status: <Text style={styles.statusValue}>{item.status}</Text>
           </Text>
+          {item.recommended_next_action ? (
+            <Text style={styles.nextActionText} numberOfLines={2}>
+              Next action: {item.recommended_next_action}
+            </Text>
+          ) : null}
           <Text style={styles.sessionId} numberOfLines={1}>
             ID: {item.session_id}
           </Text>
@@ -227,6 +238,7 @@ export default function CareScreen() {
           <MaterialIcons name="timeline" size={22} color={colors.primary} />
         </View>
         <Text style={styles.stageBody}>{JOURNEY_STAGE_COPY[journeyStage]}</Text>
+        {stageTemplateAction ? <Text style={styles.stageAction}>{stageTemplateAction}</Text> : null}
       </View>
 
       {journeyStage === "prep" && (
@@ -369,6 +381,11 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSecondary,
   },
+  stageAction: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: "600",
+  },
   readinessWrapper: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
@@ -410,6 +427,11 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSecondary,
     marginBottom: 2,
+  },
+  nextActionText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    marginBottom: 4,
   },
   statusValue: {
     fontWeight: "600",
