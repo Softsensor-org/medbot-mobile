@@ -43,7 +43,7 @@
     "axios": "^1.13.5",
     "axios-retry": "^4.5.0",
     "date-fns": "^4.1.0",
-    "expo": "~54.0.33",
+    "expo": "~57.0.24",
     "expo-auth-session": "~7.0.10",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",
